@@ -1,7 +1,14 @@
 ﻿# Data Model: HSV Color Segmentation
 
-**Status**: Design contract; implementation pending. Units and field names are authoritative
-for tasks and local records. No database is required.
+**Status**: Foundational media, threshold, request and result models are implemented in
+`src/hsv_segmentation/models.py` (Phase 2). Algorithms, runtime session behavior and experiment
+persistence remain later-phase work. Units and field names are authoritative; no database is required.
+
+Request/result records compose an immutable `InputMedia` and `HSVThresholdSet` rather than
+repeating independently editable identity fields. Dimensions, session/frame identity,
+parameter revision and original RGB are derived properties where applicable. Model construction
+validates representation without reading source files or computing HSV. Six-bound validation
+is authoritative in `HSVThresholdSet`; the later processing validator reuses that contract.
 
 ## InputMedia
 

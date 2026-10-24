@@ -5,8 +5,8 @@ its results, then stop at the boundary. Do not start the next phase automaticall
 The authoritative individual task criteria remain in
 `specs/001-hsv-color-segmentation/tasks.md`.
 
-Current status: **Phase 1 complete and verified on 2026-10-24**. Phases 2–8 have
-not started. See `docs/verification.md` for the actual setup checks and versions.
+Current status: **Phases 1 and 2 complete and verified on 2026-10-24**. Phases 3–8
+have not started. See `docs/verification.md` for setup and foundation evidence.
 
 | Phase | Tasks | Deliverable | Exit check |
 | --- | --- | --- | --- |
@@ -20,5 +20,7 @@ not started. See `docs/verification.md` for the actual setup checks and versions
 | 8. Final verification | T045–T050 | Performance evidence, docs, demo and independent acceptance | Measured criteria and actual student acceptance are recorded |
 
 Phase 1 does not deliver an executable desktop window or image processing code.
+Phase 2 adds data validation and independent reference fixtures, with 60 passing
+foundation checks; it does not implement the segmentation algorithm or GUI.
 Phase 3 is the first working application MVP. Independent human acceptance in
 Phase 8 must be performed by actual participants; unavailable evidence stays open.

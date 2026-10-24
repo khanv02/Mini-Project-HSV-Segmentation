@@ -3,13 +3,13 @@
 Academic desktop application for selecting colored objects using six HSV bounds.
 The implementation separates pure processing, file I/O, session coordination and GUI.
 
-Current milestone: **Phase 1 complete — project setup**. Package installation, independent
-module imports and test discovery are available. The segmentation algorithm and
-desktop window will be implemented in later phases; the application launch
-command below is the target workflow, not a feature available in this milestone.
+Current milestone: **Phase 2 complete — shared foundation**. Package setup,
+immutable media/threshold/result models, typed errors and independent reference
+fixtures are available. The segmentation algorithm and desktop window will be
+implemented in Phase 3; the launch command below is not available yet.
 
 See [stage boundaries](docs/implementation-stages.md) and
-[verified setup results](docs/verification.md). Implementation stops before Phase 2.
+[verification results](docs/verification.md). Implementation stops before Phase 3.
 
 ## Install (Windows PowerShell)
 
@@ -41,12 +41,16 @@ Once Phase 3 is complete, launch with:
 ## Test
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest --collect-only
+.\.venv\Scripts\python.exe -m pytest
 ```
 
-At Phase 1, zero tests collected (pytest exit code 5) is expected. Import or
-configuration errors are failures. Actual algorithm tests begin in Phase 3;
-run `python -m pytest` after they have been added.
+Phase 2 has 60 passing foundation checks for data validation, snapshot ownership,
+error context and analytical reference data. Actual algorithm tests begin in
+Phase 3. The initial empty collection at Phase 1 was a setup checkpoint only.
+
+Shared contracts live in `src/hsv_segmentation/models.py` and `errors.py`.
+`tests/fixtures/color_cases.py` supplies 12 hand-derived colors, 11 interval
+reference cases and a seeded `colorsys` sample without importing production code.
 
 See `specs/001-hsv-color-segmentation/tasks.md` for the eight phase boundaries
 and `specs/001-hsv-color-segmentation/quickstart.md` for later acceptance scenarios.

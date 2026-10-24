@@ -5,13 +5,13 @@
 
 **Planning status**: Design completed on 2026-10-24 in `plan.md`, `research.md`,
 `data-model.md`, `contracts/` and `quickstart.md`. T001 is complete at design level.
-Phase 1 (T001-T004) is complete. The remaining 46 tasks are unimplemented; only setup
-installation/import/discovery checks have been executed, not algorithm or GUI acceptance.
+Phases 1 and 2 (T001-T007) are complete. The remaining 43 tasks are unimplemented.
+Setup checks and 60 foundation tests have passed; algorithm and GUI acceptance remain pending.
 
 **Execution policy (user instruction)**: Implement and verify one phase at a time,
 then stop and report before starting the next phase. See
 `docs/implementation-stages.md` for the eight stage boundaries. The current
-authorized implementation increment is Phase 1 (T001–T004) only; that phase is now complete.
+authorized increment is Phase 2 (T005–T007); it is complete. Stop before T008.
 
 **Tests**: Required by FR-017, the constitution, and the user's requested unit-test phase.
 
@@ -60,9 +60,9 @@ These decisions match the completed plan. Update dependent artifacts together if
 
 **Purpose**: Define shared data and session invariants without mixing GUI, algorithms, and I/O.
 
-- [ ] T005 Define media identity, threshold and result snapshot records in `src/hsv_segmentation/models.py` according to `specs/001-hsv-color-segmentation/data-model.md`; **Depends**: T003, T004; **Done**: typed records enforce positive dimensions with width*height <=12,000,000, immutable six-bound snapshots, nonnegative revisions, image frame_index=null/video frame_index>=0, valid session identity, and exact source/threshold/frame relationships without GUI dependencies.
-- [ ] T006 [P] Define input, validation, decode, and write error types in `src/hsv_segmentation/errors.py`; **Depends**: T005; **Done**: lower layers can signal distinct actionable failures without displaying dialogs or importing GUI modules.
-- [ ] T007 [P] Create analytical RGB/HSV fixtures and expected masks in `tests/fixtures/color_cases.py`; **Depends**: T005; **Done**: primaries, neutral colors, exact and nextafter boundaries, RGB (255,0,1) near 360 degrees, default [0,360] and independent colorsys comparisons have explicit expected outcomes; circular hue and S/V errors use absolute tolerance 1e-10 with relative tolerance zero.
+- [X] T005 Define media identity, threshold and result snapshot records in `src/hsv_segmentation/models.py` according to `specs/001-hsv-color-segmentation/data-model.md`; **Depends**: T003, T004; **Done**: typed records enforce positive dimensions with width*height <=12,000,000, immutable six-bound snapshots, nonnegative revisions, image frame_index=null/video frame_index>=0, valid session identity, and exact source/threshold/frame relationships without GUI dependencies.
+- [X] T006 [P] Define input, validation, decode, and write error types in `src/hsv_segmentation/errors.py`; **Depends**: T005; **Done**: lower layers can signal distinct actionable failures without displaying dialogs or importing GUI modules.
+- [X] T007 [P] Create analytical RGB/HSV fixtures and expected masks in `tests/fixtures/color_cases.py`; **Depends**: T005; **Done**: primaries, neutral colors, exact and nextafter boundaries, RGB (255,0,1) near 360 degrees, default [0,360] and independent colorsys comparisons have explicit expected outcomes; circular hue and S/V errors use absolute tolerance 1e-10 with relative tolerance zero.
 
 **Checkpoint**: Shared contracts and independent reference data are available. No story
 implementation starts until T005 through T007 are complete.
@@ -299,7 +299,7 @@ not optional replacements for the image MVP.
 
 ## Notes
 
-- T001-T004 are complete (Phase 1). The remaining 46 tasks are unchecked; stop before T005.
+- T001-T007 are complete (Phases 1 and 2). The remaining 43 tasks are unchecked; stop before T008.
 - Counts: Setup 4; Foundation 3; US1 14; US3 6; US2 5; US5 4; US4 8; Polish 6.
 - The plan bootstrap T001 is complete; recheck artifact consistency before application implementation.
 - Research, data model, interface contracts and quickstart now define numeric behavior and field constraints;
