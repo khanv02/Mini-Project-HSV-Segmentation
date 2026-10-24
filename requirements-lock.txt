@@ -1,0 +1,14 @@
+﻿# Windows x64 / CPython 3.11.9; verified during Phase 1 setup.
+# Includes runtime, test and build tools; local package installed separately.
+colorama==0.4.6
+iniconfig==2.3.1
+numpy==2.4.6
+opencv-python==4.14.0.94
+packaging==26.3
+pillow==12.3.0
+pip==26.2.2
+pluggy==1.7.0
+Pygments==2.21.0
+pytest==9.1.1
+setuptools==84.2.1
+wheel==0.48.0

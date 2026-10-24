@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hsv-color-segmentation"
+version = "1.0.0"
+description = "An academic desktop HSV color segmentation application"
+requires-python = ">=3.11"
+dependencies = ["numpy>=2,<3", "Pillow>=11,<13", "opencv-python>=4,<5"]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+

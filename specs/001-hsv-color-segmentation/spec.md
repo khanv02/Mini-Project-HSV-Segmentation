@@ -1,0 +1,286 @@
+﻿# Feature Specification: HSV Color Segmentation
+
+**Feature Branch**: No feature branch created; feature location is independent of branch name.
+
+**Created**: 2026-10-24
+
+**Status**: Draft
+
+**Input**: User description: Build an independent desktop academic application named
+"HSV Color Segmentation" to open images and videos, interactively select HSV color thresholds,
+visualize masks and extracted regions, save results, and evaluate at least 10 test images.
+Reuse existing GUI and utility components where feasible. Object counting, tracking, and
+machine learning are outside the initial scope.
+
+## User Scenarios & Testing *(mandatory)*
+
+### User Story 1 - Segment an Image Interactively (Priority: P1)
+
+As a student, I want to open an image and adjust color thresholds while comparing the original,
+mask, and extracted regions so that I can understand and demonstrate HSV segmentation.
+HSV means hue (color angle), saturation (color intensity), and value (brightness).
+
+**Why this priority**: This is the primary algorithm and provides a complete image demonstration.
+
+**Independent Test**: Open a known color test image, change each of the six thresholds, and
+verify the selected pixels and all three views without needing video or experiment recording.
+
+**Acceptance Scenarios**:
+
+1. **Given** a newly opened application, **When** the student opens a valid supported image,
+   **Then** the original, binary mask, and segmented result appear with labels, and the six
+   current threshold values and their allowed ranges are visible.
+2. **Given** a displayed image, **When** any threshold changes to a valid value, **Then** the
+   mask and extracted result update automatically for those values, without reopening the file.
+3. **Given** a color test image with known HSV values, **When** thresholds include some pixels
+   and exclude others, **Then** the mask is white exactly at included pixels, black elsewhere,
+   and the extracted result preserves included colors with excluded pixels black.
+4. **Given** valid thresholds, **When** an entry is nonnumeric or outside its allowed range,
+   or the saturation or value lower limit exceeds its upper limit, **Then** the application
+   explains the error and does not apply or export results labeled with the invalid values.
+5. **Given** colors on either side of the hue origin, **When** the lower hue exceeds the upper
+   hue, **Then** the selected interval crosses the hue origin and includes both end segments.
+6. **Given** a displayed input, **When** the student compares the three labeled views,
+   **Then** they show the same source at matching proportions with no source modification.
+
+---
+
+### User Story 2 - Save Results for a Report (Priority: P2)
+
+As a student, I want to save the binary mask and extracted color result so that I can include
+reliable evidence in a report or presentation.
+
+**Why this priority**: Saved evidence makes the primary workflow useful beyond the live GUI.
+
+**Independent Test**: With a known image result displayed, export both outputs and reopen them
+to verify dimensions, binary mask values, and extracted colors.
+
+**Acceptance Scenarios**:
+
+1. **Given** a current valid result, **When** the student saves the mask or segmented result,
+   **Then** the selected output is saved at the source resolution and success identifies its path.
+2. **Given** an existing destination file, **When** saving would overwrite it, **Then** the
+   application requests overwrite confirmation and cancellation leaves that file unchanged.
+3. **Given** an unwritable destination, **When** the student attempts to save, **Then** a clear
+   error identifies the failed operation without losing the current input or result.
+4. **Given** no input or an incomplete result update, **When** the student attempts an export,
+   **Then** saving is unavailable until a complete, valid result is available.
+
+---
+
+### User Story 3 - Segment Video Frames (Priority: P2)
+
+As a student, I want to open and play a video, pause it, and adjust thresholds so that I can
+observe how the same color selection behaves as the scene changes.
+
+**Why this priority**: Video input is required, while image segmentation remains the core demo.
+
+**Independent Test**: Open a short supported video, play and pause it, modify thresholds, and
+verify synchronized views and an exported paused-frame result.
+
+**Acceptance Scenarios**:
+
+1. **Given** a supported readable video, **When** it opens, **Then** the first readable frame
+   and its mask and segmented result appear with the frame position.
+2. **Given** an opened video, **When** playback starts or pauses, **Then** all three views
+   refer to the same frame, and pausing retains that frame for inspection.
+3. **Given** a playing or paused video, **When** valid thresholds change, **Then** subsequent
+   displayed results use the new thresholds; a paused frame is reprocessed without resuming.
+4. **Given** a video at its end, **When** playback completes, **Then** it stops cleanly, retains
+   the last valid frame, and allows playback to restart from the beginning.
+5. **Given** video input, **When** the student saves a result, **Then** the application captures
+   one consistent displayed frame and its thresholds, and exports that frame's mask or result.
+
+---
+
+### User Story 4 - Record and Compare Experiments (Priority: P3)
+
+As a student, I want to record input identities, thresholds, outputs, and observations for at
+least 10 test images so that I can explain segmentation quality and lighting sensitivity.
+
+**Why this priority**: Reproducible comparisons support the academic evaluation of the algorithm.
+
+**Independent Test**: Use a 10-image collection, record two threshold settings per image, and
+reproduce selected records using their input identities and saved threshold values.
+
+**Acceptance Scenarios**:
+
+1. **Given** a valid result, **When** the student records an experiment, **Then** a local record
+   includes the source identity, frame position if applicable, six thresholds with units,
+   lighting description, observations, and references to the saved mask and result.
+2. **Given** at least 10 distinct test images, including a scene photographed under at least
+   two lighting conditions, **When** two threshold sets per image are recorded, **Then** the
+   records distinguish every run and allow the original and saved outputs to be compared.
+3. **Given** a recorded experiment and its source, **When** another student reapplies the
+   recorded thresholds under the recorded experiment conditions, **Then** the same mask and
+   extracted pixel values are obtained.
+4. **Given** saved comparison outputs, **When** preparing an academic presentation, **Then**
+   the student can identify missed target regions, unwanted selected regions, and effects of
+   threshold or lighting changes using the labeled source and outputs.
+
+---
+
+### User Story 5 - Recover from Invalid Input (Priority: P2)
+
+As a student, I want understandable file errors and a clear desktop layout so that mistakes do
+not interrupt my demonstration or require restarting the application.
+
+**Why this priority**: Reliable input handling is necessary for every demonstration.
+
+**Independent Test**: Try unsupported, missing, and corrupt files, cancel a file dialog, then
+open a valid file and confirm normal operation.
+
+**Acceptance Scenarios**:
+
+1. **Given** the desktop window, **When** the student locates the main controls, **Then** file
+   input, HSV parameters, and result visualization occupy distinct labeled sections.
+2. **Given** an unsupported, missing, unreadable, or corrupt input, **When** opening fails,
+   **Then** an actionable message identifies the problem and the previous valid input remains.
+3. **Given** an open or save dialog, **When** the student cancels it, **Then** the current
+   input, thresholds, results, and existing files remain unchanged.
+
+### Edge Cases
+
+- No selected pixels produces an all-black mask and result; selecting all pixels produces an
+  all-white mask and an unchanged color result. Neither condition is an error.
+- Pixels equal to any threshold boundary are included. Equal lower and upper values select
+  that value alone, including when the two hue values are equal.
+- A hue interval crossing zero is valid; reversed saturation or value intervals are invalid.
+- Achromatic pixels follow the documented HSV conversion convention; hue alone cannot distinguish
+  neutral pixels, so saturation and value remain available to refine selection.
+- Grayscale and transparent images are handled according to the documented normalization rule
+  in Assumptions; unsupported image representations receive an explicit error.
+- Rapid threshold changes must not leave a stale result presented as the latest result.
+- Replacing an input during playback stops the old playback; no old frames appear as new input.
+- Empty videos fail to open; a decoding failure during playback stops with an error and keeps
+  the last valid frame. Unsupported video encoding receives an explicit message.
+- Large inputs may take longer; the window remains usable, and display fitting does not change
+  processing or export resolution. Inputs beyond available resources fail with a useful error.
+- A failed experiment export must not report a complete record when referenced outputs failed
+  to save; the student can retry without losing the displayed result.
+
+## Requirements *(mandatory)*
+
+### Functional Requirements
+
+- **FR-001**: The application MUST provide a desktop GUI named "HSV Color Segmentation" with
+  distinct sections for file input, HSV controls, and labeled result visualization.
+- **FR-002**: Users MUST be able to open local PNG, JPEG, and BMP images and locally decodable
+  MP4 and AVI video files. Available formats and video encoding limitations MUST be documented.
+- **FR-003**: Opening an input MUST display its original image or first readable video frame
+  and initialize the corresponding mask and segmented result using the visible thresholds.
+- **FR-004**: The application MUST derive segmentation from the input's HSV representation
+  using explicit lower and upper limits for hue, saturation, and value.
+- **FR-005**: The GUI MUST expose all six integer threshold values and units:
+  lower hue from 0 to 359 degrees, upper hue from 0 to 360 degrees, and integer saturation
+  and value from 0 to 100 percent, inclusive. Upper hue 360 is an interval endpoint only.
+- **FR-006**: A pixel MUST be selected exactly when all three HSV components lie in their
+  inclusive intervals. A reversed hue interval MUST select hues at or above the lower limit
+  or at or below the upper limit; saturation and value intervals MUST remain ordered.
+- **FR-007**: The binary mask MUST contain only selected and unselected values, rendered white
+  and black respectively. The extracted result MUST preserve selected source colors and render
+  unselected pixels black without changing source dimensions or modifying the source file.
+- **FR-008**: Every valid parameter change MUST automatically update the results. Invalid
+  entries MUST produce specific range or ordering feedback and MUST NOT become active settings.
+- **FR-009**: The original, mask, and extracted result MUST be simultaneously available for
+  before-and-after comparison, retain aspect ratio, and refer to the same input or video frame.
+- **FR-010**: Video input MUST support play, pause, end-of-file stop, and restart. The current
+  frame position MUST be visible, and threshold changes MUST also work while paused.
+- **FR-011**: Users MUST be able to save masks and segmented results as lossless PNG images
+  at source resolution. A saved mask MUST contain only intensity values 0 and 255. A video
+  export MUST correspond to one identified displayed frame and one complete threshold set.
+- **FR-012**: Saving MUST identify success or failure, request confirmation before overwrite,
+  and prevent export of missing, invalid, or incomplete results.
+- **FR-013**: Invalid or unsupported files, decoding failures, and write failures MUST produce
+  understandable messages identifying the failed operation and an appropriate corrective action.
+  Open failures MUST preserve the previous valid session; cancellation MUST preserve session state.
+- **FR-014**: Users MUST be able to persist an experiment record with source identity, frame
+  position where applicable, all six threshold values and units, date, lighting description,
+  qualitative observations, and links or paths to successfully saved mask and result images.
+- **FR-015**: The project MUST provide a reproducible demonstration using at least 10 distinct
+  test images, with two threshold sets per image and at least one scene under two lighting
+  conditions. Input provenance, environment versions, procedure, and expected observations
+  MUST accompany the records so another student can repeat the comparison.
+- **FR-016**: The application MUST run its full input, segmentation, visualization, export,
+  and experiment workflow independently of the Image Restoration project and network services.
+- **FR-017**: Algorithm explanations and automated correctness checks MUST cover HSV conversion,
+  inclusive interval selection, hue wraparound, and extraction, including boundary and invalid
+  cases. Core processing MUST be verifiable without operating the GUI, as the constitution requires.
+
+### Key Entities *(include if feature involves data)*
+
+- **Input Media**: A local image or video, its source identity, dimensions, and video frame
+  position when relevant. The original input is preserved.
+- **HSV Threshold Set**: Six named bounds with units and explicit hue wraparound semantics.
+- **Segmentation Result**: A binary mask and extracted color image associated with exactly one
+  source image or frame and one valid threshold set.
+- **Experiment Record**: An identified run linking source, thresholds, outputs, date, lighting
+  conditions, and observations; accompanying experiment documentation identifies the environment.
+- **Test Image Collection**: At least 10 distinct images with documented provenance and lighting
+  coverage, used for repeatable demonstrations and threshold comparisons.
+
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
+
+- **SC-001**: Every valid file in the published supported-format demonstration set opens with
+  a visible original and corresponding outputs; at least one video completes play, pause,
+  threshold adjustment, and restart without a crash or mismatched views.
+- **SC-002**: All pixels in known-color reference cases match their expected binary selections,
+  including inclusive endpoints, equal bounds, hue wraparound, no selection, and full selection.
+  Extracted pixels exactly match the expected retained or black colors.
+- **SC-003**: On the documented demonstration computer, at least 95 of 100 valid threshold
+  changes to a 1920 by 1080 still image show their updated outputs within one second after
+  the final control change; after rapid changes, the final visible result always matches the
+  final displayed thresholds.
+- **SC-004**: Exported masks and results reopen at the source dimensions with identical mask
+  values and extracted colors in every demonstration export case, including a video-frame export.
+- **SC-005**: The demonstration produces at least 20 complete experiment records across at
+  least 10 distinct images, with two threshold sets for each and at least two lighting conditions
+  for one scene. A second student reproduces three selected runs with identical output pixels.
+- **SC-006**: After reading the quick-start instructions, a student completes opening an image,
+  adjusting thresholds, comparing all three views, and saving both outputs within five minutes
+  without instructor intervention.
+- **SC-007**: Every invalid-file, invalid-parameter, and failed-save acceptance case reports a
+  useful error without a crash, and the student can continue with a valid operation afterward.
+- **SC-008**: The demonstration report includes labeled comparisons and observations about
+  missed targets, unwanted selections, and lighting effects for all 10 test images.
+
+## Assumptions
+
+- Primary users are students and instructors using local files on a university desktop or
+  laptop. The initial demonstration targets Windows, matching the current project workspace;
+  other desktop operating systems are not acceptance targets for this feature.
+- Initial thresholds are H=(0,360), S=(0,100), V=(0,100), selecting the full HSV domain.
+  Converted pixel hue is in [0,360); upper control value 360 is not normalized to zero.
+  Thresholds persist when replacing the input within a session; automatic persistence between
+  application launches is not required.
+- Hue uses the user-facing degree scale and saturation/value use percentages. Conversion
+  conventions and numerical precision are defined in contracts/processing.md; threshold comparisons
+  use converted component values without rounding them to the control's integer step first.
+- Grayscale input is treated as equal red, green, and blue channels. Transparent input uses
+  its stored color channels with alpha ignored for segmentation and an opaque extracted output;
+  this behavior must be explained in the user documentation.
+- Video support means viewing and segmenting successive frames with play and pause. Seeking,
+  audio playback, camera capture, full-video export, and guaranteed real-time playback rates
+  are outside the initial scope. Play opens paused at the first frame; slower processing may
+  reduce playback speed while maintaining synchronized views.
+  Some video backends cannot distinguish exhaustion from acquisition failure. Such termination
+  must stop safely with an ended-or-unreadable message and recovery guidance, retain the last
+  valid frame, and allow restart; known fixture EOF and explicit decode errors remain tested.
+- Segmentation quality evaluation is qualitative comparison with recorded observations.
+  Ground-truth annotation tools, numerical accuracy scores, and automated lighting correction
+  are outside the initial scope. Correct threshold membership is still verified quantitatively.
+- Local experiment records and exported images provide comparison evidence; a separate
+  experiment gallery or session database is not required. Students supply lighting descriptions
+  and observations. No login, backend service, or database is needed.
+- Existing compatible GUI and utility components may be reused where available and suitably
+  licensed, but reuse must not require running or installing the Image Restoration project.
+  Planning found no reusable application modules in the current repository; any later supplied
+  components must meet the same independence and licensing requirements.
+- Object counting, tracking, machine learning, and additional segmentation algorithms are
+  outside scope. The application must remain simple enough for student maintenance and explanation.
+- Test images must be supplied or generated with documented provenance and usable permissions.
+  Runtime measurements and reproducibility evidence depend on a documented demonstration
+  computer, input collection, and software environment. Planning defines their recording format;
+  implementation and validation must supply the actual inputs, versions, measurements and outcomes.

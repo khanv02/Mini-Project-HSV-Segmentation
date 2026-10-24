@@ -1,0 +1,21 @@
+.tools/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+.coverage
+htmlcov/
+.env*
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+# Curated experiment inputs, records and evidence are intentionally retained.
+
