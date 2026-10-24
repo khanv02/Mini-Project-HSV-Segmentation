@@ -13,18 +13,15 @@ See [stage boundaries](docs/implementation-stages.md) and
 
 ## Install (Windows PowerShell)
 
-Install Windows CPython 3.11 with Tcl/Tk, then run from this repository:
+Install Windows CPython 3.11 with Tcl/Tk and `uv`, then run from this repository:
 
 ```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-lock.txt
-.\.venv\Scripts\python.exe -m pip install --no-deps --no-build-isolation -e .
-.\.venv\Scripts\python.exe -m pip check
+uv sync --locked --extra test
 ```
 
-For the project-local development interpreter, use `.tools\python311\python.exe`
-instead of `py -3.11` when creating the virtual environment. Installation needs
-network access or cached wheels; normal application use is offline.
+`uv.lock` pins project dependencies. The first sync needs network access or cached
+wheels; normal application use is offline. `requirements-lock.txt` remains as the
+Phase 1 pip environment record.
 
 To confirm the installed skeleton:
 
@@ -32,16 +29,16 @@ To confirm the installed skeleton:
 .\.venv\Scripts\python.exe -c "import hsv_segmentation; import hsv_segmentation.processing; import hsv_segmentation.io; import hsv_segmentation.application; import hsv_segmentation.gui; print(hsv_segmentation.__version__)"
 ```
 
-Launch the still-image application with:
+Launch the application with:
 
 ```powershell
-.\.venv\Scripts\python.exe -m hsv_segmentation
+uv run --locked --extra test hsv-segmentation
 ```
 
 ## Test
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest
+uv run --locked --extra test pytest
 ```
 
 Phases 1–4 have 154 passing checks. They cover shared contracts, analytical and

@@ -8,7 +8,7 @@ docs/verification.md. Export, experiment evidence, and performance measurements 
 ## Prerequisites
 
 - Windows 10/11 x64, CPython 3.11 x64 including Tcl/Tk, and permission to create local files.
-- An implementation checkout containing pyproject.toml, requirements-lock.txt and package source.
+- An implementation checkout containing pyproject.toml, uv.lock and package source, plus uv.
 - Internet or a prepared wheel cache for initial installation only. The running application
   and its image/video/experiment workflows must work without network services.
 - PNG/JPEG/BMP samples and known decodable short MP4/AVI fixtures, with recorded encoding/backend.
@@ -19,24 +19,20 @@ docs/verification.md. Export, experiment evidence, and performance measurements 
 Check the intended interpreter; do not assume `python` from PATH is the Windows CPython build.
 
 ```powershell
-py -3.11 --version
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-lock.txt
-.\.venv\Scripts\python.exe -m pip install --no-deps --no-build-isolation -e .
-.\.venv\Scripts\python.exe -m pip check
-.\.venv\Scripts\python.exe -m tkinter
+uv sync --locked --extra test
+uv run --locked --extra test python -m tkinter
 ```
 
-The lock must include compatible runtime, test and build dependencies before using these
-commands. Close the Tk demonstration window after confirming Tk is available. A normal package
+`uv.lock` pins runtime, test and build dependencies. Close the Tk demonstration window after
+confirming Tk is available. A normal package
 installation in a second clean environment must also be verified before academic submission;
 do not rely solely on an editable checkout. Record exact interpreter/Tcl/Tk/dependency versions.
 
 ## Automated Checks
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests/unit -q
-.\.venv\Scripts\python.exe -m pytest tests/integration -q
+uv run --locked --extra test pytest tests/unit -q
+uv run --locked --extra test pytest tests/integration -q
 ```
 
 The first command must complete without creating a GUI or reading image files. It covers each
@@ -48,7 +44,7 @@ experiment collection exists; missing evidence must not be reported as a success
 ## Launch and Image MVP
 
 ```powershell
-.\.venv\Scripts\python.exe -m hsv_segmentation
+uv run --locked --extra test hsv-segmentation
 ```
 
 1. Confirm the title and distinct file, threshold and visualization sections.

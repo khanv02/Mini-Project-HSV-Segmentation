@@ -3,5 +3,10 @@
 from .gui.controller import run
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Start the desktop application."""
     run()
+
+
+if __name__ == "__main__":
+    main()

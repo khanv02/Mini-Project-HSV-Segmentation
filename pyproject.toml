@@ -9,6 +9,9 @@ description = "An academic desktop HSV color segmentation application"
 requires-python = ">=3.11"
 dependencies = ["numpy>=2,<3", "Pillow>=11,<13", "opencv-python>=4,<5"]
 
+[project.scripts]
+hsv-segmentation = "hsv_segmentation.__main__:main"
+
 [project.optional-dependencies]
 test = ["pytest>=8,<10"]
 
