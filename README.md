@@ -3,12 +3,13 @@
 Academic desktop application for selecting colored objects using six HSV bounds.
 The implementation separates pure processing, file I/O, session coordination and GUI.
 
-Current milestone: **Phase 3 complete — working still-image MVP**. The application
-opens supported images, exposes six validated HSV bounds, and presents synchronized
-original, binary-mask, and segmented-result views. Video begins in Phase 4.
+Current milestone: **Phase 4 complete — image and video segmentation**. The application
+opens supported images and videos, exposes six validated HSV bounds, and presents
+synchronized original, binary-mask, and segmented-result views. Video opens paused at
+frame 0 and supports play, pause, end, restart and replacement. Export begins in Phase 5.
 
 See [stage boundaries](docs/implementation-stages.md) and
-[verification results](docs/verification.md). Implementation stops before Phase 4.
+[verification results](docs/verification.md). Implementation stops before Phase 5.
 
 ## Install (Windows PowerShell)
 
@@ -43,10 +44,11 @@ Launch the still-image application with:
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-Phases 1–3 have 137 passing checks. They cover shared contracts, analytical and
+Phases 1–4 have 154 passing checks. They cover shared contracts, analytical and
 independent HSV references, exact threshold boundaries, extraction, supported image
-normalization, session preservation, GUI structure, rapid-edit coalescing, and stale
-result rejection. Tests create their own small images; no external dataset is needed.
+normalization, session preservation, GUI structure, rapid-edit coalescing, stale-result
+rejection, video decoding/lifecycle, and playback state. Tests create their own small
+images and videos; no external dataset is needed.
 
 Shared contracts live in `src/hsv_segmentation/models.py` and `errors.py`.
 `tests/fixtures/color_cases.py` supplies 12 hand-derived colors, 11 interval

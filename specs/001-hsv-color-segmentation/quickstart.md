@@ -1,9 +1,9 @@
 ﻿# Quickstart and Validation: HSV Color Segmentation
 
-**Stage guide, 2026-10-24**: Phases 1 through 3 provide the package setup, shared
-contracts, independently tested HSV processing, supported still-image loading, and the
-working image GUI. A total of 137 automated checks are recorded in docs/verification.md.
-Video, export, experiment evidence, and runtime performance measurements remain later phases.
+**Stage guide, 2026-10-24**: Phases 1 through 4 provide the package setup, shared
+contracts, independently tested HSV processing, image loading, and bounded sequential
+video playback in the desktop GUI. A total of 154 automated checks are recorded in
+docs/verification.md. Export, experiment evidence, and performance measurements remain later phases.
 
 ## Prerequisites
 

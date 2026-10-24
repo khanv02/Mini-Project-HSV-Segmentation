@@ -5,13 +5,13 @@
 
 **Planning status**: Design completed on 2026-10-24 in `plan.md`, `research.md`,
 `data-model.md`, `contracts/` and `quickstart.md`. T001 is complete at design level.
-Phases 1 through 3 (T001-T021) are complete. The remaining 29 tasks are unimplemented.
-Setup, foundation, processing and still-image MVP checks have passed; video and later work remain pending.
+Phases 1 through 4 (T001-T027) are complete. The remaining 23 tasks are unimplemented.
+Setup, foundation, still-image MVP and video checks have passed; export and later work remain pending.
 
 **Execution policy (user instruction)**: Implement and verify one phase at a time,
 then stop and report before starting the next phase. See
 `docs/implementation-stages.md` for the eight stage boundaries. The current
-authorized increment is Phase 3 (T008–T021); it is complete. Stop before T022.
+authorized increment is Phase 4 (T022–T027); it is complete. Stop before T028.
 
 **Tests**: Required by FR-017, the constitution, and the user's requested unit-test phase.
 
@@ -113,15 +113,15 @@ Frame export is verified in Phase 5 after US2 exists.
 
 ### Tests for User Story 3
 
-- [ ] T022 [P] [US3] Add video reader lifecycle checks in `tests/integration/test_video_input.py`; **Depends**: T021; **Done**: short reproducibly generated MP4/AVI fixtures and reader doubles distinguish first-frame load, normal end, empty input, decode failure, restart, replacement, and cleanup; missing behavior initially fails.
-- [ ] T023 [P] [US3] Add playback/session tests in `tests/integration/test_playback.py`; **Depends**: T021; **Done**: deterministic frame doubles specify play/pause, revision matching, paused reprocessing, end/restart, and replacing a source without displaying obsolete frames.
+- [X] T022 [P] [US3] Add video reader lifecycle checks in `tests/integration/test_video_input.py`; **Depends**: T021; **Done**: short reproducibly generated MP4/AVI fixtures and reader doubles distinguish first-frame load, normal end, empty input, decode failure, restart, replacement, and cleanup; missing behavior initially fails.
+- [X] T023 [P] [US3] Add playback/session tests in `tests/integration/test_playback.py`; **Depends**: T021; **Done**: deterministic frame doubles specify play/pause, revision matching, paused reprocessing, end/restart, and replacing a source without displaying obsolete frames.
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Implement bounded video decoding/resource cleanup in `src/hsv_segmentation/io/video.py`; **Depends**: T022; **Done**: locally decodable MP4/AVI yield RGB and frame positions, first-frame validation precedes commit, image/frame pixel limits apply, captures are released, explicit decode failures and known-fixture EOF are distinguished, and ambiguous termination uses the honest message in `specs/001-hsv-color-segmentation/contracts/desktop-workflow.md` rather than assuming false read means EOF.
-- [ ] T025 [US3] Implement playback orchestration in `src/hsv_segmentation/application/playback.py`; **Depends**: T023, T024; **Done**: the first frame opens paused, playback/pause/end/restart follow the tests, paused edits reprocess the retained frame, and old input resources/work are released on replacement.
-- [ ] T026 [US3] Add video controls and frame position to `src/hsv_segmentation/gui/main_window.py` and wire them in `src/hsv_segmentation/gui/controller.py`; **Depends**: T025; **Done**: all views remain synchronized throughout the playback acceptance flow, decode failures retain the last valid frame, and playback can be slower than real time without blocking GUI interaction.
-- [ ] T027 [US3] Record video format/encoding and playback acceptance evidence in `docs/verification.md`; **Depends**: T026; **Done**: a real supported video completes opening, playing, pausing, paused edits, end, restart and source replacement, with clean shutdown and all automated video checks passing.
+- [X] T024 [US3] Implement bounded video decoding/resource cleanup in `src/hsv_segmentation/io/video.py`; **Depends**: T022; **Done**: locally decodable MP4/AVI yield RGB and frame positions, first-frame validation precedes commit, image/frame pixel limits apply, captures are released, explicit decode failures and known-fixture EOF are distinguished, and ambiguous termination uses the honest message in `specs/001-hsv-color-segmentation/contracts/desktop-workflow.md` rather than assuming false read means EOF.
+- [X] T025 [US3] Implement playback orchestration in `src/hsv_segmentation/application/playback.py`; **Depends**: T023, T024; **Done**: the first frame opens paused, playback/pause/end/restart follow the tests, paused edits reprocess the retained frame, and old input resources/work are released on replacement.
+- [X] T026 [US3] Add video controls and frame position to `src/hsv_segmentation/gui/main_window.py` and wire them in `src/hsv_segmentation/gui/controller.py`; **Depends**: T025; **Done**: all views remain synchronized throughout the playback acceptance flow, decode failures retain the last valid frame, and playback can be slower than real time without blocking GUI interaction.
+- [X] T027 [US3] Record video format/encoding and playback acceptance evidence in `docs/verification.md`; **Depends**: T026; **Done**: a real supported video completes opening, playing, pausing, paused edits, end, restart and source replacement, with clean shutdown and all automated video checks passing.
 
 **Checkpoint**: Video segmentation works; no audio, tracking, seeking, or full-video export added.
 
@@ -299,7 +299,7 @@ not optional replacements for the image MVP.
 
 ## Notes
 
-- T001-T021 are complete (Phases 1 through 3). The remaining 29 tasks are unchecked; stop before T022.
+- T001-T027 are complete (Phases 1 through 4). The remaining 23 tasks are unchecked; stop before T028.
 - Counts: Setup 4; Foundation 3; US1 14; US3 6; US2 5; US5 4; US4 8; Polish 6.
 - The plan bootstrap T001 is complete; recheck artifact consistency before application implementation.
 - Research, data model, interface contracts and quickstart now define numeric behavior and field constraints;

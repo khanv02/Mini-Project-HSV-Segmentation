@@ -74,6 +74,11 @@ class ThresholdControls(ttk.Frame):
         self._after_id = self.after(self._debounce_ms, self.validate_now)
 
     def validate_now(self) -> HSVThresholdSet | None:
+        if self._after_id is not None:
+            try:
+                self.after_cancel(self._after_id)
+            except tk.TclError:
+                pass
         self._after_id = None
         values = {}
         try:
@@ -114,3 +119,12 @@ class ThresholdControls(ttk.Frame):
         state = "normal" if enabled else "disabled"
         for spinbox in self._spinboxes:
             spinbox.configure(state=state)
+
+    def destroy(self) -> None:
+        if self._after_id is not None:
+            try:
+                self.after_cancel(self._after_id)
+            except tk.TclError:
+                pass
+            self._after_id = None
+        super().destroy()

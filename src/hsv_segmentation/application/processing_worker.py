@@ -21,7 +21,7 @@ class WorkerCompletion:
 
     kind: str
     request_revision: int
-    result: SegmentationResult | None = None
+    result: object | None = None
     error: BaseException | None = None
 
 
@@ -29,7 +29,8 @@ class WorkerCompletion:
 class _WorkItem:
     kind: str
     request_revision: int
-    operation: Callable[[], SegmentationResult]
+    operation: Callable[[], object]
+    cleanup: Callable[[object], None] | None = None
 
 
 def _default_processor(request: ProcessingRequest) -> SegmentationResult:
@@ -43,7 +44,7 @@ class ProcessingWorker:
         self._processor = processor or _default_processor
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hsv-processing")
         self._lock = Lock()
-        self._active: Future[SegmentationResult] | None = None
+        self._active: Future[object] | None = None
         self._pending: _WorkItem | None = None
         self._completions: SimpleQueue[WorkerCompletion] = SimpleQueue()
         self._closing = False
@@ -64,6 +65,13 @@ class ProcessingWorker:
 
         self._submit_item(_WorkItem("image", request_revision, load_and_process))
 
+    def submit_operation(
+        self, kind: str, request_revision: int, operation: Callable[[], object],
+        *, cleanup: Callable[[object], None] | None = None,
+    ) -> None:
+        """Serialize an application I/O operation through the bounded worker."""
+        self._submit_item(_WorkItem(kind, request_revision, operation, cleanup))
+
     def _submit_item(self, item: _WorkItem) -> None:
         with self._lock:
             if self._closing:
@@ -78,20 +86,27 @@ class ProcessingWorker:
         self._active = future
         future.add_done_callback(lambda completed: self._finish(item, completed))
 
-    def _finish(self, item: _WorkItem, future: Future[SegmentationResult]) -> None:
+    def _finish(self, item: _WorkItem, future: Future[object]) -> None:
+        result = None
+        error = None
         try:
-            completion = WorkerCompletion(
-                item.kind, item.request_revision, result=future.result()
-            )
-        except BaseException as error:
-            completion = WorkerCompletion(item.kind, item.request_revision, error=error)
-        self._completions.put(completion)
+            result = future.result()
+        except BaseException as caught:
+            error = caught
         with self._lock:
+            closing = self._closing
             self._active = None
             if not self._closing and self._pending is not None:
                 pending = self._pending
                 self._pending = None
                 self._start_locked(pending)
+        if closing:
+            if error is None and item.cleanup is not None:
+                item.cleanup(result)
+            return
+        self._completions.put(
+            WorkerCompletion(item.kind, item.request_revision, result=result, error=error)
+        )
 
     def poll(self) -> list[WorkerCompletion]:
         completions = []

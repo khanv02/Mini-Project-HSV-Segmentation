@@ -164,3 +164,65 @@ opened. The deterministic hidden-Tk integration walkthrough remains the recorded
 functional GUI evidence for this phase.
 
 T008-T021 are complete. Stop before T022; no video implementation has started.
+
+## Phase 4: Sequential Video Segmentation
+
+Scope: T022-T027 only. This phase adds local MP4/AVI frame viewing and segmentation;
+it does not add audio, seeking, tracking, full-video encoding or frame export.
+
+### Decoder and lifecycle
+
+Tests were written before implementation and initially failed collection because
+`io.video` and `application.playback` did not exist. The completed OpenCV adapter:
+
+- requires a readable `.mp4` or `.avi` file and a successfully decoded first frame
+  before the application replaces its current source;
+- decodes sequentially with `grab`/`retrieve`, converts BGR to RGB at the I/O boundary,
+  applies the 12,000,000-pixel frame limit and retains one current frame rather than
+  buffering the video;
+- carries one session identity across frame indices and reopens the capture for restart;
+- releases captures after failure, replacement, restart and shutdown; and
+- distinguishes explicit retrieve/decode failure from known-fixture EOF. Ordinary
+  backend frame counts remain hints: an unprovable failed acquisition reports
+  `Video ended or the next frame could not be read; reopen or try a supported encoding.`
+  rather than claiming clean EOF.
+
+Reproducible real fixtures are generated in temporary directories. The AVI fixture uses
+MJPG and the MP4 fixture uses `mp4v`; both contained three 10x8 RGB color frames. On the
+recorded Windows environment, OpenCV 4.14.0 decoded the MJPG/AVI fixture through the
+FFMPEG backend and reported all three frames. Exact lifecycle doubles separately cover
+empty input, failed open, retrieve failure, premature trusted-fixture termination,
+ambiguous untrusted termination, restart and idempotent cleanup.
+
+### Playback and GUI acceptance
+
+`PlaybackSession` exposes explicit empty, paused, playing, ended, error and closed states.
+Video opens paused at zero; the Tk controller submits first-frame/open, next-frame and
+restart work through the same serialized worker used by images. A frame is processed and
+accepted before another is scheduled, so all three views and the visible frame index refer
+to one immutable snapshot even when playback is slower than the file rate. Paused threshold
+edits reprocess the retained frame. Replacing a video releases the old reader, and obsolete
+frame completions cannot overwrite the new session.
+
+The deterministic GUI walkthrough generated a 12-frame MJPG/AVI, opened at frame 0,
+played to frame 2 or later, paused without further advancement, reprocessed that paused
+frame with a new threshold revision, continued to the end, restarted at frame 0, and
+replaced it with a second generated video. Original/mask/result arrays were compared to
+the committed result after replacement. Controller shutdown and late-resource cleanup are
+also automated. No external video or image dataset is required.
+
+### Recorded checks - 2026-10-24
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/integration/test_video_input.py tests/integration/test_playback.py -q
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m compileall -q src tests
+```
+
+Final result: **154 passed in 3.95 seconds**, with no skipped tests. Dependency
+consistency and bytecode compilation also passed. Phase 4 contributes 17 checks for
+real/fake video input, playback/session transitions, end/restart/replacement, GUI frame
+synchronization and cleanup.
+
+T022-T027 are complete. Stop before T028; PNG export has not started.

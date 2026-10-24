@@ -98,3 +98,20 @@ class ImageSession:
         self._result = result
         self._request_revision = result.request_revision
         return True
+
+    def commit_frame_result(self, result: SegmentationResult) -> bool:
+        """Advance the current video session to a synchronized processed frame."""
+        if self._source is None or self._source.media_kind != "video":
+            return False
+        if result.session_id != self._source.session_id:
+            return False
+        if result.parameter_revision != self._thresholds.parameter_revision:
+            return False
+        if result.request_revision < self._request_revision:
+            return False
+        if result.frame_index is None:
+            return False
+        self._source = result.source
+        self._result = result
+        self._request_revision = result.request_revision
+        return True

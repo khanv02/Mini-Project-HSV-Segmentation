@@ -24,6 +24,18 @@ class MainWindow:
         self.input_section.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         self.open_image_button = ttk.Button(self.input_section, text="Open Image…")
         self.open_image_button.pack(side="left")
+        self.open_video_button = ttk.Button(self.input_section, text="Open Video…")
+        self.open_video_button.pack(side="left", padx=(6, 0))
+        self.play_button = ttk.Button(self.input_section, text="Play", state="disabled")
+        self.play_button.pack(side="left", padx=(18, 0))
+        self.pause_button = ttk.Button(self.input_section, text="Pause", state="disabled")
+        self.pause_button.pack(side="left", padx=(6, 0))
+        self.restart_button = ttk.Button(self.input_section, text="Restart", state="disabled")
+        self.restart_button.pack(side="left", padx=(6, 0))
+        self.frame_var = tk.StringVar(value="Frame: —")
+        ttk.Label(self.input_section, textvariable=self.frame_var).pack(
+            side="left", padx=(12, 0)
+        )
         self.source_label = ttk.Label(self.input_section, text="No image loaded")
         self.source_label.pack(side="left", padx=12)
 
@@ -57,12 +69,28 @@ class MainWindow:
         self.mask_view.show_array(result.mask)
         self.result_view.show_array(result.segmented_rgb)
         self.source_label.configure(text=result.source.source_path.name)
+        self.frame_var.set(
+            "Frame: —" if result.frame_index is None else f"Frame: {result.frame_index}"
+        )
 
     def show_status(self, message: str) -> None:
         self.status_var.set(message)
 
-    def set_open_command(self, command) -> None:
-        self.open_image_button.configure(command=command)
+    def set_commands(self, *, open_image, open_video, play, pause, restart) -> None:
+        self.open_image_button.configure(command=open_image)
+        self.open_video_button.configure(command=open_video)
+        self.play_button.configure(command=play)
+        self.pause_button.configure(command=pause)
+        self.restart_button.configure(command=restart)
 
     def set_loading(self, loading: bool) -> None:
-        self.open_image_button.configure(state="disabled" if loading else "normal")
+        state = "disabled" if loading else "normal"
+        self.open_image_button.configure(state=state)
+        self.open_video_button.configure(state=state)
+
+    def update_video_controls(self, state: str) -> None:
+        self.play_button.configure(state="normal" if state == "paused" else "disabled")
+        self.pause_button.configure(state="normal" if state == "playing" else "disabled")
+        self.restart_button.configure(
+            state="normal" if state in {"paused", "playing", "ended", "error"} else "disabled"
+        )

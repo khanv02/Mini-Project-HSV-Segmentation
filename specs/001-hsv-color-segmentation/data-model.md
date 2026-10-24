@@ -1,8 +1,9 @@
 ﻿# Data Model: HSV Color Segmentation
 
 **Status**: Foundational media, threshold, request and result models are implemented in
-`src/hsv_segmentation/models.py` (Phase 2). Algorithms, runtime session behavior and experiment
-persistence remain later-phase work. Units and field names are authoritative; no database is required.
+`src/hsv_segmentation/models.py` (Phase 2). Pure processing and image/video session behavior
+are implemented through Phase 4; export and experiment persistence remain later-phase work.
+Units and field names are authoritative; no database is required.
 
 Request/result records compose an immutable `InputMedia` and `HSVThresholdSet` rather than
 repeating independently editable identity fields. Dimensions, session/frame identity,

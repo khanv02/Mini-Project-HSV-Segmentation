@@ -26,6 +26,17 @@ def _media(tmp_path: Path) -> InputMedia:
     )
 
 
+def _create_tk_root(tkinter):
+    last_error = None
+    for _attempt in range(3):
+        try:
+            return tkinter.Tk()
+        except tkinter.TclError as error:
+            last_error = error
+            time.sleep(0.05)
+    pytest.fail(f"Tk root could not be created after three attempts: {last_error}")
+
+
 def test_worker_keeps_one_active_and_only_latest_pending_request(tmp_path) -> None:
     source = _media(tmp_path)
     first_started = Event()
@@ -66,6 +77,28 @@ def test_worker_keeps_one_active_and_only_latest_pending_request(tmp_path) -> No
         worker.shutdown()
 
 
+def test_worker_cleans_late_resource_when_shutdown_during_operation() -> None:
+    started = Event()
+    release_operation = Event()
+    cleaned = Event()
+    resource = object()
+
+    def operation():
+        started.set()
+        assert release_operation.wait(2)
+        return resource
+
+    worker = ProcessingWorker()
+    worker.submit_operation(
+        "resource", 1, operation,
+        cleanup=lambda completed: cleaned.set() if completed is resource else None,
+    )
+    assert started.wait(2)
+    worker.shutdown()
+    release_operation.set()
+    assert cleaned.wait(2)
+
+
 def test_session_discards_stale_threshold_result(tmp_path) -> None:
     source = _media(tmp_path)
     session = ImageSession()
@@ -99,10 +132,7 @@ def test_processing_never_changes_source_file(tmp_path) -> None:
 
 def test_window_has_named_sections_three_views_and_six_controls() -> None:
     tkinter = pytest.importorskip("tkinter")
-    try:
-        root = tkinter.Tk()
-    except tkinter.TclError as error:
-        pytest.skip(f"Tk display unavailable: {error}")
+    root = _create_tk_root(tkinter)
     root.withdraw()
     try:
         window = MainWindow(root)
@@ -125,10 +155,7 @@ def test_window_has_named_sections_three_views_and_six_controls() -> None:
 
 def test_threshold_controls_report_invalid_edit_without_callback() -> None:
     tkinter = pytest.importorskip("tkinter")
-    try:
-        root = tkinter.Tk()
-    except tkinter.TclError as error:
-        pytest.skip(f"Tk display unavailable: {error}")
+    root = _create_tk_root(tkinter)
     root.withdraw()
     accepted = []
     try:
@@ -150,10 +177,7 @@ def test_threshold_controls_report_invalid_edit_without_callback() -> None:
 
 def test_controller_open_and_rapid_edits_present_only_final_snapshot(tmp_path) -> None:
     tkinter = pytest.importorskip("tkinter")
-    try:
-        root = tkinter.Tk()
-    except tkinter.TclError as error:
-        pytest.skip(f"Tk display unavailable: {error}")
+    root = _create_tk_root(tkinter)
     root.withdraw()
     path = (tmp_path / "colors.png").resolve()
     rgb = np.array(
