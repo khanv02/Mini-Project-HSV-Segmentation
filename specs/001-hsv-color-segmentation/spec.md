@@ -65,6 +65,9 @@ to verify dimensions, binary mask values, and extracted colors.
    error identifies the failed operation without losing the current input or result.
 4. **Given** no input or an incomplete result update, **When** the student attempts an export,
    **Then** saving is unavailable until a complete, valid result is available.
+5. **Given** a valid snapshot and a deliberately delayed write, **When** saving starts,
+   **Then** the window continues handling interaction, duplicate save/record requests are
+   disabled until completion, and completion reports the captured output path or failure.
 
 ---
 
@@ -190,9 +193,14 @@ open a valid file and confirm normal operation.
   at source resolution. A saved mask MUST contain only intensity values 0 and 255. A video
   export MUST correspond to one identified displayed frame and one complete threshold set.
 - **FR-012**: Saving MUST identify success or failure, request confirmation before overwrite,
-  and prevent export of missing, invalid, or incomplete results.
+  and prevent export of missing, invalid, or incomplete results. PNG encoding, hashing and
+  experiment JSON writing MUST run outside the GUI event handlers on a captured immutable
+  snapshot; the window MUST continue handling interaction while writing is pending.
 - **FR-013**: Invalid or unsupported files, decoding failures, and write failures MUST produce
-  understandable messages identifying the failed operation and an appropriate corrective action.
+  messages identifying the failed operation, affected file or parameter, cause category,
+  preserved session state, and at least one concrete corrective action. Unknown decoder causes
+  MUST be described as uncertain rather than asserted as known. Parameter errors MUST include
+  the allowed range or ordering rule. Exact wording may vary; these contents are testable.
   Open failures MUST preserve the previous valid session; cancellation MUST preserve session state.
 - **FR-014**: Users MUST be able to persist an experiment record with source identity, frame
   position where applicable, all six threshold values and units, date, lighting description,
@@ -225,7 +233,9 @@ open a valid file and confirm normal operation.
 
 - **SC-001**: Every valid file in the published supported-format demonstration set opens with
   a visible original and corresponding outputs; at least one video completes play, pause,
-  threshold adjustment, and restart without a crash or mismatched views.
+  threshold adjustment, and restart without a crash or mismatched views. The set MUST meet
+  the minimum format coverage and inventory rules in Supported-Format Demonstration Set below;
+  a skipped required codec case is unmet acceptance, not a passing result.
 - **SC-002**: All pixels in known-color reference cases match their expected binary selections,
   including inclusive endpoints, equal bounds, hue wraparound, no selection, and full selection.
   Extracted pixels exactly match the expected retained or black colors.
@@ -242,9 +252,35 @@ open a valid file and confirm normal operation.
   adjusting thresholds, comparing all three views, and saving both outputs within five minutes
   without instructor intervention.
 - **SC-007**: Every invalid-file, invalid-parameter, and failed-save acceptance case reports a
-  useful error without a crash, and the student can continue with a valid operation afterward.
+  message containing the applicable FR-013 fields without a crash, and the student can continue
+  with a valid operation afterward. Cancellation preserves state and requires no error message.
 - **SC-008**: The demonstration report includes labeled comparisons and observations about
   missed targets, unwanted selections, and lighting effects for all 10 test images.
+
+### Supported-Format Demonstration Set
+
+Publish the acceptance inventory in `docs/acceptance.md` before final validation, with stable
+case IDs, local paths or exact generation commands, SHA-256 file hashes, dimensions, source or
+generation provenance, and expected opening/normalization outcomes. It MUST contain at least:
+
+| Case ID | Required representation | Expected coverage |
+| --- | --- | --- |
+| FMT-001 | 8-bit RGB PNG | Color image opens with all three synchronized views |
+| FMT-002 | 8-bit RGB JPEG | Decoded source displays and segments correctly |
+| FMT-003 | 8-bit RGB BMP | Decoded source displays and segments correctly |
+| FMT-004 | 8-bit grayscale PNG | Gray channels replicate into RGB |
+| FMT-005 | 8-bit RGBA PNG | Stored RGB channels are used; alpha is ignored |
+| FMT-006 | AVI containing MJPG video | First-frame opening and synchronized frame processing |
+| FMT-007 | MP4 containing mp4v video | First-frame opening and synchronized frame processing |
+
+For both video cases, record actual codec, frame count, frame dimensions, selected OpenCV
+backend, and environment reference; at least one MUST exercise the complete SC-001 playback
+sequence. Existing reproducible `tiny.avi`/`tiny.mp4` fixtures may supply the video cases, but
+their generated bytes or exact generation procedure and actual hashes MUST be recorded.
+Additional codecs are optional and their availability must be stated separately. These cases
+may overlap the 10-image experiment collection, but format variants of the same image do not
+count as distinct experiment images. Missing fixtures or unavailable required decoders remain
+visible acceptance failures until resolved on the demonstration computer.
 
 ## Assumptions
 

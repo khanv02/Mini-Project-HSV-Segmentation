@@ -31,6 +31,7 @@ class _WorkItem:
     request_revision: int
     operation: Callable[[], object]
     cleanup: Callable[[object], None] | None = None
+    replaceable: bool = True
 
 
 def _default_processor(request: ProcessingRequest) -> SegmentationResult:
@@ -45,6 +46,7 @@ class ProcessingWorker:
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hsv-processing")
         self._lock = Lock()
         self._active: Future[object] | None = None
+        self._pending_required: _WorkItem | None = None
         self._pending: _WorkItem | None = None
         self._completions: SimpleQueue[WorkerCompletion] = SimpleQueue()
         self._closing = False
@@ -68,9 +70,12 @@ class ProcessingWorker:
     def submit_operation(
         self, kind: str, request_revision: int, operation: Callable[[], object],
         *, cleanup: Callable[[object], None] | None = None,
+        replace_pending: bool = True,
     ) -> None:
         """Serialize an application I/O operation through the bounded worker."""
-        self._submit_item(_WorkItem(kind, request_revision, operation, cleanup))
+        self._submit_item(
+            _WorkItem(kind, request_revision, operation, cleanup, replace_pending)
+        )
 
     def _submit_item(self, item: _WorkItem) -> None:
         with self._lock:
@@ -78,6 +83,10 @@ class ProcessingWorker:
                 return
             if self._active is None:
                 self._start_locked(item)
+            elif not item.replaceable:
+                if self._pending_required is not None:
+                    raise RuntimeError("a required background operation is already pending")
+                self._pending_required = item
             else:
                 self._pending = item
 
@@ -96,9 +105,15 @@ class ProcessingWorker:
         with self._lock:
             closing = self._closing
             self._active = None
-            if not self._closing and self._pending is not None:
-                pending = self._pending
-                self._pending = None
+            if not self._closing and (
+                self._pending_required is not None or self._pending is not None
+            ):
+                if self._pending_required is not None:
+                    pending = self._pending_required
+                    self._pending_required = None
+                else:
+                    pending = self._pending
+                    self._pending = None
                 self._start_locked(pending)
         if closing:
             if error is None and item.cleanup is not None:
@@ -119,5 +134,6 @@ class ProcessingWorker:
     def shutdown(self) -> None:
         with self._lock:
             self._closing = True
+            self._pending_required = None
             self._pending = None
         self._executor.shutdown(wait=False, cancel_futures=True)

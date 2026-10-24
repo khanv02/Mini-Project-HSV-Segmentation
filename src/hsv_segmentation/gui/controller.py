@@ -1,5 +1,7 @@
 """Main-thread controller for still-image and sequential-video workflows."""
 
+from collections.abc import Callable
+from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
@@ -11,6 +13,7 @@ from ..application.playback import (
 )
 from ..application.processing_worker import ProcessingWorker, WorkerCompletion
 from ..application.session import ImageSession
+from ..io.export import ExportReceipt, export_snapshot
 from ..models import HSVThresholdSet, ProcessingRequest, SegmentationResult
 from .main_window import MainWindow
 from .threshold_controls import ThresholdControls
@@ -21,12 +24,18 @@ class ApplicationController:
 
     POLL_MS = 25
 
-    def __init__(self, root: tk.Tk):
+    def __init__(
+        self,
+        root: tk.Tk,
+        *,
+        exporter: Callable[..., ExportReceipt] = export_snapshot,
+    ):
         self.root = root
         self.window = MainWindow(root)
         self.session = ImageSession()
         self.playback = PlaybackSession(self.session)
         self.worker = ProcessingWorker()
+        self._exporter = exporter
         self.controls = ThresholdControls(
             self.window.parameter_section,
             initial=self.session.thresholds,
@@ -35,10 +44,16 @@ class ApplicationController:
         self._latest_request_revision = 0
         self._video_request_in_flight: int | None = None
         self._resume_video_on_failure = False
+        self._resume_video_after_export = False
+        self._export_in_flight = False
+        self._export_snapshot_valid = False
+        self.last_export_receipt: ExportReceipt | None = None
         self._closed = False
         self.window.set_commands(
             open_image=self.choose_image,
             open_video=self.choose_video,
+            save_mask=self.choose_save_mask,
+            save_result=self.choose_save_result,
             play=self.play_video,
             pause=self.pause_video,
             restart=self.restart_video,
@@ -62,6 +77,8 @@ class ApplicationController:
         revision = self._next_revision(invalidate_video=True)
         self.window.set_loading(True)
         self.controls.set_enabled(False)
+        self._export_snapshot_valid = False
+        self._refresh_export_controls()
         self.window.show_status("Loading and processing image…")
         self.worker.submit_image(path, self.session.thresholds, revision)
 
@@ -82,6 +99,8 @@ class ApplicationController:
         thresholds = self.session.thresholds
         self.window.set_loading(True)
         self.controls.set_enabled(False)
+        self._export_snapshot_valid = False
+        self._refresh_export_controls()
         self.window.show_status("Opening video and decoding its first frame…")
         self.worker.submit_operation(
             "video_open", revision,
@@ -117,6 +136,8 @@ class ApplicationController:
         self.playback.pause()
         revision = self._next_revision(invalidate_video=True)
         thresholds = self.session.thresholds
+        self._export_snapshot_valid = False
+        self._refresh_export_controls()
         self.window.show_status("Restarting video…")
         self.worker.submit_operation(
             "video_restart", revision,
@@ -146,8 +167,88 @@ class ApplicationController:
             return
         revision = self._next_revision(invalidate_video=True)
         request = ProcessingRequest(source, thresholds, revision)
+        self._export_snapshot_valid = False
+        self._refresh_export_controls()
         self.window.show_status("Parameters changed — result pending…")
         self.worker.submit(request)
+
+    @property
+    def export_in_flight(self) -> bool:
+        return self._export_in_flight
+
+    def choose_save_mask(self) -> None:
+        path = filedialog.asksaveasfilename(
+            title="Save Binary Mask",
+            defaultextension=".png",
+            filetypes=[("PNG image", "*.png")],
+            confirmoverwrite=False,
+        )
+        self.save_mask_path(path or None)
+
+    def choose_save_result(self) -> None:
+        path = filedialog.asksaveasfilename(
+            title="Save Segmented Result",
+            defaultextension=".png",
+            filetypes=[("PNG image", "*.png")],
+            confirmoverwrite=False,
+        )
+        self.save_result_path(path or None)
+
+    def save_mask_path(self, path: str | Path | None) -> bool:
+        return self._begin_export("mask", path)
+
+    def save_result_path(self, path: str | Path | None) -> bool:
+        return self._begin_export("result", path)
+
+    def _begin_export(self, kind: str, path: str | Path | None) -> bool:
+        if path is None or str(path) == "":
+            return False
+        snapshot = self.session.result
+        if (
+            self._export_in_flight
+            or not self._export_snapshot_valid
+            or snapshot is None
+            or snapshot.thresholds != self.session.thresholds
+        ):
+            self.window.show_status(
+                "Saving is unavailable until a complete current result is ready."
+            )
+            return False
+        target = Path(path).resolve()
+        overwrite = target.exists()
+        if overwrite and not messagebox.askyesno(
+            "Confirm Overwrite",
+            f"Replace the existing file?\n{target}",
+            parent=self.root,
+        ):
+            return False
+        self._resume_video_after_export = self.playback.state is PlaybackState.PLAYING
+        if self._resume_video_after_export:
+            self.playback.pause()
+            self.window.update_video_controls(self.playback.state.value)
+        revision = self._latest_request_revision
+        self._export_in_flight = True
+        self._refresh_export_controls()
+        label = "mask" if kind == "mask" else "segmented result"
+        self.window.show_status(f"Saving {label}…")
+        self.worker.submit_operation(
+            f"export_{kind}",
+            revision,
+            lambda: self._exporter(snapshot, kind, target, overwrite=overwrite),
+            replace_pending=False,
+        )
+        return True
+
+    def _refresh_export_controls(self) -> None:
+        result = self.session.result
+        available = (
+            not self._closed
+            and not self._export_in_flight
+            and self._export_snapshot_valid
+            and result is not None
+            and result.thresholds == self.session.thresholds
+        )
+        self.window.set_export_available(available)
 
     def _poll_worker(self) -> None:
         if self._closed:
@@ -157,6 +258,9 @@ class ApplicationController:
         self._poll_id = self.root.after(self.POLL_MS, self._poll_worker)
 
     def _handle_completion(self, completion: WorkerCompletion) -> None:
+        if completion.kind in {"export_mask", "export_result"}:
+            self._handle_export_completion(completion)
+            return
         if completion.request_revision == self._video_request_in_flight:
             self._video_request_in_flight = None
         if completion.request_revision != self._latest_request_revision:
@@ -172,10 +276,12 @@ class ApplicationController:
         if result is None:
             return
         self._resume_video_on_failure = False
+        self._export_snapshot_valid = True
         self.window.show_result(result)
         self.window.set_loading(False)
         self.controls.set_enabled(True)
         self.window.update_video_controls(self.playback.state.value)
+        self._refresh_export_controls()
         self.window.show_status(
             f"Current result — H {result.thresholds.lower_h_deg}.."
             f"{result.thresholds.upper_h_deg}°, "
@@ -185,10 +291,37 @@ class ApplicationController:
         if self.playback.state is PlaybackState.PLAYING:
             self.root.after_idle(self._schedule_video_frame)
 
+    def _handle_export_completion(self, completion: WorkerCompletion) -> None:
+        self._export_in_flight = False
+        if completion.error is not None:
+            message = str(completion.error)
+            self.window.show_status(message)
+            self._refresh_export_controls()
+            messagebox.showerror("HSV Color Segmentation", message, parent=self.root)
+        elif isinstance(completion.result, ExportReceipt):
+            receipt = completion.result
+            self.last_export_receipt = receipt
+            frame = "" if receipt.frame_index is None else f", frame {receipt.frame_index}"
+            self.window.show_status(
+                f"Saved {receipt.kind} for {receipt.source_path.name}{frame} to {receipt.path}."
+            )
+            self._refresh_export_controls()
+        if (
+            self._resume_video_after_export
+            and completion.request_revision == self._latest_request_revision
+            and self.playback.play()
+        ):
+            self.window.update_video_controls(self.playback.state.value)
+            self.root.after_idle(self._schedule_video_frame)
+        self._resume_video_after_export = False
+
     def _handle_error(self, completion: WorkerCompletion) -> None:
         message = str(completion.error)
         self.window.set_loading(False)
         self.controls.set_enabled(True)
+        if completion.kind in {"image", "video_open"} and self.session.result is not None:
+            self._export_snapshot_valid = True
+        self._refresh_export_controls()
         if completion.kind in {"video_frame", "video_restart"}:
             self.playback.mark_error(message)
         elif self._resume_video_on_failure and self.playback.play():

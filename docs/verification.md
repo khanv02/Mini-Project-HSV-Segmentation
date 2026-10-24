@@ -226,3 +226,58 @@ real/fake video input, playback/session transitions, end/restart/replacement, GU
 synchronization and cleanup.
 
 T022-T027 are complete. Stop before T028; PNG export has not started.
+
+## Phase 5: Lossless PNG Output
+
+Scope: T028-T032 only. This phase adds source-resolution mask and segmented-result
+PNG export for still images and individual displayed video frames. Experiment records,
+the comprehensive recovery matrix and the 10-image evaluation remain later phases.
+
+### Output adapter and atomic writes
+
+Tests were added before implementation. The initial focused run failed collection with
+`ModuleNotFoundError: hsv_segmentation.io.export`, confirming that the new checks exercised
+missing behavior. The completed adapter now:
+
+- writes masks as PNG L with exact uint8 values 0/255 and results as PNG RGB;
+- preserves source dimensions and decoded pixel values exactly;
+- validates array shape, dtype, mask values and `.png` destinations;
+- refuses unconfirmed overwrite and uses a temporary sibling plus `os.replace` so a failed
+  encoding/replacement does not corrupt an existing destination; and
+- raises contextual `WriteError` failures with destination, operation and retry guidance.
+
+### Snapshot and GUI coordination
+
+The File Input section now provides Save Mask and Save Result actions. They are enabled only
+for a complete result matching the current valid controls. Cancellation and declined overwrite
+leave files and session state unchanged. Each accepted export captures the immutable result
+before dispatch, then performs PNG encoding on the existing single-thread worker. Only one
+write is accepted at a time; duplicate actions are disabled while it is pending. A protected
+pending write cannot be replaced by later input/processing work; that work still coalesces to
+one latest request and runs after the accepted export.
+
+A controlled delayed writer verified that Tk continued servicing scheduled interaction while
+the write was blocked, work ran off the GUI thread, a replacement input could be requested,
+and completion retained the captured source identity rather than relabeling it as the new source.
+Closing during a delayed write discarded late UI completion safely. Simulated write failure
+preserved the current result and re-enabled a retry after the error was reported.
+
+The real-video export check generated a local 12-frame MJPG/AVI, played beyond frame zero,
+captured one displayed immutable frame while playback was active, saved its segmented RGB
+pixels exactly, verified the receipt's session/frame identity, and confirmed playback resumed
+or reached its normal end. No fitted preview data enters an export.
+
+### Recorded checks - 2026-10-24
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/integration/test_image_export.py tests/integration/test_export_session.py -q
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m compileall -q src tests
+```
+
+Focused result: **18 passed in 2.88 seconds**. Final project result: **172 passed in
+7.76 seconds**, with no skipped tests. Dependency consistency reported no broken
+requirements, and all source/test modules compiled successfully.
+
+T028-T032 are complete. Stop before T033; comprehensive Phase 6 recovery work has not started.

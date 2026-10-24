@@ -5,13 +5,13 @@
 
 **Planning status**: Design completed on 2026-10-24 in `plan.md`, `research.md`,
 `data-model.md`, `contracts/` and `quickstart.md`. T001 is complete at design level.
-Phases 1 through 4 (T001-T027) are complete. The remaining 23 tasks are unimplemented.
-Setup, foundation, still-image MVP and video checks have passed; export and later work remain pending.
+Phases 1 through 5 (T001-T032) are complete. The remaining 18 tasks are unimplemented.
+Setup, foundation, still-image MVP, video and PNG export checks have passed; later work remains pending.
 
 **Execution policy (user instruction)**: Implement and verify one phase at a time,
 then stop and report before starting the next phase. See
 `docs/implementation-stages.md` for the eight stage boundaries. The current
-authorized increment is Phase 4 (T022–T027); it is complete. Stop before T028.
+authorized increment is Phase 5 (T028–T032); it is complete. Stop before T033.
 
 **Tests**: Required by FR-017, the constitution, and the user's requested unit-test phase.
 
@@ -134,14 +134,17 @@ dimensions and pixels; exercise overwrite, cancellation, and unwritable destinat
 
 ### Tests for User Story 2
 
-- [ ] T028 [P] [US2] Add lossless image-output tests in `tests/integration/test_image_export.py`; **Depends**: T027; **Done**: tests specify exact PNG round trips, 0/255 mask values, unchanged source dimensions, and write failure behavior using temporary directories.
-- [ ] T029 [P] [US2] Add export availability and snapshot tests in `tests/integration/test_export_session.py`; **Depends**: T027; **Done**: tests reject absent/pending results, verify a consistent playing-video frame/threshold snapshot, and specify cancellation and overwrite-decline preservation.
+- [X] T028 [P] [US2] Add lossless image-output tests in `tests/integration/test_image_export.py`; **Depends**: T027; **Done**: tests specify exact PNG round trips, 0/255 mask values, unchanged source dimensions, and write failure behavior using temporary directories.
+- [X] T029 [P] [US2] Add export availability and snapshot tests in `tests/integration/test_export_session.py`; **Depends**: T027; **Done**: tests reject absent/pending results, verify a consistent playing-video frame/threshold snapshot, and specify cancellation and overwrite-decline preservation.
+  Include a controlled delayed writer: encoding runs outside the GUI thread, interaction is serviced before write completion, duplicate save/record actions are disabled, source replacement preserves captured identity, completion/failure is delivered on the GUI thread, and closing during a write causes no stale UI callback (FR-012).
 
 ### Implementation for User Story 2
 
-- [ ] T030 [US2] Implement PNG mask/result writing in `src/hsv_segmentation/io/export.py`; **Depends**: T028; **Done**: output tests pass at source resolution with exact decoded pixels, and write failures propagate an actionable error without changing the live result.
-- [ ] T031 [US2] Add save actions and consistent snapshot capture in `src/hsv_segmentation/gui/controller.py`; **Depends**: T029, T030; **Done**: unavailable/pending outputs cannot be saved, overwrite requires confirmation, cancellation preserves files/state, and success identifies the saved path for one complete source/frame/threshold snapshot.
-- [ ] T032 [US2] Verify image and video-frame exports and record evidence in `docs/verification.md`; **Depends**: T031; **Done**: all US2 scenarios and US3 frame-export scenario pass, including exact pixel comparisons, error recovery, and continued playback consistency.
+- [X] T030 [US2] Implement PNG mask/result writing in `src/hsv_segmentation/io/export.py`; **Depends**: T028; **Done**: output tests pass at source resolution with exact decoded pixels, and write failures propagate an actionable error without changing the live result.
+- [X] T031 [US2] Add save actions and consistent snapshot capture in `src/hsv_segmentation/gui/controller.py`; **Depends**: T029, T030; **Done**: unavailable/pending outputs cannot be saved, overwrite requires confirmation, cancellation preserves files/state, and success identifies the saved path for one complete source/frame/threshold snapshot.
+  Dispatch PNG writing through the serialized background worker after capturing an immutable snapshot; allow one save/record operation at a time, disable duplicate write actions, and deliver status through main-thread polling with closed-window guards (FR-011, FR-012).
+- [X] T032 [US2] Verify image and video-frame exports and record evidence in `docs/verification.md`; **Depends**: T031; **Done**: all US2 scenarios and US3 frame-export scenario pass, including exact pixel comparisons, error recovery, and continued playback consistency.
+  Record delayed-write interaction and close-during-write results from T029; successful background completion must identify the captured output even if the active source has changed (FR-012).
 
 **Checkpoint**: Images and individual video frames can be exported reliably.
 
@@ -155,7 +158,9 @@ then continue with another valid open/edit/save without restarting.
 ### Tests for User Story 5
 
 - [ ] T033 [P] [US5] Add a recovery matrix in `tests/integration/test_error_recovery.py`; **Depends**: T032; **Done**: missing, unreadable, corrupt, unsupported and resource-exhausting inputs, decode interruption, bad parameters, cancelled dialogs and failed saves each have a specified expected state and corrective message.
+  For each failure assert operation, affected file/parameter, cause category, preserved session state and a concrete corrective action; parameter errors include the allowed range/ordering rule, uncertain video termination is not asserted as a known cause, and cancellation requires no error message (FR-013, SC-007).
 - [ ] T034 [P] [US5] Add GUI recovery acceptance steps in `docs/acceptance.md`; **Depends**: T032; **Done**: each recovery-matrix case specifies actions, expected message, preserved source/threshold/output state, and a subsequent valid action, including the three labeled layout sections.
+  Include FR-013 content checks and prepare the FMT-001-FMT-007 inventory from spec.md with paths/generation commands, hashes, expected normalization, and actual codec/backend/environment details for both videos; missing required fixtures or decoder support stay explicit (FR-002, SC-001, SC-007).
 
 ### Implementation for User Story 5
 
@@ -175,12 +180,14 @@ and reproduce three selected runs from source identities and recorded thresholds
 ### Tests for User Story 4
 
 - [ ] T037 [P] [US4] Define record persistence/failure tests in `tests/integration/test_experiment_records.py`; **Depends**: T036; **Done**: tests enforce schema_version=1, unique UUID run_id, UTC ISO timestamp, valid six integer bounds/units, dimensions/frame identity, nonempty lighting/observations, environment reference, valid relative output paths and 64-character lowercase SHA-256 hashes per `specs/001-hsv-color-segmentation/contracts/experiment-record.md`; failed artifacts cannot publish a complete record.
+  Use delayed hash/PNG/JSON operations to check background execution, responsive interaction, one active write with duplicate actions disabled, immutable captured identity, main-thread notifications, and safe close during publication (FR-012, FR-014).
 - [ ] T038 [P] [US4] Prepare `experiments/inputs/` and `experiments/manifest.json`; **Depends**: T036; **Done**: at least 10 distinct accessible images have source/permission metadata, hashes and lighting descriptions, including one photographed scene under two real lighting conditions; synthetic cases are identified separately from photographed evidence.
 
 ### Implementation for User Story 4
 
 - [ ] T039 [US4] Implement local JSON experiment export in `src/hsv_segmentation/io/experiments.py`; **Depends**: T037; **Done**: each run has a distinct identity and complete metadata, paths resolve to successful PNG exports, and record publication occurs only after all referenced outputs succeed.
 - [ ] T040 [US4] Add lighting/observation fields and a Record Experiment action in `src/hsv_segmentation/gui/experiment_panel.py` and `src/hsv_segmentation/gui/controller.py`; **Depends**: T039; **Done**: users can capture one consistent result snapshot with their descriptions, see saved locations, and retry failed export without losing results.
+  Capture descriptions and snapshot on the GUI thread, then dispatch hashing, PNG writes and JSON publication through the same serialized background-write path as T031; apply the one-active-write policy and safe completion/failure handoff verified by T037 (FR-012, FR-014).
 - [ ] T041 [US4] Create a repeatable experiment procedure and environment record in `experiments/README.md` and `experiments/environment.json`; **Depends**: T038, T040; **Done**: a student can locate every input, apply two documented threshold sets per image, reproduce the environment, and interpret the saved mask/result/record relationships.
 - [ ] T042 [US4] Execute and retain at least 20 complete runs in `experiments/runs/`; **Depends**: T041; **Done**: all 10 images have two distinct threshold settings and saved outputs, records include lighting and qualitative observations, and failures are resolved rather than recorded as successful evidence.
 - [ ] T043 [US4] Add automatic replay checks in `tests/integration/test_experiment_reproduction.py` and prepare `experiments/reproduction.md`; **Depends**: T042; **Done**: three recorded runs reproduce identical decoded pixels automatically after source/environment checks, and the independent student/date/outcome form is prepared with human acceptance explicitly pending rather than blocking documentation preparation.
@@ -199,6 +206,7 @@ visible unmet criteria; do not invent evidence.
 - [ ] T047 Update `README.md` and `specs/001-hsv-color-segmentation/quickstart.md`; **Depends**: T043, T044, T045, T046; **Done**: setup, launch, tests, supported formats/codecs, six controls, video behavior, export, experiment replay, limitations and offline independence have accurate copyable instructions.
 - [ ] T048 Prepare `docs/demo.md`; **Depends**: T047; **Done**: a timed walkthrough covers the image MVP, video, export, recovery, all 10 experiment images and lighting comparisons, with matching saved artifacts and an explanation of why HSV is used.
 - [ ] T049 Run the full automated/offline acceptance workflow and independent student checks, recording outcomes in `docs/verification.md` and `experiments/reproduction.md`; **Depends**: T048; **Done**: automated tests pass, every FR/SC has evidence, a second student genuinely reproduces three runs, and a student completes the documented image/edit/compare/save flow within five minutes without help; unavailable external acceptance keeps this final task incomplete.
+  Populate the evidence matrix for all 25 FR/SC IDs below with covering task IDs, test/procedure, command/actions, actual outcome and evidence location. Execute every required FMT case on the recorded demonstration computer; skipped codecs, missing fixtures and pending human checks remain unmet acceptance.
 - [ ] T050 Review module boundaries, naming, dependency necessity, and constitution compliance in `specs/001-hsv-color-segmentation/plan.md` and `docs/verification.md`; **Depends**: T049; **Done**: processing imports neither GUI nor file I/O, every core function has independent tests, no unused frameworks/services or out-of-scope features exist, and every remaining acceptance limitation is identified.
 
 ## Dependencies & Execution Order
@@ -297,10 +305,44 @@ not optional replacements for the image MVP.
 | Testing with at least 10 images | T038, T041-T044 |
 | Documentation/demo | T004, T045-T050 |
 
+## Requirement-to-Task Traceability
+
+This table maps planned implementation and verification coverage, not acceptance status.
+T049 records actual evidence for every row in `docs/verification.md`; checked tasks alone
+do not substitute for the specified automated, GUI or independent student checks.
+
+| Requirement ID | Covering task IDs | Expected evidence |
+| --- | --- | --- |
+| FR-001 | T015, T020, T034 | Window title and three labeled sections |
+| FR-002 | T014, T016, T022, T024, T027, T034, T047, T049 | Seven-case format inventory and codec/backend results |
+| FR-003 | T017, T020, T025, T026 | Initial image/frame and matching outputs |
+| FR-004 | T008, T009, T010, T011, T012, T045 | Conversion and segmentation tests with documented equations |
+| FR-005 | T011, T018, T045 | Six integer controls, units and range validation |
+| FR-006 | T009, T011, T012 | Inclusive/equal bounds and hue-wrap tests |
+| FR-007 | T009, T012, T021, T028, T030 | Exact mask/result pixels, dimensions and source preservation |
+| FR-008 | T018, T019, T020, T021, T033, T035 | Automatic update, invalid-edit and stale-result checks |
+| FR-009 | T015, T020, T021, T026 | Aspect-preserving synchronized views |
+| FR-010 | T022, T023, T024, T025, T026, T027 | Playback lifecycle, position and paused edits |
+| FR-011 | T028, T029, T030, T031, T032 | Lossless still/frame PNG round trips and snapshot identity |
+| FR-012 | T029, T030, T031, T032, T037, T040 | Export availability, overwrite/cancel, delayed writes and safe UI handoff |
+| FR-013 | T006, T024, T030, T033, T034, T035, T036 | Required message contents, preserved state and recovery |
+| FR-014 | T005, T037, T039, T040 | Complete records and publication-failure checks |
+| FR-015 | T038, T041, T042, T043, T044, T049 | Input provenance, environment, twenty runs and reproduction |
+| FR-016 | T002, T003, T004, T047, T049, T050 | Installation and full offline acceptance |
+| FR-017 | T007, T008, T009, T010, T011, T012, T013, T045, T050 | Independent core tests and algorithm explanations |
+| SC-001 | T014, T016, T022, T024, T027, T034, T049 | All FMT cases and complete playback walkthrough |
+| SC-002 | T007, T008, T009, T010, T011, T012, T013 | Exact known-color masks and retained colors |
+| SC-003 | T019, T021, T046 | 100-change timing record and final revision consistency |
+| SC-004 | T028, T029, T030, T031, T032 | Source-resolution exact decoded-pixel comparisons |
+| SC-005 | T037, T038, T039, T040, T041, T042, T043, T049 | Twenty runs, lighting coverage and three independent replays |
+| SC-006 | T047, T048, T049 | Timed student workflow without assistance |
+| SC-007 | T033, T034, T035, T036, T049 | Message-content matrix and subsequent valid operations |
+| SC-008 | T038, T042, T044, T048, T049 | Labeled ten-image comparisons and observations |
+
 ## Notes
 
-- T001-T027 are complete (Phases 1 through 4). The remaining 23 tasks are unchecked; stop before T028.
+- T001-T032 are complete (Phases 1 through 5). The remaining 18 tasks are unchecked; stop before T033.
 - Counts: Setup 4; Foundation 3; US1 14; US3 6; US2 5; US5 4; US4 8; Polish 6.
-- The plan bootstrap T001 is complete; recheck artifact consistency before application implementation.
+- Analysis remediation updated the specification, plan, contracts and traceability before T028. Phase 5 evidence is now recorded; T033-T050 require their own implementation and evidence before completion.
 - Research, data model, interface contracts and quickstart now define numeric behavior and field constraints;
   their presence is design evidence, not a substitute for running the planned tests.

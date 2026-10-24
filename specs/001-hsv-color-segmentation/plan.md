@@ -18,6 +18,12 @@ Tkinter/Pillow for presentation and image files, and OpenCV for sequential video
 The algorithm accepts arrays and explicit parameters; it never imports the GUI or reads files.
 All long processing and file operations run outside Tk event handlers, with bounded work and
 revision checks before presenting results.
+PNG encoding, source/artifact hashing and experiment JSON publication use the serialized
+background worker with an immutable captured snapshot. Permit one save/record operation at
+a time and disable duplicate write actions instead of queuing unbounded snapshots. Completion
+and failure notifications return through main-thread polling; source replacement cannot relabel
+an earlier export, and closed-window callbacks must be ignored. Tests use a controlled delayed
+writer to prove the event loop continues handling interaction while a write is pending.
 
 The upper hue control accepts 360 as an interval endpoint; lower hue remains 0..359.
 Pixel hue remains in [0,360), so default hue bounds (0,360) select the entire hue domain.
@@ -59,7 +65,9 @@ No guaranteed real-time video frame rate. Playback may slow while preserving syn
 
 **Constraints**: Six numeric controls, source-resolution computation/export, inclusive comparisons,
 no rounding before membership tests, no mutable global thresholds, no GUI calls from workers,
-one serialized worker and one replaceable pending request, and no unbounded video buffering.
+one serialized worker with one protected pending write plus one replaceable latest compute/I/O
+request, and no unbounded video buffering. The controller permits only one write operation, so
+this remains a fixed bound while allowing input/threshold work requested during an export.
 Start with a documented 12,000,000-pixel input/frame limit checked before allocation where
 metadata permits; reject larger inputs clearly and catch allocation failures. This limit is a
 project resource policy, not a claim that all smaller images fit every computer. Adjust only
@@ -82,7 +90,7 @@ steps preserve each principle. These passes assess design, not unbuilt runtime b
 | I. Correctness and clarity | Explicit float64 equations, units, endpoint rules; analytical and independent reference tests in processing contract | PASS | PASS |
 | II. Modular architecture | One authoritative processing implementation; models/errors are shared leaves; no dependency cycles | PASS | PASS |
 | III. GUI/processing/I/O separation | GUI delegates through application; processing consumes memory only; I/O owns paths/codecs | PASS | PASS |
-| IV. Student maintainability | One package, stdlib desktop toolkit, four focused external packages including tests | PASS | PASS |
+| IV. Student maintainability | One package, stdlib desktop toolkit; three runtime packages (NumPy, Pillow, OpenCV), pytest for tests and setuptools for builds | PASS | PASS |
 | V. Naming and clean code | snake_case modules, unit-bearing fields, documented constants, no speculative interfaces | PASS | PASS |
 | VI. Independent core tests | Conversion, threshold validation, mask generation and extraction callable without Tk/files | PASS | PASS |
 | VII. Tests and reproducibility | Exact mask tests, explicit conversion tolerances, locked environment, source hashes and 20 runs | PASS | PASS |
@@ -167,8 +175,9 @@ experiments/
 
 **Structure Decision**: Keep the existing task paths and a single desktop package. Source,
 tests and experiment artifacts above are planned outputs, not files created by this command.
-The repository inventory contains README, project documentation and Spec Kit artifacts, but
-no existing GUI or utility application modules to reuse. Do not introduce a dependency on
+At planning bootstrap the repository contained README, project documentation and Spec Kit
+artifacts, with no existing GUI or utility application modules to reuse. The application
+modules now recorded as complete in tasks.md were built for this feature. Do not introduce a dependency on
 Image Restoration; reassess any later supplied reusable components against the same contracts.
 
 Imports flow from GUI to application; application uses models, processing and I/O. Processing
@@ -194,10 +203,25 @@ Resolve earlier analysis findings as follows: fill constitution gates (C1); perm
 and test near-origin red (I1); prepare package metadata/dependencies before skeleton but install
 the local package only after skeleton creation (I2); separate automated replay from independent
 student acceptance so documentation preparation can proceed (U1). Task IDs remain stable.
-Only the planning portion T001 is complete at this point; runtime tasks remain unchecked.
+Current task ledger: T001-T032 are marked complete (setup, foundation, image MVP, video and export).
+T033-T050 remain unchecked, including comprehensive recovery, experiments and final
+acceptance. `tasks.md` is the completion ledger; `docs/verification.md` holds execution evidence.
+The design-level constitution gates above do not assert that remaining runtime acceptance passed.
+
+### Acceptance Traceability
+
+Use the FR/SC-to-task table in tasks.md to populate an evidence matrix in
+`docs/verification.md`. Each of the 25 requirement IDs must identify its covering tasks,
+automated test or manual procedure, command/actions, actual result, and evidence location.
+Pending, failed and skipped checks remain explicit; task coverage alone does not mean acceptance.
+T034 prepares the seven-case supported-format inventory defined in spec.md, including both
+MJPG/AVI and mp4v/MP4 cases. T049 executes it against the recorded demonstration environment;
+required codec cases cannot pass by being skipped. T033-T036 verify the FR-013 message contents
+and preserved state, and T029/T032/T037 verify background-write behavior for FR-012.
 
 ## Complexity Tracking
 
 No constitution exceptions or additional infrastructure are required. One serialized worker,
 revisioned snapshots and local files address the existing responsiveness/reproducibility
-requirements without services, a database, or a plugin framework. Runtime verification is pending.
+requirements without services, a database, or a plugin framework. Runtime verification for
+T033-T050 and final acceptance remains pending.

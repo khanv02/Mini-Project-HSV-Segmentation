@@ -3,6 +3,11 @@
 Local JSON schema version 1; planned writer: `src/hsv_segmentation/io/experiments.py`.
 The GUI supplies a complete displayed immutable snapshot and user descriptions. This module
 writes files; it does not depend on GUI classes or recompute segmentation.
+The application dispatches this entire publication operation, including hashes and PNG/JSON
+writes, to the serialized background worker described in desktop-workflow.md. Capture the
+snapshot and descriptions before dispatch, permit only one active save/record, and deliver
+notifications through main-thread polling with closed-window guards. Delayed-operation tests
+must verify responsive interaction and preserved captured identity through completion/failure.
 
 ## Record Shape
 

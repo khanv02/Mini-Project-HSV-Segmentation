@@ -26,6 +26,14 @@ class MainWindow:
         self.open_image_button.pack(side="left")
         self.open_video_button = ttk.Button(self.input_section, text="Open Video…")
         self.open_video_button.pack(side="left", padx=(6, 0))
+        self.save_mask_button = ttk.Button(
+            self.input_section, text="Save Mask…", state="disabled"
+        )
+        self.save_mask_button.pack(side="left", padx=(18, 0))
+        self.save_result_button = ttk.Button(
+            self.input_section, text="Save Result…", state="disabled"
+        )
+        self.save_result_button.pack(side="left", padx=(6, 0))
         self.play_button = ttk.Button(self.input_section, text="Play", state="disabled")
         self.play_button.pack(side="left", padx=(18, 0))
         self.pause_button = ttk.Button(self.input_section, text="Pause", state="disabled")
@@ -76,9 +84,13 @@ class MainWindow:
     def show_status(self, message: str) -> None:
         self.status_var.set(message)
 
-    def set_commands(self, *, open_image, open_video, play, pause, restart) -> None:
+    def set_commands(
+        self, *, open_image, open_video, save_mask, save_result, play, pause, restart
+    ) -> None:
         self.open_image_button.configure(command=open_image)
         self.open_video_button.configure(command=open_video)
+        self.save_mask_button.configure(command=save_mask)
+        self.save_result_button.configure(command=save_result)
         self.play_button.configure(command=play)
         self.pause_button.configure(command=pause)
         self.restart_button.configure(command=restart)
@@ -87,6 +99,11 @@ class MainWindow:
         state = "disabled" if loading else "normal"
         self.open_image_button.configure(state=state)
         self.open_video_button.configure(state=state)
+
+    def set_export_available(self, available: bool) -> None:
+        state = "normal" if available else "disabled"
+        self.save_mask_button.configure(state=state)
+        self.save_result_button.configure(state=state)
 
     def update_video_controls(self, state: str) -> None:
         self.play_button.configure(state="normal" if state == "paused" else "disabled")

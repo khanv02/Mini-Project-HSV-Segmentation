@@ -5,8 +5,8 @@ its results, then stop at the boundary. Do not start the next phase automaticall
 The authoritative individual task criteria remain in
 `specs/001-hsv-color-segmentation/tasks.md`.
 
-Current status: **Phases 1 through 4 complete and verified on 2026-10-24**. Phases
-5–8 have not started. See `docs/verification.md` for recorded evidence.
+Current status: **Phases 1 through 5 complete and verified on 2026-10-24**. Phases
+6–8 have not started. See `docs/verification.md` for recorded evidence.
 
 | Phase | Tasks | Deliverable | Exit check |
 | --- | --- | --- | --- |
@@ -22,6 +22,7 @@ Current status: **Phases 1 through 4 complete and verified on 2026-10-24**. Phas
 Phase 1 does not deliver an executable desktop window or image processing code.
 Phase 2 adds data validation and independent reference fixtures, with 60 passing
 foundation checks. Phase 3 delivers the first working image application; Phase 4 adds
-bounded sequential video playback. The 154 automated checks require no external dataset.
+bounded sequential video playback; Phase 5 adds lossless still/video-frame PNG export.
+The 171 automated checks require no external dataset.
 Independent human acceptance in
 Phase 8 must be performed by actual participants; unavailable evidence stays open.

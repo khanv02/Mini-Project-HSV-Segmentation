@@ -69,7 +69,21 @@ changes neither files nor session. Prefer temporary sibling output and replaceme
 to avoid corrupting an existing destination on encode failure. Success identifies the path;
 failure identifies the operation and corrective action and retains the current result.
 
+PNG encoding and experiment hashing/JSON writing execute on the serialized background worker,
+never in Tk event handlers. Allow one save/record operation at a time; disable duplicate write
+actions rather than accumulating snapshots. A pending accepted write is protected from replacement;
+at most one separate latest compute/input request may wait behind it. Main-thread polling delivers completion/failure and
+re-enables actions only when the current session permits them. The notification identifies the
+captured destination/source even if input has changed. Closing the window discards UI callbacks
+without an indefinite GUI-thread join. A controlled delayed writer must demonstrate that the
+event loop continues servicing interaction before completion.
+
 ## Failure and Resource Rules
+
+Every failure message identifies the operation, affected file or parameter, cause category,
+preserved session state, and a concrete corrective action (FR-013). Parameter errors include
+the allowed range or ordering rule. Unknown decoder causes remain explicitly uncertain.
+Tests assert these contents rather than identical prose; normal cancellation requires no error.
 
 - Missing/unreadable file: name the input operation and suggest checking path/permissions.
 - Unsupported format/representation/encoding: identify the supported alternatives.
