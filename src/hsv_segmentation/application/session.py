@@ -47,6 +47,14 @@ class ImageSession:
     def request_revision(self) -> int:
         return self._request_revision
 
+    def preserved_state_description(self) -> str:
+        """Describe the committed state retained after a candidate operation fails."""
+        if self._result is None:
+            return "No prior input or result existed; valid thresholds were preserved."
+        if self._source is not None and self._source.media_kind == "video":
+            return "The last valid video frame, thresholds, and result were preserved."
+        return "The previous valid input, thresholds, and result were preserved."
+
     def open_image(self, path: str | Path | None) -> SegmentationResult | None:
         """Decode/process a candidate fully, then atomically commit it.
 

@@ -5,13 +5,13 @@
 
 **Planning status**: Design completed on 2026-10-24 in `plan.md`, `research.md`,
 `data-model.md`, `contracts/` and `quickstart.md`. T001 is complete at design level.
-Phases 1 through 5 (T001-T032) are complete. The remaining 18 tasks are unimplemented.
-Setup, foundation, still-image MVP, video and PNG export checks have passed; later work remains pending.
+Phases 1 through 6 (T001-T036) are complete. The remaining 14 tasks are unimplemented.
+Setup, foundation, still-image MVP, video, PNG export and comprehensive recovery checks have passed.
 
 **Execution policy (user instruction)**: Implement and verify one phase at a time,
 then stop and report before starting the next phase. See
 `docs/implementation-stages.md` for the eight stage boundaries. The current
-authorized increment is Phase 5 (T028–T032); it is complete. Stop before T033.
+authorized increment is Phase 6 (T033–T036); it is complete. Stop before T037.
 
 **Tests**: Required by FR-017, the constitution, and the user's requested unit-test phase.
 
@@ -157,15 +157,15 @@ then continue with another valid open/edit/save without restarting.
 
 ### Tests for User Story 5
 
-- [ ] T033 [P] [US5] Add a recovery matrix in `tests/integration/test_error_recovery.py`; **Depends**: T032; **Done**: missing, unreadable, corrupt, unsupported and resource-exhausting inputs, decode interruption, bad parameters, cancelled dialogs and failed saves each have a specified expected state and corrective message.
+- [X] T033 [P] [US5] Add a recovery matrix in `tests/integration/test_error_recovery.py`; **Depends**: T032; **Done**: missing, unreadable, corrupt, unsupported and resource-exhausting inputs, decode interruption, bad parameters, cancelled dialogs and failed saves each have a specified expected state and corrective message.
   For each failure assert operation, affected file/parameter, cause category, preserved session state and a concrete corrective action; parameter errors include the allowed range/ordering rule, uncertain video termination is not asserted as a known cause, and cancellation requires no error message (FR-013, SC-007).
-- [ ] T034 [P] [US5] Add GUI recovery acceptance steps in `docs/acceptance.md`; **Depends**: T032; **Done**: each recovery-matrix case specifies actions, expected message, preserved source/threshold/output state, and a subsequent valid action, including the three labeled layout sections.
+- [X] T034 [P] [US5] Add GUI recovery acceptance steps in `docs/acceptance.md`; **Depends**: T032; **Done**: each recovery-matrix case specifies actions, expected message, preserved source/threshold/output state, and a subsequent valid action, including the three labeled layout sections.
   Include FR-013 content checks and prepare the FMT-001-FMT-007 inventory from spec.md with paths/generation commands, hashes, expected normalization, and actual codec/backend/environment details for both videos; missing required fixtures or decoder support stay explicit (FR-002, SC-001, SC-007).
 
 ### Implementation for User Story 5
 
-- [ ] T035 [US5] Complete actionable failure handling in `src/hsv_segmentation/gui/controller.py`, `src/hsv_segmentation/application/session.py`, and `src/hsv_segmentation/application/playback.py`; **Depends**: T033, T034; **Done**: recovery tests pass, no failed open discards the previous valid session, invalid edits do not relabel old results, and failures do not crash the application.
-- [ ] T036 [US5] Execute the GUI recovery matrix and retain observations in `docs/verification.md`; **Depends**: T035; **Done**: every error and cancellation case passes with a successful subsequent operation, including cleanly stopping failed playback and handling oversized inputs without an unresponsive window.
+- [X] T035 [US5] Complete actionable failure handling in `src/hsv_segmentation/gui/controller.py`, `src/hsv_segmentation/application/session.py`, and `src/hsv_segmentation/application/playback.py`; **Depends**: T033, T034; **Done**: recovery tests pass, no failed open discards the previous valid session, invalid edits do not relabel old results, and failures do not crash the application.
+- [X] T036 [US5] Execute the GUI recovery matrix and retain observations in `docs/verification.md`; **Depends**: T035; **Done**: every error and cancellation case passes with a successful subsequent operation, including cleanly stopping failed playback and handling oversized inputs without an unresponsive window.
 
 **Checkpoint**: Comprehensive error recovery validated; essential error handling already existed
 in the relevant earlier increments rather than being deferred until this phase.
@@ -341,8 +341,8 @@ do not substitute for the specified automated, GUI or independent student checks
 
 ## Notes
 
-- T001-T032 are complete (Phases 1 through 5). The remaining 18 tasks are unchecked; stop before T033.
+- T001-T036 are complete (Phases 1 through 6). The remaining 14 tasks are unchecked; stop before T037.
 - Counts: Setup 4; Foundation 3; US1 14; US3 6; US2 5; US5 4; US4 8; Polish 6.
-- Analysis remediation updated the specification, plan, contracts and traceability before T028. Phase 5 evidence is now recorded; T033-T050 require their own implementation and evidence before completion.
+- Analysis remediation updated the specification, plan, contracts and traceability before T028. Phase 6 evidence is now recorded; T037-T050 require their own implementation and evidence before completion.
 - Research, data model, interface contracts and quickstart now define numeric behavior and field constraints;
   their presence is design evidence, not a substitute for running the planned tests.

@@ -13,6 +13,7 @@ from ..application.playback import (
 )
 from ..application.processing_worker import ProcessingWorker, WorkerCompletion
 from ..application.session import ImageSession
+from ..errors import ValidationError, format_recovery_message
 from ..io.export import ExportReceipt, export_snapshot
 from ..models import HSVThresholdSet, ProcessingRequest, SegmentationResult
 from .main_window import MainWindow
@@ -40,6 +41,7 @@ class ApplicationController:
             self.window.parameter_section,
             initial=self.session.thresholds,
             on_valid=self._on_thresholds,
+            on_invalid=self._on_invalid_thresholds,
         )
         self._latest_request_revision = 0
         self._video_request_in_flight: int | None = None
@@ -172,6 +174,21 @@ class ApplicationController:
         self.window.show_status("Parameters changed — result pending…")
         self.worker.submit(request)
 
+    def _on_invalid_thresholds(self, error: ValidationError) -> None:
+        self._export_snapshot_valid = False
+        self._refresh_export_controls()
+        self.window.show_status(
+            format_recovery_message(
+                error,
+                operation="validate HSV thresholds",
+                affected=error.field,
+                preserved_state=(
+                    "The previous valid thresholds and result were preserved; saving is disabled "
+                    "until all visible values are valid."
+                ),
+            )
+        )
+
     @property
     def export_in_flight(self) -> bool:
         return self._export_in_flight
@@ -294,7 +311,12 @@ class ApplicationController:
     def _handle_export_completion(self, completion: WorkerCompletion) -> None:
         self._export_in_flight = False
         if completion.error is not None:
-            message = str(completion.error)
+            message = format_recovery_message(
+                completion.error,
+                preserved_state=(
+                    "The current input, thresholds, and result were preserved; no success was reported."
+                ),
+            )
             self.window.show_status(message)
             self._refresh_export_controls()
             messagebox.showerror("HSV Color Segmentation", message, parent=self.root)
@@ -316,7 +338,10 @@ class ApplicationController:
         self._resume_video_after_export = False
 
     def _handle_error(self, completion: WorkerCompletion) -> None:
-        message = str(completion.error)
+        message = format_recovery_message(
+            completion.error,
+            preserved_state=self.session.preserved_state_description(),
+        )
         self.window.set_loading(False)
         self.controls.set_enabled(True)
         if completion.kind in {"image", "video_open"} and self.session.result is not None:

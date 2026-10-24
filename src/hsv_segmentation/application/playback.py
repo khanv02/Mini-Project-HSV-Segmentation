@@ -113,8 +113,19 @@ class PlaybackSession:
         if current is None or advance.session_id != current.session_id:
             return False
         if advance.termination is not None:
-            self.state = PlaybackState.ENDED
-            self.status_message = str(advance.termination)
+            if advance.termination.clean:
+                self.state = PlaybackState.ENDED
+                self.status_message = str(advance.termination)
+            else:
+                self.state = PlaybackState.ENDED
+                path = current.source_path
+                self.status_message = (
+                    f"Operation: decode next video frame. Affected: {path}. "
+                    "Cause: uncertain decoder termination. "
+                    f"Details: {advance.termination} "
+                    "Preserved: The last valid video frame, thresholds, and result were preserved. "
+                    "Action: Reopen the video or try a supported MP4/AVI encoding."
+                )
             return False
         if advance.result is None or not self.media_session.commit_frame_result(advance.result):
             return False

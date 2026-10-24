@@ -79,7 +79,10 @@ class HSVThresholdSet:
         for lower, upper in (("lower_s_pct", "upper_s_pct"),
                              ("lower_v_pct", "upper_v_pct")):
             if getattr(self, lower) > getattr(self, upper):
-                raise ValidationError(lower, f"must not exceed {upper}")
+                raise ValidationError(
+                    lower,
+                    f"ordering rule requires {lower} <= {upper} (both 0..100)",
+                )
         revision = _bounded_integer(self.parameter_revision, "parameter_revision", 0)
         object.__setattr__(self, "parameter_revision", revision)
 

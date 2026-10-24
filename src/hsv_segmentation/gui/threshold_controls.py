@@ -23,12 +23,14 @@ class ThresholdControls(ttk.Frame):
     """Parse text separately from the pure typed threshold validator."""
 
     def __init__(
-        self, master, *, on_valid=None, initial: HSVThresholdSet | None = None,
+        self, master, *, on_valid=None, on_invalid=None,
+        initial: HSVThresholdSet | None = None,
         debounce_ms: int = 75,
     ):
         super().__init__(master)
         self.pack(fill="x", expand=True)
         self._on_valid = on_valid
+        self._on_invalid = on_invalid
         self._debounce_ms = debounce_ms
         self._after_id = None
         self._updating = False
@@ -81,15 +83,22 @@ class ThresholdControls(ttk.Frame):
                 pass
         self._after_id = None
         values = {}
+        had_error = bool(self._error_var.get())
         try:
+            ranges = {name: (minimum, maximum) for name, _label, minimum, maximum in FIELD_SPECS}
             for name in THRESHOLD_FIELDS:
                 text = self.fields[name].get().strip()
                 if re.fullmatch(r"[+-]?\d+", text) is None:
-                    raise ValidationError(name, "must be a whole number")
+                    minimum, maximum = ranges[name]
+                    raise ValidationError(
+                        name, f"must be a whole number in {minimum}..{maximum}"
+                    )
                 values[name] = int(text)
             candidate = validate_thresholds(values)
             if candidate.as_dict() == self._last_valid.as_dict():
                 self._error_var.set("")
+                if had_error and self._on_valid is not None:
+                    self._on_valid(self._last_valid)
                 return self._last_valid
             candidate = HSVThresholdSet(
                 **candidate.as_dict(),
@@ -97,6 +106,8 @@ class ThresholdControls(ttk.Frame):
             )
         except ValidationError as error:
             self._error_var.set(str(error))
+            if self._on_invalid is not None:
+                self._on_invalid(error)
             return None
 
         self._last_valid = candidate

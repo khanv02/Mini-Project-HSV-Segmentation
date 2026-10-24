@@ -5,7 +5,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from queue import Empty, SimpleQueue
-from threading import Lock
+from threading import RLock
 
 from ..io.images import load_image
 from ..models import HSVThresholdSet, ProcessingRequest, SegmentationResult
@@ -44,7 +44,10 @@ class ProcessingWorker:
     def __init__(self, processor: Processor | None = None):
         self._processor = processor or _default_processor
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hsv-processing")
-        self._lock = Lock()
+        # add_done_callback may run synchronously when a very fast operation has
+        # already completed. Re-entry keeps that completion from deadlocking the
+        # submitter while preserving the same bounded state transitions.
+        self._lock = RLock()
         self._active: Future[object] | None = None
         self._pending_required: _WorkItem | None = None
         self._pending: _WorkItem | None = None

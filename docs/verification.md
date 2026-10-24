@@ -281,3 +281,53 @@ Focused result: **18 passed in 2.88 seconds**. Final project result: **172 passe
 requirements, and all source/test modules compiled successfully.
 
 T028-T032 are complete. Stop before T033; comprehensive Phase 6 recovery work has not started.
+
+## Phase 6: Comprehensive Error Recovery
+
+Scope: T033-T036 only. This phase makes recovery behavior explicit and testable for invalid
+files, parameter mistakes, decoder interruption, resource limits, cancelled dialogs and failed
+writes. Experiment persistence and the 10-image evaluation remain Phase 7 work.
+
+### Structured recovery behavior
+
+User-visible failures now contain five labeled fields: operation, affected file/parameter,
+truthful cause category, preserved state and a concrete corrective action. Candidate image/video
+opens remain atomic: missing, unreadable, corrupt, unsupported and oversized inputs never replace
+the prior valid session. Explicit video decode failure stops playback in the error state and keeps
+the last valid frame; backend-ambiguous termination stops safely as ended while stating that the
+cause is uncertain and offering reopen/encoding guidance. Restart remains available.
+
+Invalid HSV text now states the field's numeric range, out-of-range integers retain the displayed
+range, and reversed S/V bounds state the ordering rule. Invalid visible controls preserve the old
+result but disable export until corrected; correcting the fields reprocesses the current source.
+Open/save cancellation and overwrite decline remain silent state-preserving control flow.
+
+The oversized-input test deliberately blocked the loader on the background worker and confirmed
+that Tk serviced another scheduled event before the resource-limit failure completed. A very fast
+fake video failure also exposed a worker callback deadlock: `Future.add_done_callback` may invoke
+immediately when work already finished. The worker now uses a reentrant state lock, preserving its
+bounded ordering while allowing that synchronous completion path.
+
+### Published format set
+
+`tests/fixtures/generate_acceptance_media.py` generated and hashed FMT-001 through FMT-007 under
+`tests/fixtures/acceptance_media/`. The inventory contains RGB PNG/JPEG/BMP, grayscale PNG, RGBA
+PNG, MJPG/AVI and mp4v/MP4. On this OpenCV 4.14.0 environment both three-frame videos decoded
+through FFMPEG; the reported FOURCC values were MJPG and FMP4. The committed manifest's seven
+hashes were rechecked before decoder smoke tests. Full paths, hashes, dimensions and the reviewer
+procedure are recorded in `docs/acceptance.md`.
+
+### Recorded checks - 2026-10-24
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/integration/test_error_recovery.py tests/integration/test_format_inventory.py -q
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m compileall -q src tests
+```
+
+Focused result: **13 passed in 3.38 seconds**. Final project result: **185 passed in
+9.10 seconds**, with no skipped tests. Dependency consistency reported no broken requirements,
+and all source/test modules compiled successfully.
+
+T033-T036 are complete. Stop before T037; experiment recording and collection work has not started.

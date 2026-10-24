@@ -203,8 +203,8 @@ Resolve earlier analysis findings as follows: fill constitution gates (C1); perm
 and test near-origin red (I1); prepare package metadata/dependencies before skeleton but install
 the local package only after skeleton creation (I2); separate automated replay from independent
 student acceptance so documentation preparation can proceed (U1). Task IDs remain stable.
-Current task ledger: T001-T032 are marked complete (setup, foundation, image MVP, video and export).
-T033-T050 remain unchecked, including comprehensive recovery, experiments and final
+Current task ledger: T001-T036 are marked complete (setup, foundation, image MVP, video, export and recovery).
+T037-T050 remain unchecked, including experiments and final
 acceptance. `tasks.md` is the completion ledger; `docs/verification.md` holds execution evidence.
 The design-level constitution gates above do not assert that remaining runtime acceptance passed.
 
@@ -224,4 +224,4 @@ and preserved state, and T029/T032/T037 verify background-write behavior for FR-
 No constitution exceptions or additional infrastructure are required. One serialized worker,
 revisioned snapshots and local files address the existing responsiveness/reproducibility
 requirements without services, a database, or a plugin framework. Runtime verification for
-T033-T050 and final acceptance remains pending.
+T037-T050 and final acceptance remains pending.

@@ -310,6 +310,10 @@ def test_background_write_failure_preserves_result_and_allows_retry(
         _wait_for(root, lambda: controller.export_in_flight is False)
 
         assert errors and "simulated destination failure" in errors[0][1]
+        assert all(
+            label in errors[0][1]
+            for label in ("Operation:", "Affected:", "Cause:", "Preserved:", "Action:")
+        )
         assert controller.session.result is result
         assert str(controller.window.save_result_button.cget("state")) == "normal"
     finally:

@@ -3,14 +3,16 @@
 Academic desktop application for selecting colored objects using six HSV bounds.
 The implementation separates pure processing, file I/O, session coordination and GUI.
 
-Current milestone: **Phase 5 complete — image/video segmentation and PNG export**. The application
+Current milestone: **Phase 6 complete — segmentation, PNG export and error recovery**. The application
 opens supported images and videos, exposes six validated HSV bounds, and presents
 synchronized original, binary-mask, and segmented-result views. Video opens paused at
 frame 0 and supports play, pause, end, restart and replacement. Complete current masks and
 segmented results can be saved as source-resolution PNG files, including one captured video frame.
+File, decode, parameter and write failures preserve the last valid session and report the failed
+operation, affected item, cause category, preserved state and corrective action.
 
 See [stage boundaries](docs/implementation-stages.md) and
-[verification results](docs/verification.md). Implementation stops before Phase 6.
+[verification results](docs/verification.md). Implementation stops before Phase 7.
 
 ## Install (Windows PowerShell)
 
