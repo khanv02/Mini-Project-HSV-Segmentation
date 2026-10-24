@@ -3,13 +3,12 @@
 Academic desktop application for selecting colored objects using six HSV bounds.
 The implementation separates pure processing, file I/O, session coordination and GUI.
 
-Current milestone: **Phase 2 complete — shared foundation**. Package setup,
-immutable media/threshold/result models, typed errors and independent reference
-fixtures are available. The segmentation algorithm and desktop window will be
-implemented in Phase 3; the launch command below is not available yet.
+Current milestone: **Phase 3 complete — working still-image MVP**. The application
+opens supported images, exposes six validated HSV bounds, and presents synchronized
+original, binary-mask, and segmented-result views. Video begins in Phase 4.
 
 See [stage boundaries](docs/implementation-stages.md) and
-[verification results](docs/verification.md). Implementation stops before Phase 3.
+[verification results](docs/verification.md). Implementation stops before Phase 4.
 
 ## Install (Windows PowerShell)
 
@@ -32,7 +31,7 @@ To confirm the installed skeleton:
 .\.venv\Scripts\python.exe -c "import hsv_segmentation; import hsv_segmentation.processing; import hsv_segmentation.io; import hsv_segmentation.application; import hsv_segmentation.gui; print(hsv_segmentation.__version__)"
 ```
 
-Once Phase 3 is complete, launch with:
+Launch the still-image application with:
 
 ```powershell
 .\.venv\Scripts\python.exe -m hsv_segmentation
@@ -44,9 +43,10 @@ Once Phase 3 is complete, launch with:
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-Phase 2 has 60 passing foundation checks for data validation, snapshot ownership,
-error context and analytical reference data. Actual algorithm tests begin in
-Phase 3. The initial empty collection at Phase 1 was a setup checkpoint only.
+Phases 1–3 have 137 passing checks. They cover shared contracts, analytical and
+independent HSV references, exact threshold boundaries, extraction, supported image
+normalization, session preservation, GUI structure, rapid-edit coalescing, and stale
+result rejection. Tests create their own small images; no external dataset is needed.
 
 Shared contracts live in `src/hsv_segmentation/models.py` and `errors.py`.
 `tests/fixtures/color_cases.py` supplies 12 hand-derived colors, 11 interval

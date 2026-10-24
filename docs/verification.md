@@ -87,3 +87,80 @@ Conversion-reference tolerances are circular hue error <=1e-10 degrees and S/V a
 they do not establish correctness of an unimplemented production conversion algorithm.
 
 T005-T007 are complete. Stop before T008; GUI and algorithm acceptance remain unexecuted.
+
+## Phase 3: Still-Image MVP
+
+Scope: T008-T021 only. Video, saving/export, the 10-image experiment collection and
+final performance/human acceptance remain later phases.
+
+### Processing implementation and tests
+
+Tests were added before the corresponding modules. The first processing run failed
+collection with `ModuleNotFoundError` for `processing.color` and
+`processing.segmentation`, demonstrating that the tests exercised missing behavior.
+The completed pure processing layer now provides:
+
+- vectorized NumPy float64 RGB-to-HSV conversion using guarded max/min/delta equations;
+- exact validation of the six integer bounds without rounding, clamping or swapping;
+- inclusive ordered and wrapped-hue mask generation with uint8 values 0/255; and
+- extraction that retains selected source RGB exactly and blacks excluded pixels.
+
+The 58 new processing checks cover 12 analytical colors, a deterministic 16x16
+`colorsys` oracle, continuous hue near 360 degrees, exact/nextafter boundaries,
+equal and wrapped intervals, full/no selection, invalid arrays and bounds, channel
+order, size limits, output ownership and source immutability. Processing imports no
+GUI or file adapter.
+
+### Still-image application
+
+The Pillow adapter fully decodes PNG/JPEG/BMP candidates before session commit,
+normalizes supported 8-bit L/LA/RGB/RGBA/P modes to RGB, replicates grayscale,
+ignores alpha without compositing, hashes source bytes and enforces the 12,000,000
+pixel policy. Failed and cancelled candidates preserve the previous session.
+
+The Tk application is available through `python -m hsv_segmentation`. It separates
+File Input, HSV Parameters and Result Visualization, with labeled Original, Binary
+Mask and Segmented Result views. Preview fitting preserves aspect ratio and never
+resizes processing data. Six spinbox/text controls show units and ranges, explain
+hue wrapping, debounce valid changes by 75 ms and keep invalid text out of active
+settings.
+
+A single-worker coordinator retains one active and one replaceable pending request.
+Plain completions are polled on the Tk thread; source, parameter and request revisions
+discard stale work. The integration walkthrough created its own temporary color PNG,
+opened it asynchronously, issued three rapid threshold revisions and verified that
+the session and both output views matched only the final thresholds. It also verified
+clean controller shutdown and unchanged source-file bytes. No external image dataset
+is required for this phase.
+
+### Recorded checks - 2026-10-24
+
+Initial red checks:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/unit/test_color_conversion.py tests/unit/test_segmentation.py -q
+.\.venv\Scripts\python.exe -m pytest tests/integration/test_image_input.py -q
+.\.venv\Scripts\python.exe -m pytest tests/integration/test_image_session.py -q
+```
+
+The processing and integration tests initially failed because their target modules
+did not exist. After implementation, the final project checkpoint was:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m compileall -q src tests
+```
+
+Result: **137 passed in 2.71 seconds**; dependency check reported no broken
+requirements; all source and test modules compiled successfully. Of the 137 checks,
+60 are the Phase 2 foundation suite, 58 cover the processing contract, and 19 cover
+image input/session/GUI integration.
+
+A live launch exposed a Windows Tk window titled `HSV Color Segmentation` to the
+accessibility API. Automated visual control was stopped when concurrent user input
+was detected, as required by the UI automation safety policy; no personal image was
+opened. The deterministic hidden-Tk integration walkthrough remains the recorded
+functional GUI evidence for this phase.
+
+T008-T021 are complete. Stop before T022; no video implementation has started.

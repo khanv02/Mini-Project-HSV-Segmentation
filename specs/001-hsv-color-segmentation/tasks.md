@@ -1,17 +1,17 @@
-﻿# Tasks: HSV Color Segmentation
+# Tasks: HSV Color Segmentation
 
 **Input**: `specs/001-hsv-color-segmentation/spec.md`, the current `plan.md`, and
 `.specify/memory/constitution.md`.
 
 **Planning status**: Design completed on 2026-10-24 in `plan.md`, `research.md`,
 `data-model.md`, `contracts/` and `quickstart.md`. T001 is complete at design level.
-Phases 1 and 2 (T001-T007) are complete. The remaining 43 tasks are unimplemented.
-Setup checks and 60 foundation tests have passed; algorithm and GUI acceptance remain pending.
+Phases 1 through 3 (T001-T021) are complete. The remaining 29 tasks are unimplemented.
+Setup, foundation, processing and still-image MVP checks have passed; video and later work remain pending.
 
 **Execution policy (user instruction)**: Implement and verify one phase at a time,
 then stop and report before starting the next phase. See
 `docs/implementation-stages.md` for the eight stage boundaries. The current
-authorized increment is Phase 2 (T005–T007); it is complete. Stop before T008.
+authorized increment is Phase 3 (T008–T021); it is complete. Stop before T022.
 
 **Tests**: Required by FR-017, the constitution, and the user's requested unit-test phase.
 
@@ -79,26 +79,26 @@ export, or experiment features.
 
 Write the relevant tests first and observe meaningful failures before implementation.
 
-- [ ] T008 [P] [US1] Add conversion/input-contract tests in `tests/unit/test_color_conversion.py`; **Depends**: T006, T007; **Done**: hand-derived and independent colorsys cases verify float64 degree/percentage results within absolute tolerance 1e-10 (relative tolerance zero), neutral hue=0, channel order, invalid shape/type, size limits and source immutability, and fail meaningfully before conversion exists.
-- [ ] T009 [P] [US1] Add threshold/extraction tests in `tests/unit/test_segmentation.py`; **Depends**: T006, T007; **Done**: direct HSV fixtures and adjacent nextafter values verify inclusive/equal bounds, hue wraparound, all/none selection, default [0,360] including H>359, rejection of bool/fractional/nonfinite bounds, exact 0/255 masks, shape/type mismatches, retained RGB and no mutation.
-- [ ] T010 [US1] Implement vectorized NumPy float64 RGB-to-HSV conversion in `src/hsv_segmentation/processing/color.py`; **Depends**: T008; **Done**: all conversion tests pass against `specs/001-hsv-color-segmentation/contracts/processing.md`, guarded max/min/delta equations preserve fractional values with neutral H=0, and processing imports neither GUI nor file I/O; OpenCV is reserved for video.
-- [ ] T011 [US1] Implement threshold validation in `src/hsv_segmentation/processing/thresholds.py`; **Depends**: T009, T010; **Done**: integer lower H 0..359, upper H 0..360, S/V 0..100 and ordered S/V are enforced; upper 360 stays an endpoint, reversed hue stays valid, bool/fractional/nonfinite/missing values are rejected, and no bound is silently rounded/clamped.
-- [ ] T012 [US1] Implement mask generation and extraction in `src/hsv_segmentation/processing/segmentation.py`; **Depends**: T010, T011; **Done**: every T009 test passes, selection intersects all three inclusive intervals, and results retain original resolution and selected RGB pixel values.
-- [ ] T013 [US1] Execute the processing unit suite and record commands and results in `docs/verification.md`; **Depends**: T012; **Done**: every core function has independent normal, boundary, and applicable invalid-input tests, all pass without starting a GUI, and any discrepancy is fixed before GUI integration.
+- [X] T008 [P] [US1] Add conversion/input-contract tests in `tests/unit/test_color_conversion.py`; **Depends**: T006, T007; **Done**: hand-derived and independent colorsys cases verify float64 degree/percentage results within absolute tolerance 1e-10 (relative tolerance zero), neutral hue=0, channel order, invalid shape/type, size limits and source immutability, and fail meaningfully before conversion exists.
+- [X] T009 [P] [US1] Add threshold/extraction tests in `tests/unit/test_segmentation.py`; **Depends**: T006, T007; **Done**: direct HSV fixtures and adjacent nextafter values verify inclusive/equal bounds, hue wraparound, all/none selection, default [0,360] including H>359, rejection of bool/fractional/nonfinite bounds, exact 0/255 masks, shape/type mismatches, retained RGB and no mutation.
+- [X] T010 [US1] Implement vectorized NumPy float64 RGB-to-HSV conversion in `src/hsv_segmentation/processing/color.py`; **Depends**: T008; **Done**: all conversion tests pass against `specs/001-hsv-color-segmentation/contracts/processing.md`, guarded max/min/delta equations preserve fractional values with neutral H=0, and processing imports neither GUI nor file I/O; OpenCV is reserved for video.
+- [X] T011 [US1] Implement threshold validation in `src/hsv_segmentation/processing/thresholds.py`; **Depends**: T009, T010; **Done**: integer lower H 0..359, upper H 0..360, S/V 0..100 and ordered S/V are enforced; upper 360 stays an endpoint, reversed hue stays valid, bool/fractional/nonfinite/missing values are rejected, and no bound is silently rounded/clamped.
+- [X] T012 [US1] Implement mask generation and extraction in `src/hsv_segmentation/processing/segmentation.py`; **Depends**: T010, T011; **Done**: every T009 test passes, selection intersects all three inclusive intervals, and results retain original resolution and selected RGB pixel values.
+- [X] T013 [US1] Execute the processing unit suite and record commands and results in `docs/verification.md`; **Depends**: T012; **Done**: every core function has independent normal, boundary, and applicable invalid-input tests, all pass without starting a GUI, and any discrepancy is fixed before GUI integration.
 
 ### GUI Layout and Image Display
 
-- [ ] T014 [P] [US1] Add image-load normalization tests in `tests/integration/test_image_input.py`; **Depends**: T013; **Done**: temporary PNG, JPEG, BMP, grayscale, and transparent inputs define expected RGB normalization and cancellation/failure preservation, with failing tests for missing behavior.
-- [ ] T015 [P] [US1] Build the named window and three labeled aspect-preserving views in `src/hsv_segmentation/gui/main_window.py` and `src/hsv_segmentation/gui/image_view.py`; **Depends**: T013; **Done**: the window separates input, parameter, and visualization sections and displays supplied original/mask/result arrays without resizing processing data.
-- [ ] T016 [US1] Implement image file reading in `src/hsv_segmentation/io/images.py`; **Depends**: T014; **Done**: PNG/JPEG/BMP decode to the processing RGB contract, grayscale replicates channels, alpha is ignored as specified, and temporary-file normalization tests pass.
-- [ ] T017 [US1] Implement image session coordination in `src/hsv_segmentation/application/session.py`; **Depends**: T015, T016; **Done**: first open uses (0,360,0,100,0,100), subsequent opens retain valid bounds, complete decoding/resource validation precedes commit, and failed/cancelled candidates preserve the prior session.
+- [X] T014 [P] [US1] Add image-load normalization tests in `tests/integration/test_image_input.py`; **Depends**: T013; **Done**: temporary PNG, JPEG, BMP, grayscale, and transparent inputs define expected RGB normalization and cancellation/failure preservation, with failing tests for missing behavior.
+- [X] T015 [P] [US1] Build the named window and three labeled aspect-preserving views in `src/hsv_segmentation/gui/main_window.py` and `src/hsv_segmentation/gui/image_view.py`; **Depends**: T013; **Done**: the window separates input, parameter, and visualization sections and displays supplied original/mask/result arrays without resizing processing data.
+- [X] T016 [US1] Implement image file reading in `src/hsv_segmentation/io/images.py`; **Depends**: T014; **Done**: PNG/JPEG/BMP decode to the processing RGB contract, grayscale replicates channels, alpha is ignored as specified, and temporary-file normalization tests pass.
+- [X] T017 [US1] Implement image session coordination in `src/hsv_segmentation/application/session.py`; **Depends**: T015, T016; **Done**: first open uses (0,360,0,100,0,100), subsequent opens retain valid bounds, complete decoding/resource validation precedes commit, and failed/cancelled candidates preserve the prior session.
 
 ### Interactive HSV Threshold Controls
 
-- [ ] T018 [US1] Add six synchronized numeric controls with range labels in `src/hsv_segmentation/gui/threshold_controls.py`; **Depends**: T017; **Done**: all six values are editable, allowed units/ranges and hue wraparound are explained, invalid input has specific feedback, and invalid edits never become active settings.
-- [ ] T019 [US1] Add revision-aware processing coordination in `src/hsv_segmentation/application/processing_worker.py`; **Depends**: T018; **Done**: valid edits trigger automatic recomputation, GUI updates occur on the GUI thread, rapid edits coalesce, obsolete results are discarded, and source/result/threshold revisions stay synchronized.
-- [ ] T020 [US1] Connect input actions, controls, session, worker, and display through `src/hsv_segmentation/gui/controller.py` and `src/hsv_segmentation/__main__.py`; **Depends**: T019; **Done**: `python -m hsv_segmentation` runs the image workflow, all three views agree, and closing the window releases work without freezing.
-- [ ] T021 [US1] Add session and stale-result regression checks in `tests/integration/test_image_session.py` and record the image demonstration in `docs/verification.md`; **Depends**: T020; **Done**: all US1 scenarios pass, final rapid-edit output matches final thresholds, file contents remain unchanged, and the application stays usable while processing.
+- [X] T018 [US1] Add six synchronized numeric controls with range labels in `src/hsv_segmentation/gui/threshold_controls.py`; **Depends**: T017; **Done**: all six values are editable, allowed units/ranges and hue wraparound are explained, invalid input has specific feedback, and invalid edits never become active settings.
+- [X] T019 [US1] Add revision-aware processing coordination in `src/hsv_segmentation/application/processing_worker.py`; **Depends**: T018; **Done**: valid edits trigger automatic recomputation, GUI updates occur on the GUI thread, rapid edits coalesce, obsolete results are discarded, and source/result/threshold revisions stay synchronized.
+- [X] T020 [US1] Connect input actions, controls, session, worker, and display through `src/hsv_segmentation/gui/controller.py` and `src/hsv_segmentation/__main__.py`; **Depends**: T019; **Done**: `python -m hsv_segmentation` runs the image workflow, all three views agree, and closing the window releases work without freezing.
+- [X] T021 [US1] Add session and stale-result regression checks in `tests/integration/test_image_session.py` and record the image demonstration in `docs/verification.md`; **Depends**: T020; **Done**: all US1 scenarios pass, final rapid-edit output matches final thresholds, file contents remain unchanged, and the application stays usable while processing.
 
 **Checkpoint**: Working MVP. Image segmentation, independent core tests, labeled comparison,
 and six interactive controls work before adding video or export.
@@ -299,7 +299,7 @@ not optional replacements for the image MVP.
 
 ## Notes
 
-- T001-T007 are complete (Phases 1 and 2). The remaining 43 tasks are unchecked; stop before T008.
+- T001-T021 are complete (Phases 1 through 3). The remaining 29 tasks are unchecked; stop before T022.
 - Counts: Setup 4; Foundation 3; US1 14; US3 6; US2 5; US5 4; US4 8; Polish 6.
 - The plan bootstrap T001 is complete; recheck artifact consistency before application implementation.
 - Research, data model, interface contracts and quickstart now define numeric behavior and field constraints;

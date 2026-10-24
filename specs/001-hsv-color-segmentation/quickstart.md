@@ -1,10 +1,9 @@
 ﻿# Quickstart and Validation: HSV Color Segmentation
 
-**Stage guide, 2026-10-24**: Phases 1 and 2 provide the package setup, shared models/errors
-and independent reference fixtures. The desktop application and algorithm test suite are
-not implemented at this milestone. Setup and 60 passing foundation checks are recorded in
-docs/verification.md. Application scenarios below apply to later phases; no functional
-segmentation tests or runtime performance measurements are claimed yet.
+**Stage guide, 2026-10-24**: Phases 1 through 3 provide the package setup, shared
+contracts, independently tested HSV processing, supported still-image loading, and the
+working image GUI. A total of 137 automated checks are recorded in docs/verification.md.
+Video, export, experiment evidence, and runtime performance measurements remain later phases.
 
 ## Prerequisites
 
