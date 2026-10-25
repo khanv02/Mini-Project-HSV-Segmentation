@@ -124,7 +124,7 @@ def environment_record() -> dict:
         "video_backend": "OpenCV FFMPEG (enabled in the locked Windows build)",
         "application_revision": revision,
         "working_tree_dirty": dirty,
-        "generation_command": ".\\.venv\\Scripts\\python.exe experiments\\generate_evidence.py",
+        "generation_command": "uv run python scripts/generate_experiment_evidence.py",
     }
 
 

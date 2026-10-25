@@ -10,7 +10,7 @@ seven files in `tests/fixtures/acceptance_media/`, the ten retained inputs and t
 directories from `experiments/manifest.json`, and writable temporary/output folders. Launch:
 
 ```powershell
-uv run --locked --extra test hsv-segmentation
+uv run hsv
 ```
 
 ## Timed walkthrough

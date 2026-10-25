@@ -5,7 +5,7 @@ and exact environment metadata. From the repository root, recreate evidence in a
 `experiments/runs/` directory with:
 
 ```powershell
-.\.venv\Scripts\python.exe experiments\generate_evidence.py
+uv run python scripts/generate_experiment_evidence.py
 ```
 
 The generator refuses to write when the runs directory is nonempty. This prevents existing

@@ -44,7 +44,7 @@ experiment collection exists; missing evidence must not be reported as a success
 ## Launch and Image MVP
 
 ```powershell
-uv run --locked --extra test hsv-segmentation
+uv run hsv
 ```
 
 1. Confirm the title and distinct file, threshold and visualization sections.
@@ -110,7 +110,7 @@ uv run --locked --extra test pytest tests/integration/test_experiment_reproducti
 Regenerate the deterministic evidence only when intentionally replacing the retained collection:
 
 ```powershell
-.\.venv\Scripts\python.exe experiments\generate_evidence.py
+uv run python scripts/generate_experiment_evidence.py
 ```
 
 The latter rewrites `experiments/runs/` and its manifest/report, so it is not required for an

@@ -310,7 +310,7 @@ bounded ordering while allowing that synchronous completion path.
 
 ### Published format set
 
-`tests/fixtures/generate_acceptance_media.py` generated and hashed FMT-001 through FMT-007 under
+`scripts/generate_acceptance_media.py` generated and hashed FMT-001 through FMT-007 under
 `tests/fixtures/acceptance_media/`. The inventory contains RGB PNG/JPEG/BMP, grayscale PNG, RGBA
 PNG, MJPG/AVI and mp4v/MP4. On this OpenCV 4.14.0 environment both three-frame videos decoded
 through FFMPEG; the reported FOURCC values were MJPG and FMP4. The committed manifest's seven
@@ -357,11 +357,11 @@ condition. No synthetic or unrelated pair is presented as real evidence. T037-T0
 ### Recorded checks - 2026-10-24
 
 ```powershell
-.\.venv\Scripts\python.exe experiments\generate_evidence.py
+uv run python scripts/generate_experiment_evidence.py
 .\.venv\Scripts\python.exe -m pytest tests\integration\test_experiment_records.py tests\integration\test_experiment_reproduction.py -q
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m pip check
-.\.venv\Scripts\python.exe -m compileall -q src tests experiments\generate_evidence.py
+.\.venv\Scripts\python.exe -m compileall -q src tests scripts
 ```
 
 Evidence generation published **20 runs for 10 distinct images**. Focused result: **10 passed in
@@ -386,7 +386,7 @@ Automated checkpoint on 2026-10-25:
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m pip check
-.\.venv\Scripts\python.exe -m compileall -q src tests experiments\benchmark_performance.py experiments\generate_evidence.py
+.\.venv\Scripts\python.exe -m compileall -q src tests scripts
 ```
 
 Result: **195 passed in 8.97 seconds**, no broken requirements, and successful compilation.
@@ -428,3 +428,19 @@ machine. `PENDING` is deliberately not a pass.
 T049 remains incomplete because SC-005's second-student replay and SC-006's independent timed
 workflow require real participants. T050 remains dependency-blocked by T049. No checkbox is
 advanced for either task. Current ledger: **48/50 complete**.
+
+## Repository refactor checkpoint
+
+On 2026-10-25, maintenance utilities were consolidated under `scripts/`, the ignored source
+dataset and draft experiment backup were removed after confirming the retained manifest was
+self-contained, and ten experiment inputs not referenced by the manifest were deleted. The
+official evidence remains exactly 10 inputs and 20 run directories with no missing manifest path.
+
+The post-refactor checkpoint used the locked dependencies on CPython 3.11 and produced:
+
+- **195 passed in 8.16 seconds**;
+- successful bytecode compilation for `src`, `tests`, and `scripts`;
+- 31 repository JSON files parsed successfully; and
+- a valid `uv.lock` plus importable `hsv` entrypoint.
+
+This structural cleanup did not change T049/T050 acceptance status.

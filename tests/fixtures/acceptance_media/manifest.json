@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generator": "tests/fixtures/generate_acceptance_media.py",
+  "generator": "scripts/generate_acceptance_media.py",
   "opencv_version": "4.14.0",
   "cases": [
     {
@@ -8,7 +8,7 @@
       "path": "tests/fixtures/acceptance_media/rgb.png",
       "representation": "8-bit RGB PNG",
       "sha256": "cae9904ec49815661a5ffdfaaa4885549e472413df6fe2eecbc43a4e7e09419b",
-      "provenance": "Generated from literal analytical arrays by tests/fixtures/generate_acceptance_media.py",
+      "provenance": "Generated from literal analytical arrays by scripts/generate_acceptance_media.py",
       "mode": "RGB",
       "width": 4,
       "height": 3
@@ -18,7 +18,7 @@
       "path": "tests/fixtures/acceptance_media/rgb.jpg",
       "representation": "8-bit RGB JPEG",
       "sha256": "e10ad901d6896ed384bd13aa4b4102e9ba0686f3b1e9bd08f127f473244ccd89",
-      "provenance": "Generated from literal analytical arrays by tests/fixtures/generate_acceptance_media.py",
+      "provenance": "Generated from literal analytical arrays by scripts/generate_acceptance_media.py",
       "mode": "RGB",
       "width": 4,
       "height": 3
@@ -28,7 +28,7 @@
       "path": "tests/fixtures/acceptance_media/rgb.bmp",
       "representation": "8-bit RGB BMP",
       "sha256": "7e86d1cd4d4f8fc88d4f27f3a156d6bc603ef04ca7f5878b74d5689d64cc5bbf",
-      "provenance": "Generated from literal analytical arrays by tests/fixtures/generate_acceptance_media.py",
+      "provenance": "Generated from literal analytical arrays by scripts/generate_acceptance_media.py",
       "mode": "RGB",
       "width": 4,
       "height": 3
@@ -38,7 +38,7 @@
       "path": "tests/fixtures/acceptance_media/grayscale.png",
       "representation": "8-bit grayscale PNG",
       "sha256": "818b86a5335dc036f3194750a412be330be129a54f492c3decd6795a9f066dd1",
-      "provenance": "Generated from literal analytical arrays by tests/fixtures/generate_acceptance_media.py",
+      "provenance": "Generated from literal analytical arrays by scripts/generate_acceptance_media.py",
       "mode": "L",
       "width": 4,
       "height": 2
@@ -48,7 +48,7 @@
       "path": "tests/fixtures/acceptance_media/rgba.png",
       "representation": "8-bit RGBA PNG",
       "sha256": "caac20dbb42db0047026bd522f6367e8050772f8e80096f59800088a9eebd341",
-      "provenance": "Generated from literal analytical arrays by tests/fixtures/generate_acceptance_media.py",
+      "provenance": "Generated from literal analytical arrays by scripts/generate_acceptance_media.py",
       "mode": "RGBA",
       "width": 4,
       "height": 3
@@ -58,7 +58,7 @@
       "path": "tests/fixtures/acceptance_media/mjpg.avi",
       "representation": "AVI containing MJPG video",
       "sha256": "90e65d64267edb4596ce3cf6ee26f951ad0627260792455271c2115f12a40bf2",
-      "provenance": "Generated from literal analytical arrays by tests/fixtures/generate_acceptance_media.py",
+      "provenance": "Generated from literal analytical arrays by scripts/generate_acceptance_media.py",
       "backend": "FFMPEG",
       "reported_fourcc": "MJPG",
       "reported_frame_count": 3,
@@ -71,7 +71,7 @@
       "path": "tests/fixtures/acceptance_media/mp4v.mp4",
       "representation": "MP4 containing mp4v video",
       "sha256": "ef31c3451038df69d0701b4b4cf803021291e5c2e7fd0a97f0968ef6e51b8621",
-      "provenance": "Generated from literal analytical arrays by tests/fixtures/generate_acceptance_media.py",
+      "provenance": "Generated from literal analytical arrays by scripts/generate_acceptance_media.py",
       "backend": "FFMPEG",
       "reported_fourcc": "FMP4",
       "reported_frame_count": 3,

@@ -49,7 +49,7 @@ then perform the subsequent valid action without restarting the application.
 Generate or refresh the inventory with:
 
 ```powershell
-.\.venv\Scripts\python.exe tests\fixtures\generate_acceptance_media.py
+uv run python scripts/generate_acceptance_media.py
 ```
 
 The generator uses literal analytical arrays and writes `manifest.json` containing full paths,

@@ -105,7 +105,7 @@ def generate(output_dir: Path) -> dict[str, object]:
             "path": path.relative_to(output_dir.parents[2]).as_posix(),
             "representation": representation,
             "sha256": _digest(path),
-            "provenance": "Generated from literal analytical arrays by tests/fixtures/generate_acceptance_media.py",
+            "provenance": "Generated from literal analytical arrays by scripts/generate_acceptance_media.py",
         }
         if path.suffix.lower() in {".avi", ".mp4"}:
             record.update(_probe_video(path))
@@ -115,7 +115,7 @@ def generate(output_dir: Path) -> dict[str, object]:
         records.append(record)
     manifest = {
         "schema_version": 1,
-        "generator": "tests/fixtures/generate_acceptance_media.py",
+        "generator": "scripts/generate_acceptance_media.py",
         "opencv_version": cv2.__version__,
         "cases": records,
     }
@@ -126,6 +126,6 @@ def generate(output_dir: Path) -> dict[str, object]:
 
 
 if __name__ == "__main__":
-    repository_root = Path(__file__).resolve().parents[2]
+    repository_root = Path(__file__).resolve().parents[1]
     destination = repository_root / "tests" / "fixtures" / "acceptance_media"
     print(json.dumps(generate(destination), indent=2))

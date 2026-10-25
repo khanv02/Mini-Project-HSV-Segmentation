@@ -12,7 +12,7 @@ Stepping 2 processor, CPython 3.11.9, Tcl/Tk 8.6. Package versions are retained 
 
 ## Input and procedure
 
-`benchmark_performance.py` deterministically creates
+`scripts/benchmark_gui_performance.py` deterministically creates
 `performance_input_1920x1080.png` (1920x1080 RGB, SHA-256
 `723f977d11740c7086725a5272ed8f895db33ee6c14a0e37f764839798d69edc`). It then launches
 the real Tk application controller at 1280x720 and opens that image through the normal
@@ -30,12 +30,13 @@ H 153..183 degrees, S 42..96%, and V 36..100%, and the final output matched thos
 Run from the repository root:
 
 ```powershell
-.\.venv\Scripts\python.exe experiments\benchmark_performance.py
+uv run python scripts/benchmark_gui_performance.py
 ```
 
 Machine-readable individual timings and metadata are retained in
 `performance_results.json`. The earlier pre-optimization run achieved only 13/100 with a
 1,399.77 ms median. The accepted run reuses the immutable source's HSV representation while
 only thresholds change and avoids rebuilding the unchanged Original preview. Cache identity
-includes both session and video frame, so source replacement or frame advancement recomputes HSV.
+includes session, video frame and source hash, so source replacement or frame advancement
+recomputes HSV safely.
 

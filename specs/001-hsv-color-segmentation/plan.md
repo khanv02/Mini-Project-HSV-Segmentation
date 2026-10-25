@@ -157,6 +157,10 @@ tests/
   fixtures/color_cases.py
   unit/
   integration/
+scripts/
+  generate_acceptance_media.py
+  generate_experiment_evidence.py
+  benchmark_gui_performance.py
 docs/
   algorithm.md
   acceptance.md

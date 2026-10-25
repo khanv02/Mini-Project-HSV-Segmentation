@@ -1,93 +1,143 @@
 # HSV Color Segmentation
 
-Academic desktop application for selecting colored objects using six HSV bounds.
-The implementation separates pure processing, file I/O, session coordination and GUI.
+`Python 3.11` · `Tkinter/ttk` · `NumPy` · `Pillow` · `OpenCV` · `pytest` · `uv`
 
-Current milestone: **Phase 8 automated work complete; independent acceptance pending**. The application
-opens supported images and videos, exposes six validated HSV bounds, and presents
-synchronized original, binary-mask, and segmented-result views. Video opens paused at
-frame 0 and supports play, pause, end, restart and replacement. Complete current masks and
-segmented results can be saved as source-resolution PNG files, including one captured video frame.
-File, decode, parameter and write failures preserve the last valid session and report the failed
-operation, affected item, cause category, preserved state and corrective action. It can also
-record immutable experiments with notes, UUID run folders and source/artifact/environment hashes.
-Ten retained inputs have two settings each; three runs replay with exact decoded pixels.
+| Công nghệ | Vai trò |
+|---|---|
+| **Python 3.11** | Ngôn ngữ và môi trường chạy chính |
+| **Tkinter / ttk** | Giao diện desktop native, không cần web server |
+| **NumPy** | Chuyển đổi RGB → HSV và xử lý ma trận ảnh vector hóa |
+| **Pillow** | Đọc ảnh, hiển thị preview và xuất PNG lossless |
+| **OpenCV** | Giải mã tuần tự video MP4/AVI |
+| **pytest** | Kiểm thử unit, integration và tái lập experiment |
+| **uv** | Quản lý môi trường, dependency và lệnh chạy |
 
-See [algorithm details](docs/algorithm.md), [demonstration script](docs/demo.md),
-[stage boundaries](docs/implementation-stages.md), and [verification results](docs/verification.md).
-The experiment set includes a fixed real MIT scene under directional lights 0 and 24, with
-CC-BY provenance and hashes recorded. Final completion remains blocked only by the two genuine
-independent-student checks; they are not represented as automated passes.
+Ứng dụng desktop phục vụ học tập và trình diễn phân đoạn màu bằng sáu ngưỡng HSV.
+Người dùng có thể mở ảnh hoặc video, điều chỉnh khoảng H/S/V, quan sát đồng thời ảnh gốc,
+mask nhị phân và kết quả tách màu, sau đó lưu ảnh hoặc ghi lại experiment có thể tái lập.
 
-## Install (Windows PowerShell)
+## Tính năng chính
 
-Install Windows CPython 3.11 with Tcl/Tk and `uv`, then run from this repository:
+- Đọc ảnh PNG, JPEG, BMP; chuẩn hóa ảnh xám, palette và ảnh có alpha về RGB.
+- Đọc tuần tự video MP4/AVI, hỗ trợ phát, tạm dừng, kết thúc và phát lại.
+- Sáu điều khiển HSV theo đơn vị độ/phần trăm, so sánh biên bao hàm và hỗ trợ hue vòng qua 0°.
+- Hiển thị đồng bộ Original, Binary Mask và Segmented Result.
+- Xuất mask và ảnh kết quả PNG ở đúng độ phân giải nguồn.
+- Ghi experiment theo UUID cùng threshold, mô tả ánh sáng, nhận xét và SHA-256.
+- Xử lý nền có revision để loại bỏ kết quả cũ khi người dùng chỉnh nhanh.
+- Hoạt động offline; không cần tài khoản, database, dịch vụ mạng hay project khác.
+
+## Trạng thái
+
+- **195/195** kiểm thử tự động đã đạt ở checkpoint gần nhất.
+- Benchmark GUI Full HD đạt **100/100** lần cập nhật dưới một giây trên máy đã ghi nhận.
+- Hoàn thành **48/50** task.
+- Còn T049 (hai kiểm tra nghiệm thu độc lập với người thật) và T050 (rà soát cuối sau T049).
+
+Chi tiết nằm trong [kết quả xác minh](docs/verification.md),
+[thuật toán](docs/algorithm.md) và [kịch bản demo](docs/demo.md).
+
+## Cấu trúc dự án
+
+```text
+HSV Segmentation/
+├── src/hsv_segmentation/       # Mã nguồn ứng dụng
+│   ├── processing/             # Thuật toán RGB/HSV thuần, không phụ thuộc GUI/I/O
+│   ├── io/                     # Đọc ảnh/video, xuất file và experiment
+│   ├── application/            # Session, playback và background worker
+│   └── gui/                    # Cửa sổ, widget và controller Tk
+├── tests/
+│   ├── unit/                   # Kiểm thử thuật toán và model độc lập
+│   ├── integration/            # Kiểm thử workflow ảnh/video/export/recovery
+│   └── fixtures/               # Dữ liệu kiểm thử nhỏ, tái tạo được
+├── scripts/                    # Công cụ sinh fixture, experiment và benchmark
+├── experiments/                # Dataset demo đã tuyển chọn và bằng chứng thực nghiệm
+├── docs/                       # Thuật toán, nghiệm thu, demo và kết quả xác minh
+├── specs/                      # Specification, plan, contract và task ledger
+├── pyproject.toml              # Metadata, dependency và entrypoint
+└── uv.lock                     # Dependency lock chính thức
+```
+
+## Cài đặt
+
+Yêu cầu Windows 10/11 x64, Python 3.11 có Tcl/Tk và `uv`.
 
 ```powershell
 uv sync --locked --extra test
 ```
 
-`uv.lock` pins project dependencies. The first sync needs network access or cached
-wheels; normal application use is offline. `requirements-lock.txt` remains as the
-Phase 1 pip environment record.
+Lần đồng bộ đầu tiên cần Internet hoặc cache package. Sau khi cài đặt, toàn bộ workflow chạy
+offline. `uv.lock` là lockfile chính; `requirements-lock.txt` được giữ làm bản ghi môi trường
+lịch sử của giai đoạn thiết lập.
 
-To confirm the installed skeleton:
-
-```powershell
-.\.venv\Scripts\python.exe -c "import hsv_segmentation; import hsv_segmentation.processing; import hsv_segmentation.io; import hsv_segmentation.application; import hsv_segmentation.gui; print(hsv_segmentation.__version__)"
-```
-
-Launch the application with:
+## Chạy ứng dụng
 
 ```powershell
-uv run --locked --extra test hsv-segmentation
+uv run hsv
 ```
 
-Normal use is offline and has no service, account, database, Image Restoration, or network
-dependency. Supported still formats are 8-bit PNG/JPEG/BMP (including normalized grayscale,
-alpha and palette forms). Video input is sequential local MP4/AVI decoding through OpenCV;
-the published Windows fixtures use mp4v/MP4 and MJPG/AVI through FFMPEG. Codec availability
-outside the recorded environment depends on the local OpenCV build.
-
-Use the six controls as H lower/upper in degrees and S/V lower/upper in percent. Bounds are
-inclusive; lower H greater than upper H wraps through zero. Save Mask and Save Result publish
-source-resolution lossless PNGs. Record Experiment requires a current result plus lighting and
-observation text and creates a hashed UUID run directory.
-
-## Test
+Alias tương thích dài hơn vẫn được giữ:
 
 ```powershell
-uv run --locked --extra test pytest
+uv run hsv-segmentation
 ```
 
-The last full automated checkpoint has 195 passing checks. They cover shared contracts, analytical and
-independent HSV references, exact threshold boundaries, extraction, supported image
-normalization, session preservation, GUI structure, rapid-edit coalescing, stale-result
-rejection, video decoding/lifecycle, playback state, error recovery, experiment publication,
-and exact replay. Retained Phase 7 evidence uses the ten files in `experiments/manifest.json`.
+## Cách sử dụng nhanh
 
-Shared contracts live in `src/hsv_segmentation/models.py` and `errors.py`.
-`tests/fixtures/color_cases.py` supplies 12 hand-derived colors, 11 interval
-reference cases and a seeded `colorsys` sample without importing production code.
+1. Chọn **Open Image…** hoặc **Open Video…**.
+2. Điều chỉnh Lower/Upper H, S và V. H dùng độ; S/V dùng phần trăm.
+3. Nếu Lower H lớn hơn Upper H, khoảng hue sẽ vòng qua 0° (ví dụ `350..10`).
+4. So sánh ba khung Original, Binary Mask và Segmented Result.
+5. Dùng **Save Mask…** hoặc **Save Result…** để xuất PNG lossless.
+6. Nhập mô tả ánh sáng/nhận xét rồi dùng **Record Experiment** khi cần lưu bằng chứng.
 
-See `specs/001-hsv-color-segmentation/tasks.md` for the eight phase boundaries
-and `specs/001-hsv-color-segmentation/quickstart.md` for copyable operation and replay steps.
+## Kiểm thử
 
-The Full-HD GUI benchmark is reproducible with:
+Chạy toàn bộ test:
 
 ```powershell
-.\.venv\Scripts\python.exe experiments\benchmark_performance.py
+uv run --locked --extra test pytest -q
 ```
 
-It retained 100/100 updates within one second on the documented machine. HSV segmentation is
-not object recognition: similar colors, shadows, highlights, white balance and low saturation
-can affect selection. No denoising, learned thresholds, tracking, audio or full-video encoding
-is provided. See `docs/algorithm.md` for the precise limitations.
+Chạy riêng từng lớp:
 
-The curated `experiments/` inputs, 20 UUID runs and evidence are retained in version control;
-local environments, downloaded tools, caches and build output are ignored.
+```powershell
+uv run --locked --extra test pytest tests/unit -q
+uv run --locked --extra test pytest tests/integration -q
+```
 
-To finish acceptance, a second student must genuinely replay three retained runs and a student
-must independently complete the documented image/edit/compare/save flow within five minutes.
-Record those results in `experiments/reproduction.md` and `docs/verification.md`; until then T049
-and the dependent final review T050 remain open.
+## Script hỗ trợ
+
+```powershell
+# Tạo lại bộ fixture định dạng nhỏ
+uv run python scripts/generate_acceptance_media.py
+
+# Tạo lại 20 experiment (chỉ chạy khi muốn thay bộ bằng chứng hiện tại)
+uv run python scripts/generate_experiment_evidence.py
+
+# Đo 100 lần cập nhật GUI trên ảnh 1920×1080
+uv run python scripts/benchmark_gui_performance.py
+```
+
+Script experiment từ chối ghi đè thư mục `experiments/runs/` không rỗng nhằm bảo vệ bằng chứng
+đang giữ. Xem [hướng dẫn experiment](experiments/README.md) trước khi tái tạo.
+
+## Thuật toán và giới hạn
+
+RGB được chuẩn hóa sang `float64`, chuyển sang H trong `[0,360)` và S/V trong `[0,100]`.
+Mask dùng so sánh bao hàm, có giá trị đúng `0` hoặc `255`; pixel được chọn giữ nguyên RGB,
+pixel còn lại chuyển thành đen. Công thức đầy đủ nằm tại [docs/algorithm.md](docs/algorithm.md).
+
+HSV thresholding không phải nhận dạng vật thể. Bóng, vùng chói, cân bằng trắng, nén ảnh,
+phản xạ và màu có saturation thấp có thể làm kết quả thay đổi. Phạm vi hiện tại không gồm
+tracking, audio, camera trực tiếp, tìm kiếm frame hay mã hóa toàn bộ video đầu ra.
+
+## Dữ liệu và khả năng tái lập
+
+`experiments/manifest.json` quản lý 10 ảnh có provenance và hash, gồm tám ảnh SimpleCube++
+CC BY 4.0 và hai ảnh cùng một cảnh MIT dưới hai hướng chiếu sáng thật (CC-BY). Hai threshold
+được lưu cho mỗi ảnh, tạo thành 20 run hoàn chỉnh. Không sử dụng các ảnh ngoài manifest làm
+bằng chứng chính thức.
+
+Việc nghiệm thu cuối cần một sinh viên thứ hai tái lập ba run và một sinh viên hoàn thành luồng
+mở ảnh → chỉnh HSV → so sánh → lưu kết quả trong tối đa năm phút mà không được hỗ trợ.

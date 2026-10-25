@@ -7,6 +7,8 @@ from pathlib import Path
 from queue import Empty, SimpleQueue
 from threading import RLock
 
+import numpy as np
+
 from ..io.images import load_image
 from ..models import HSVThresholdSet, ProcessingRequest, SegmentationResult
 from ..processing.color import rgb_to_hsv
@@ -40,15 +42,18 @@ class _CachedProcessor:
     """Reuse HSV while only thresholds change for one immutable source snapshot."""
 
     def __init__(self):
-        self._source_identity: tuple[str, int | None] | None = None
-        self._hsv = None
+        self._source_identity: tuple[str, int | None, str] | None = None
+        self._hsv: np.ndarray | None = None
 
     def __call__(self, request: ProcessingRequest) -> SegmentationResult:
-        identity = (request.session_id, request.frame_index)
+        identity = (request.session_id, request.frame_index, request.source.source_sha256)
         if identity != self._source_identity:
             self._hsv = rgb_to_hsv(request.rgb)
             self._source_identity = identity
-        mask = generate_mask(self._hsv, request.thresholds)
+        hsv = self._hsv
+        if hsv is None:  # Defensive guard for static analysis and future cache changes.
+            raise RuntimeError("HSV cache was not initialized")
+        mask = generate_mask(hsv, request.thresholds)
         return SegmentationResult(
             source=request.source,
             thresholds=request.thresholds,
