@@ -30,6 +30,7 @@ junit.xml
 # Local AI/codebase snapshots and one-off README generator input.
 repomix-output.*
 template.md
+PROJECT_GUIDE.local.md
 
 # Locally installed design skills are development tools, not application source.
 .agents/skills/banner-design/
