@@ -3,9 +3,16 @@
 from pathlib import Path
 
 from ..io.images import load_image
-from ..models import HSVHistogram, HSVThresholdSet, InputMedia, SegmentationResult
+from ..models import (
+    HSVHistogram,
+    HSVThresholdSet,
+    InputMedia,
+    MorphologySettings,
+    SegmentationResult,
+)
 from ..processing.color import rgb_to_hsv
 from ..processing.histogram import compute_hsv_histogram
+from ..processing.morphology import apply_morphology
 from ..processing.segmentation import apply_mask, generate_mask
 from ..processing.thresholds import validate_thresholds
 
@@ -17,11 +24,14 @@ def process_source(
     *,
     hsv=None,
     histogram: HSVHistogram | None = None,
+    morphology: MorphologySettings | None = None,
 ) -> SegmentationResult:
     """Create one immutable result for an already decoded source snapshot."""
     hsv_array = rgb_to_hsv(source.rgb) if hsv is None else hsv
     histogram = histogram or compute_hsv_histogram(hsv_array)
-    mask = generate_mask(hsv_array, thresholds)
+    morphology = morphology or MorphologySettings()
+    original_mask = generate_mask(hsv_array, thresholds)
+    mask = apply_morphology(original_mask, morphology)
     segmented_rgb = apply_mask(source.rgb, mask)
     return SegmentationResult(
         source=source,
@@ -30,14 +40,21 @@ def process_source(
         segmented_rgb=segmented_rgb,
         request_revision=request_revision,
         histogram=histogram,
+        morphology=morphology,
+        original_mask=original_mask,
     )
 
 
 class ImageSession:
     """Own the last successfully committed source, thresholds and result."""
 
-    def __init__(self, thresholds: HSVThresholdSet | None = None):
+    def __init__(
+        self,
+        thresholds: HSVThresholdSet | None = None,
+        morphology: MorphologySettings | None = None,
+    ):
         self._thresholds = thresholds or HSVThresholdSet()
+        self._morphology = morphology or MorphologySettings()
         self._source: InputMedia | None = None
         self._result: SegmentationResult | None = None
         self._request_revision = 0
@@ -49,6 +66,10 @@ class ImageSession:
     @property
     def source(self) -> InputMedia | None:
         return self._source
+
+    @property
+    def morphology(self) -> MorphologySettings:
+        return self._morphology
 
     @property
     def result(self) -> SegmentationResult | None:
@@ -76,7 +97,9 @@ class ImageSession:
             return self._result
         candidate = load_image(path)
         next_revision = self._request_revision + 1
-        candidate_result = process_source(candidate, self._thresholds, next_revision)
+        candidate_result = process_source(
+            candidate, self._thresholds, next_revision, morphology=self._morphology
+        )
         self._source = candidate
         self._result = candidate_result
         self._request_revision = next_revision
@@ -87,7 +110,9 @@ class ImageSession:
         validated = validate_thresholds(thresholds)
         next_revision = self._request_revision + 1
         candidate_result = (
-            process_source(self._source, validated, next_revision)
+            process_source(
+                self._source, validated, next_revision, morphology=self._morphology
+            )
             if self._source is not None else None
         )
         self._thresholds = validated
@@ -99,10 +124,16 @@ class ImageSession:
         """Accept controls immediately while leaving the old result pending."""
         self._thresholds = validate_thresholds(thresholds)
 
+    def accept_morphology(self, morphology: MorphologySettings) -> None:
+        if not isinstance(morphology, MorphologySettings):
+            raise ValidationError("morphology", "must be MorphologySettings")
+        self._morphology = morphology
+
     def commit_candidate(self, result: SegmentationResult) -> None:
         """Commit a fully decoded and processed replacement image."""
         self._source = result.source
         self._thresholds = result.thresholds
+        self._morphology = result.morphology
         self._result = result
         self._request_revision = max(self._request_revision, result.request_revision)
 
@@ -111,6 +142,8 @@ class ImageSession:
         if self._source is None or result.session_id != self._source.session_id:
             return False
         if result.parameter_revision != self._thresholds.parameter_revision:
+            return False
+        if result.morphology != self._morphology:
             return False
         if result.request_revision < self._request_revision:
             return False
@@ -125,6 +158,8 @@ class ImageSession:
         if result.session_id != self._source.session_id:
             return False
         if result.parameter_revision != self._thresholds.parameter_revision:
+            return False
+        if result.morphology != self._morphology:
             return False
         if result.request_revision < self._request_revision:
             return False

@@ -60,6 +60,19 @@ uv run hsv
 Expected numeric behavior is defined in [processing contract](contracts/processing.md), rather
 than inferred only from appearance. Use its analytical cases for pixel-level acceptance.
 
+## Clean Workspace Check
+
+1. At startup, confirm Open Image and Open Video are the leading actions and video playback
+   controls are not shown. Tab through the visible controls and verify a visible focus indicator.
+2. Use `Ctrl+O`, cancel the chooser, and confirm the application state is unchanged. Use
+   `Ctrl+Shift+O` and cancel the video chooser with the same result.
+3. Open an image. Confirm the HSV inspector groups Hue, Saturation and Value vertically and that
+   Save/Record availability follows the current result. Playback controls remain hidden.
+4. Open a video. Confirm playback controls and frame position appear together without changing
+   preview bounds. Return to an image and confirm they disappear without retaining keyboard focus.
+5. Repeat with the client area at 960x640 and at the normal large desktop size, with the histogram
+   shown and hidden. Confirm all three preview canvases remain at least 160x120 with no overlap.
+
 ## HSV Histogram
 
 1. With the image open, choose **Show Histogram**. Confirm H, S and V charts appear while all

@@ -241,12 +241,34 @@ not depend on collecting the still-pending human acceptance evidence first.
 **Checkpoint**: Histogram counts and source/frame synchronization are verified, the six-bound
 segmentation semantics are preserved, and the final acceptance T049-T050 can assess this version.
 
+## Phase 10: User Story 7 - Work in a Clean Analysis Workspace (Priority: P1)
+
+**Goal**: Give the existing academic workflow a clear visual hierarchy, compact channel-based
+HSV inspector, contextual video controls and consistent accessible styling without changing
+processing or persistence behavior.
+
+**Independent Test**: Exercise empty, image and video contexts at 960x640 and a large desktop
+size, with the histogram shown and hidden. Verify semantic styles, channel grouping, contextual
+controls, keyboard shortcuts, visible focus and three usable previews.
+
+- [X] T057 [P] [US7] Amend the workspace requirements and design decisions in `specs/001-hsv-color-segmentation/spec.md`, `specs/001-hsv-color-segmentation/plan.md`, `specs/001-hsv-color-segmentation/research.md`, `specs/001-hsv-color-segmentation/data-model.md`, `specs/001-hsv-color-segmentation/contracts/desktop-workflow.md` and `specs/001-hsv-color-segmentation/quickstart.md`; **Depends**: T056; **Done**: US7, FR-019 through FR-024 and SC-010 through SC-012 define the clean workspace without changing segmentation semantics.
+- [X] T058 [US7] Add GUI acceptance tests for semantic style tokens, vertical channel grouping, contextual playback visibility, keyboard shortcuts and minimum-size previews in `tests/integration/test_workspace_ui.py`; **Depends**: T057; **Done**: checks fail against the pre-refresh workspace and cover empty, image and video presentation states.
+- [X] T059 [US7] Implement the semantic light desktop theme and focus/spacing tokens in `src/hsv_segmentation/gui/theme.py`; **Depends**: T058; **Done**: the shared style exposes background, surface, text, muted, border, primary, focus, disabled and error roles using native system typography without a new dependency.
+- [X] T060 [US7] Recompose the six controls into Hue, Saturation and Value groups in `src/hsv_segmentation/gui/threshold_controls.py` and align morphology controls in `src/hsv_segmentation/gui/morphology_controls.py`; **Depends**: T059; **Done**: lower/upper controls remain synchronized and validated while the inspector uses a vertical channel hierarchy and compact help text.
+- [X] T061 [US7] Recompose the command, inspector, visualization and status regions and add contextual video visibility plus keyboard shortcuts in `src/hsv_segmentation/gui/main_window.py`; **Depends**: T060; **Done**: previews own the flexible area, video controls appear only for video states, hidden controls cannot retain focus, and existing controller-facing widget attributes remain compatible.
+- [X] T062 [P] [US7] Apply the semantic canvas, histogram, tooltip and experiment-dialog colors in `src/hsv_segmentation/gui/image_view.py`, `src/hsv_segmentation/gui/hsv_histogram.py`, `src/hsv_segmentation/gui/tooltips.py` and `src/hsv_segmentation/gui/experiment_panel.py`; **Depends**: T059; **Done**: custom Tk surfaces match the shared theme, retain contrast, and do not change image/histogram values.
+- [X] T063 [US7] Run focused GUI, processing and export regression tests and fix any layout or behavior regressions in `src/hsv_segmentation/gui/` and `tests/integration/test_workspace_ui.py`; **Depends**: T061, T062; **Done**: all US7 tests and existing GUI integration tests pass at the supported minimum size.
+- [X] T064 [US7] Update the workspace walkthrough and verification evidence in `README.md`, `docs/demo.md` and `docs/verification.md`, then run the full automated suite; **Depends**: T063; **Done**: documentation matches the delivered hierarchy and the full suite passes without claiming the pending independent-student acceptance.
+
+**Checkpoint**: The refreshed workspace is visually consistent and context-aware while all prior
+image, video, histogram, export and experiment workflows remain intact.
+
 ## Final Acceptance and Review Gate
 
 **Purpose**: Accept the complete version after Phase 9, including genuine independent student
 checks. These tasks retain their original IDs for traceability and are no longer part of Phase 8.
 
-- [ ] T049 Run the full automated/offline acceptance workflow and independent student checks, recording outcomes in `docs/verification.md` and `experiments/reproduction.md`; **Depends**: T048, T056; **Done**: automated tests pass, every FR/SC has evidence, a second student genuinely reproduces three runs, and a student completes the documented image/edit/compare/save flow within five minutes without help; unavailable external acceptance keeps this final task incomplete.
+- [ ] T049 Run the full automated/offline acceptance workflow and independent student checks, recording outcomes in `docs/verification.md` and `experiments/reproduction.md`; **Depends**: T048, T056, T064; **Done**: automated tests pass, every FR/SC has evidence, a second student genuinely reproduces three runs, and a student completes the documented image/edit/compare/save flow within five minutes without help; unavailable external acceptance keeps this final task incomplete.
   Populate the evidence matrix for all 27 FR/SC IDs below with covering task IDs, test/procedure, command/actions, actual outcome and evidence location. Include histogram evidence from T056. Execute every required FMT case on the recorded demonstration computer; skipped codecs, missing fixtures and pending human checks remain unmet acceptance.
 - [ ] T050 Review module boundaries, naming, dependency necessity, and constitution compliance in `specs/001-hsv-color-segmentation/plan.md` and `docs/verification.md`; **Depends**: T049; **Done**: processing imports neither GUI nor file I/O, every core function has independent tests, no unused frameworks/services or out-of-scope features exist, and every remaining acceptance limitation is identified.
 
@@ -264,6 +286,7 @@ Setup T001-T004
   -> US4 T037-T044 (records and 10-image evaluation)
   -> Delivered documentation/performance baseline T045-T048
   -> US6 T051-T056 (implemented HSV histograms)
+  -> US7 T057-T064 (clean analysis workspace)
   -> Final acceptance/review T049-T050
 
 After US5: T045 algorithm docs and T046 performance evidence can overlap US4.
@@ -285,6 +308,7 @@ parallel opportunities below. For the extension, the explicit sequence is T048 -
 | US5 | US1, US3 and US2 | Error recovery with a preserved session and subsequent valid action |
 | US4 | Working export and recovery | Complete experiment records, 20 runs and replayable comparisons |
 | US6 | Delivered Phase 8 automated/documentation baseline T048 | Exact source/frame distributions, valid overlays and unchanged segmentation semantics |
+| US7 | US6 delivered | Clean context-aware workspace with unchanged processing and three usable previews |
 
 Export could be implemented immediately after US1 if delivery priorities change; move its
 video-specific checks after US3. This list keeps video before export as the user suggested.
@@ -319,6 +343,7 @@ verification log or plan sequentially. No sub-agents are required by this task l
 | US5 | T033 recovery tests and T034 GUI acceptance procedure | T032 export validated |
 | US4 | T037 persistence tests and T038 image collection | T036 recovery validated |
 | US6 | T051 core contracts/tests and T053 GUI contracts/tests | T048 delivered baseline |
+| US7 | T059 theme and T062 custom-surface styling after T058 | T058 workspace tests exist |
 
 ## Implementation Strategy
 
@@ -336,7 +361,8 @@ not optional replacements for the image MVP.
 3. Add experiment capture and the 10-image/20-run evaluation.
 4. Finish measured responsiveness, student reproduction, documentation and the demo.
 5. Add the requested HSV histogram aid in T051-T056, then complete T049-T050 on that version.
-6. Keep counting, tracking, machine learning, automatic threshold selection, audio, full-video
+6. Refresh the workspace in T057-T064, then complete T049-T050 on the delivered UI.
+7. Keep counting, tracking, machine learning, automatic threshold selection, audio, full-video
    export, databases and services outside this implementation.
 
 ### Requested Stage Coverage
@@ -354,6 +380,7 @@ not optional replacements for the image MVP.
 | Testing with at least 10 images | T038, T041-T044 |
 | Documentation/demo | T004, T045-T050 |
 | HSV histogram assistance | T051-T056 |
+| Clean analysis workspace | T057-T064 |
 
 ## Requirement-to-Task Traceability
 
@@ -382,6 +409,12 @@ do not substitute for the specified automated, GUI or independent student checks
 | FR-016 | T002, T003, T004, T047, T049, T050 | Installation and full offline acceptance |
 | FR-017 | T007, T008, T009, T010, T011, T012, T013, T045, T050 | Independent core tests and algorithm explanations |
 | FR-018 | T051, T052, T053, T054, T055, T056 | Exact bin counts, low-saturation hue exclusion, active overlays and current source/frame identity |
+| FR-019 | T057, T058, T059, T062, T063 | Semantic visual roles, contrast and consistent native styling |
+| FR-020 | T057, T058, T060, T063 | Vertical H/S/V groups with unchanged six-bound behavior |
+| FR-021 | T057, T058, T061, T063 | Contextual command and playback-state inventory |
+| FR-022 | T058, T061, T063 | Minimum-size three-preview layout checks |
+| FR-023 | T058, T061, T063, T064 | Keyboard shortcuts, traversal and focus walkthrough |
+| FR-024 | T059, T061, T062, T063 | Stable non-blocking native state changes |
 | SC-001 | T014, T016, T022, T024, T027, T034, T049 | All FMT cases and complete playback walkthrough |
 | SC-002 | T007, T008, T009, T010, T011, T012, T013 | Exact known-color masks and retained colors |
 | SC-003 | T019, T021, T046, T056 | Baseline and histogram-visible 100-change timings with final revision consistency |
@@ -391,10 +424,13 @@ do not substitute for the specified automated, GUI or independent student checks
 | SC-007 | T033, T034, T035, T036, T049 | Message-content matrix and subsequent valid operations |
 | SC-008 | T038, T042, T044, T048, T049 | Labeled ten-image comparisons and observations |
 | SC-009 | T051, T052, T053, T054, T055, T056 | Analytical counts, stable source counts during edits, wrapped overlays and preserved views |
+| SC-010 | T058, T061, T063 | 960x640 and large-window layout checks with histogram states |
+| SC-011 | T058, T061, T063 | Empty/image/video contextual-control inventory |
+| SC-012 | T058, T061, T064 | Keyboard-only shortcut and focus walkthrough |
 
 ## Notes
 
-- T001-T048 and T051-T056 are complete (54/56 tasks). Phase 7 uses eight CC BY 4.0 SimpleCube++ photographs
+- T001-T048 and T051-T064 are complete (62/64 tasks). Phase 7 uses eight CC BY 4.0 SimpleCube++ photographs
   and a CC-BY MIT fixed-scene pair under directional lights 0 and 24. Phase 8 automated,
   performance, documentation and demo preparation are complete.
 - T049 remains open for a genuine second-student replay and independent five-minute workflow;

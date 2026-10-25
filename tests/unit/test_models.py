@@ -150,6 +150,16 @@ def test_request_and_result_share_the_exact_source_and_parameter_identity(tmp_pa
             array.setflags(write=True)
 
 
+def test_result_reports_selected_pixel_count_and_percentage(tmp_path):
+    media = make_media(tmp_path)
+    mask = np.array([[255, 0]], dtype=np.uint8)
+    segmented = np.where((mask == 255)[..., None], media.rgb, 0).astype(np.uint8)
+    result = SegmentationResult(media, HSVThresholdSet(), mask, segmented)
+
+    assert result.selected_pixel_count == 1
+    assert result.selected_pixel_percentage == 50.0
+
+
 @pytest.mark.parametrize("mask,segmented", [
     (np.array([[1, 0]], dtype=np.uint8), [[[255, 0, 0], [0, 0, 0]]]),
     (np.array([[255]], dtype=np.uint8), [[[255, 0, 0], [0, 0, 0]]]),

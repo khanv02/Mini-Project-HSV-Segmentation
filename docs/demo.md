@@ -5,6 +5,11 @@ This is a 10-minute presenter script. Run it on the Windows machine recorded in
 
 ## Before the timer
 
+- Confirm the light analysis workspace opens with media actions first, a channel-based HSV
+  inspector on the left and three synchronized previews in the flexible work area.
+- Confirm playback controls are hidden before video is opened. Demonstrate `Ctrl+O` and
+  `Ctrl+Shift+O`, cancelling each chooser without changing application state.
+
 Run `uv sync --locked --extra test` while installation resources are available. Confirm the
 seven files in `tests/fixtures/acceptance_media/`, the ten retained inputs and twenty run
 directories from `experiments/manifest.json`, and writable temporary/output folders. Launch:

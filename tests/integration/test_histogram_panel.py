@@ -53,6 +53,7 @@ def test_histogram_panel_renders_labels_cutoff_and_numeric_overlays() -> None:
 
         assert panel.hue_note.startswith("Hue counts only S >= 5%")
         assert panel.overlay_segments("h") == ((350.0, 360.0), (0.0, 10.0))
+        assert panel.threshold_text("h") == "350°–10° (wrap)"
         assert panel.overlay_segments("s") == ((5.0, 5.0),)
         hsv = np.array([[[20.0, 5.9, 50.0]]], dtype=np.float64)
         assert generate_mask(
@@ -61,11 +62,15 @@ def test_histogram_panel_renders_labels_cutoff_and_numeric_overlays() -> None:
         )[0, 0] == 0
         assert panel.overlay_segments("v") == ((0.0, 100.0),)
         assert panel.state_text == "Current source/frame"
+        assert panel.canvases["h"].find_withtag("threshold-band")
+        assert panel.canvases["h"].find_withtag("threshold-boundary")
+        assert panel.canvases["h"].find_withtag("histogram-bar")
 
         panel.mark_invalid()
         assert "last valid" in panel.state_text.lower()
         panel.mark_pending(HSVThresholdSet(lower_h_deg=20, upper_h_deg=40))
         assert panel.overlay_segments("h") == ((20.0, 40.0),)
+        assert panel.threshold_text("h") == "20°–40°"
         assert "pending" in panel.state_text.lower()
     finally:
         root.destroy()

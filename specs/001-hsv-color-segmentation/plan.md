@@ -14,6 +14,9 @@ mask, and extracted colors. Add video playback/frame exports, reliable file hand
 recorded experiments across at least 10 images and 20 threshold configurations afterward. Plan
 a Phase 9 HSV histogram panel to help students choose those manual bounds from source
 distributions; it is explanatory and does not change threshold selection or segmentation.
+Add a Phase 10 clean-workspace refresh that moves the six bounds into a compact inspector,
+gives the three previews visual priority, applies one semantic light theme, and reveals
+playback controls only for video without changing processing, export or experiment behavior.
 
 Use vectorized NumPy float64 equations for the core RGB-to-HSV conversion and thresholding,
 Tkinter/Pillow for presentation and image files, and OpenCV for sequential video decoding.
@@ -48,7 +51,9 @@ with exact 100 in the final bin. This quantization applies only to chart counts.
 array and threshold membership retain their existing unrounded float64 semantics. Calculate
 counts outside Tk handlers; publish them only with a matching accepted session/frame. Retain
 at most the current source/frame counts and avoid adding an independent unbounded job queue.
-The supported minimum client area is 960x640 pixels at 100% display scaling. With the panel
+The supported minimum client area is 960x640 pixels at 100% display scaling. The refreshed
+workspace uses a fixed-width inspector beside a flexible preview area, native Segoe UI system
+typography, an 8-pixel spacing rhythm and semantic slate/blue color roles. With the panel
 shown, all three charts, axis/interval labels, panel toggle and six HSV controls remain visible
 without overlap or scrolling. Each result view keeps a drawable preview area of at least
 160x120 pixels and fits its source aspect ratio. Verify layout at this size with the panel both
@@ -73,7 +78,9 @@ record. No database, remote storage, authentication, or backend service.
 **Testing**: pytest unit and integration tests, hand-derived RGB/HSV cases, independent colorsys
 comparisons, exact histogram-bin references (including hue exclusion below 5% saturation),
 temporary-file round trips, deterministic playback doubles, real video smoke checks, and a manual
-GUI/reproduction acceptance guide. Core tests require no GUI or input files.
+GUI/reproduction acceptance guide. GUI checks also verify semantic style tokens, inspector
+grouping, contextual playback visibility, keyboard shortcuts and minimum-size preview bounds.
+Core tests require no GUI or input files.
 
 **Target Platform**: Windows 10/11 x64; first verify the intended university machine and record
 its OS, CPU, RAM, Python, Tcl/Tk, package versions and selected video backend. Other OSes are
@@ -100,7 +107,8 @@ project resource policy, not a claim that all smaller images fit every computer.
 with recorded resource measurements and corresponding documentation/tests.
 
 **Scale/Scope**: One active media session; bounded previous and candidate source state during
-opening; three synchronized result previews and an optional compact HSV histogram panel;
+opening; one command area, one HSV inspector, three synchronized result previews and an optional
+compact HSV histogram panel;
 still-image exports and individual video-frame exports; at least 10 distinct images, two settings
 per image, and one photographed scene under two lighting conditions. No tracking, counting, ML,
 automatic threshold selection, audio, seeking, or full-video encoding.
@@ -176,6 +184,7 @@ src/hsv_segmentation/
     playback.py
   gui/
     __init__.py
+    theme.py
     main_window.py
     image_view.py
     hsv_histogram.py

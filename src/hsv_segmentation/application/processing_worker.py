@@ -10,9 +10,16 @@ from threading import RLock
 import numpy as np
 
 from ..io.images import load_image
-from ..models import HSVHistogram, HSVThresholdSet, ProcessingRequest, SegmentationResult
+from ..models import (
+    HSVHistogram,
+    HSVThresholdSet,
+    MorphologySettings,
+    ProcessingRequest,
+    SegmentationResult,
+)
 from ..processing.color import rgb_to_hsv
 from ..processing.histogram import compute_hsv_histogram
+from ..processing.morphology import apply_morphology
 from ..processing.segmentation import apply_mask, generate_mask
 from .session import process_source
 
@@ -59,7 +66,8 @@ class _CachedProcessor:
         histogram = self._histogram
         if histogram is None:
             raise RuntimeError("HSV histogram cache was not initialized")
-        mask = generate_mask(hsv, request.thresholds)
+        original_mask = generate_mask(hsv, request.thresholds)
+        mask = apply_morphology(original_mask, request.morphology)
         return SegmentationResult(
             source=request.source,
             thresholds=request.thresholds,
@@ -67,6 +75,8 @@ class _CachedProcessor:
             segmented_rgb=apply_mask(request.rgb, mask),
             request_revision=request.request_revision,
             histogram=histogram,
+            morphology=request.morphology,
+            original_mask=original_mask,
         )
 
 
@@ -94,11 +104,17 @@ class ProcessingWorker:
         self._submit_item(item)
 
     def submit_image(
-        self, path: str | Path, thresholds: HSVThresholdSet, request_revision: int
+        self,
+        path: str | Path,
+        thresholds: HSVThresholdSet,
+        request_revision: int,
+        morphology: MorphologySettings | None = None,
     ) -> None:
         def load_and_process() -> SegmentationResult:
             source = load_image(path)
-            return process_source(source, thresholds, request_revision)
+            return process_source(
+                source, thresholds, request_revision, morphology=morphology
+            )
 
         self._submit_item(_WorkItem("image", request_revision, load_and_process))
 

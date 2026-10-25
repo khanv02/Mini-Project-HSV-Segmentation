@@ -16,8 +16,19 @@ from ..application.session import ImageSession
 from ..errors import ValidationError, format_recovery_message
 from ..io.export import ExportReceipt, export_snapshot
 from ..io.experiments import ExperimentReceipt, publish_experiment
-from ..models import HSVThresholdSet, ProcessingRequest, SegmentationResult
+from ..models import (
+    HSVThresholdSet,
+    MorphologySettings,
+    ProcessingRequest,
+    SegmentationResult,
+)
+from ..processing.threshold_suggestions import (
+    sample_color,
+    sample_color_region,
+    suggest_thresholds,
+)
 from .main_window import MainWindow
+from .morphology_controls import MorphologyControls
 from .threshold_controls import ThresholdControls
 
 
@@ -47,12 +58,20 @@ class ApplicationController:
             on_valid=self._on_thresholds,
             on_invalid=self._on_invalid_thresholds,
         )
+        self.morphology_controls = MorphologyControls(
+            self.window.parameter_section,
+            initial=self.session.morphology,
+            on_change=self._on_morphology,
+        )
+        self.window.original_view.set_sample_callback(self._on_color_sample)
+        self.window.original_view.set_roi_sample_callback(self._on_roi_sample)
         self._latest_request_revision = 0
         self._video_request_in_flight: int | None = None
         self._resume_video_on_failure = False
         self._resume_video_after_export = False
         self._export_in_flight = False
         self._export_snapshot_valid = False
+        self._color_picker_active = False
         self.last_export_receipt: ExportReceipt | None = None
         self.last_experiment_receipt: ExperimentReceipt | None = None
         self._closed = False
@@ -65,6 +84,7 @@ class ApplicationController:
             play=self.play_video,
             pause=self.pause_video,
             restart=self.restart_video,
+            pick_color=self.toggle_color_picker,
         )
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self._poll_id = self.root.after(self.POLL_MS, self._poll_worker)
@@ -82,13 +102,18 @@ class ApplicationController:
 
     def open_image_path(self, path: str) -> None:
         self._pause_for_candidate_open()
+        self._set_color_picker_active(False)
+        self.window.set_sampling_available(False)
         revision = self._next_revision(invalidate_video=True)
         self.window.set_loading(True)
         self.controls.set_enabled(False)
         self._export_snapshot_valid = False
         self._refresh_export_controls()
         self.window.show_status("Loading and processing image…")
-        self.worker.submit_image(path, self.session.thresholds, revision)
+        self.morphology_controls.set_enabled(False)
+        self.worker.submit_image(
+            path, self.session.thresholds, revision, self.session.morphology
+        )
 
     def choose_video(self) -> None:
         path = filedialog.askopenfilename(
@@ -103,16 +128,22 @@ class ApplicationController:
 
     def open_video_path(self, path: str) -> None:
         self._pause_for_candidate_open()
+        self._set_color_picker_active(False)
+        self.window.set_sampling_available(False)
         revision = self._next_revision(invalidate_video=True)
         thresholds = self.session.thresholds
+        morphology = self.session.morphology
         self.window.set_loading(True)
         self.controls.set_enabled(False)
+        self.morphology_controls.set_enabled(False)
         self._export_snapshot_valid = False
         self._refresh_export_controls()
         self.window.show_status("Opening video and decoding its first frame…")
         self.worker.submit_operation(
             "video_open", revision,
-            lambda: self.playback.prepare_open(path, thresholds, revision),
+            lambda: self.playback.prepare_open(
+                path, thresholds, revision, morphology
+            ),
             cleanup=lambda candidate: candidate.reader.release(),
         )
 
@@ -128,6 +159,7 @@ class ApplicationController:
         return self._latest_request_revision
 
     def play_video(self) -> None:
+        self._set_color_picker_active(False)
         if self.playback.play():
             self.window.update_video_controls(self.playback.state.value)
             self.window.show_status(self.playback.status_message)
@@ -141,15 +173,17 @@ class ApplicationController:
     def restart_video(self) -> None:
         if not self.playback.has_video:
             return
+        self._set_color_picker_active(False)
         self.playback.pause()
         revision = self._next_revision(invalidate_video=True)
         thresholds = self.session.thresholds
+        morphology = self.session.morphology
         self._export_snapshot_valid = False
         self._refresh_export_controls()
         self.window.show_status("Restarting video…")
         self.worker.submit_operation(
             "video_restart", revision,
-            lambda: self.playback.prepare_restart(thresholds, revision),
+            lambda: self.playback.prepare_restart(thresholds, revision, morphology),
         )
 
     def _schedule_video_frame(self) -> None:
@@ -162,9 +196,10 @@ class ApplicationController:
         revision = self._next_revision()
         self._video_request_in_flight = revision
         thresholds = self.session.thresholds
+        morphology = self.session.morphology
         self.worker.submit_operation(
             "video_frame", revision,
-            lambda: self.playback.prepare_next(thresholds, revision),
+            lambda: self.playback.prepare_next(thresholds, revision, morphology),
         )
 
     def _on_thresholds(self, thresholds: HSVThresholdSet) -> None:
@@ -177,11 +212,75 @@ class ApplicationController:
             self.window.show_status("Thresholds ready — open an image or video.")
             return
         revision = self._next_revision(invalidate_video=True)
-        request = ProcessingRequest(source, thresholds, revision)
+        request = ProcessingRequest(
+            source, thresholds, revision, self.session.morphology
+        )
         self._export_snapshot_valid = False
         self._refresh_export_controls()
         self.window.show_status("Parameters changed — result pending…")
+        self.window.mark_selection_pending()
         self.worker.submit(request)
+
+    def _on_morphology(self, morphology: MorphologySettings) -> None:
+        self.session.accept_morphology(morphology)
+        source = self.session.source
+        if source is None:
+            state = "enabled" if morphology.enabled else "disabled"
+            self.window.show_status(
+                f"Morphology {state} — open an image or video."
+            )
+            return
+        revision = self._next_revision(invalidate_video=True)
+        request = ProcessingRequest(
+            source, self.session.thresholds, revision, morphology
+        )
+        self._export_snapshot_valid = False
+        self._refresh_export_controls()
+        self.window.mark_selection_pending()
+        self.window.show_status("Morphology changed — result pending…")
+        self.worker.submit(request)
+
+    def toggle_color_picker(self) -> None:
+        if self.window.original_view.source_array is None:
+            self.window.show_status("Open an image or video before using the color picker.")
+            return
+        if not self._color_picker_active and self.playback.state is PlaybackState.PLAYING:
+            self.pause_video()
+        self._set_color_picker_active(not self._color_picker_active)
+        if self._color_picker_active:
+            self.window.show_status("Color picker active — click a pixel in the Original view.")
+        else:
+            self.window.show_status("Color picker cancelled.")
+
+    def _set_color_picker_active(self, active: bool) -> None:
+        self._color_picker_active = bool(active)
+        self.window.set_color_picker_active(self._color_picker_active)
+
+    def _on_color_sample(self, x: int, y: int) -> None:
+        displayed_rgb = self.window.original_view.source_array
+        if not self._color_picker_active or displayed_rgb is None:
+            return
+        sample = sample_color(displayed_rgb, x, y)
+        suggestion = suggest_thresholds(sample)
+        self._set_color_picker_active(False)
+        self.window.show_color_sample(sample)
+        self.controls.apply_thresholds(suggestion)
+        self.window.show_status(
+            f"Sampled RGB {sample.rgb} at ({x}, {y}); suggested HSV thresholds applied."
+        )
+
+    def _on_roi_sample(self, left: int, top: int, right: int, bottom: int) -> None:
+        displayed_rgb = self.window.original_view.source_array
+        if not self._color_picker_active or displayed_rgb is None:
+            return
+        sample = sample_color_region(displayed_rgb, left, top, right, bottom)
+        self._set_color_picker_active(False)
+        self.window.show_region_sample(sample)
+        self.controls.apply_thresholds(sample.thresholds)
+        self.window.show_status(
+            f"Sampled {sample.pixel_count:,} pixels from ROI "
+            f"({left}, {top})–({right}, {bottom}); suggested HSV thresholds applied."
+        )
 
     def _on_invalid_thresholds(self, error: ValidationError) -> None:
         self._export_snapshot_valid = False
@@ -230,9 +329,11 @@ class ApplicationController:
     def choose_record_experiment(self) -> None:
         runs_dir = filedialog.askdirectory(title="Choose Experiment Runs Directory")
         if runs_dir:
-            self.record_experiment_to(
+            started = self.record_experiment_to(
                 runs_dir, Path.cwd() / "experiments" / "environment.json"
             )
+            if started:
+                self.experiment_panel.hide()
 
     def record_experiment_to(
         self,
@@ -253,6 +354,7 @@ class ApplicationController:
             or not self._export_snapshot_valid
             or snapshot is None
             or snapshot.thresholds != self.session.thresholds
+            or snapshot.morphology != self.session.morphology
         ):
             self.window.show_status(
                 "Recording is unavailable until a complete current result is ready."
@@ -286,6 +388,7 @@ class ApplicationController:
             or not self._export_snapshot_valid
             or snapshot is None
             or snapshot.thresholds != self.session.thresholds
+            or snapshot.morphology != self.session.morphology
         ):
             self.window.show_status(
                 "Saving is unavailable until a complete current result is ready."
@@ -324,6 +427,7 @@ class ApplicationController:
             and self._export_snapshot_valid
             and result is not None
             and result.thresholds == self.session.thresholds
+            and result.morphology == self.session.morphology
         )
         self.window.set_export_available(available)
         self.window.set_experiment_available(available)
@@ -358,13 +462,23 @@ class ApplicationController:
         self.window.show_result(result)
         self.window.set_loading(False)
         self.controls.set_enabled(True)
+        self.morphology_controls.set_enabled(True)
+        self.window.set_sampling_available(True)
         self.window.update_video_controls(self.playback.state.value)
         self._refresh_export_controls()
+        morphology_status = "Morphology off"
+        if result.morphology.enabled:
+            operation = result.morphology.operation.replace("_", " + ").title()
+            morphology_status = (
+                f"{operation}, {result.morphology.kernel_size}×"
+                f"{result.morphology.kernel_size} kernel"
+            )
         self.window.show_status(
             f"Current result — H {result.thresholds.lower_h_deg}.."
             f"{result.thresholds.upper_h_deg}°, "
             f"S {result.thresholds.lower_s_pct}..{result.thresholds.upper_s_pct}%, "
-            f"V {result.thresholds.lower_v_pct}..{result.thresholds.upper_v_pct}%."
+            f"V {result.thresholds.lower_v_pct}..{result.thresholds.upper_v_pct}%. "
+            f"{morphology_status}."
         )
         if self.playback.state is PlaybackState.PLAYING:
             self.root.after_idle(self._schedule_video_frame)
@@ -412,6 +526,8 @@ class ApplicationController:
         )
         self.window.set_loading(False)
         self.controls.set_enabled(True)
+        self.morphology_controls.set_enabled(True)
+        self.window.set_sampling_available(self.session.result is not None)
         if completion.kind in {"image", "video_open"} and self.session.result is not None:
             self._export_snapshot_valid = True
         self._refresh_export_controls()
@@ -434,12 +550,14 @@ class ApplicationController:
             self.playback.close()
             self.session.commit_candidate(payload)
             self.controls.set_thresholds(payload.thresholds)
+            self.morphology_controls.set_settings(payload.morphology)
             return payload
         if completion.kind == "video_open":
             if not isinstance(payload, VideoCandidate):
                 return None
             self.playback.commit_open(payload)
             self.controls.set_thresholds(payload.result.thresholds)
+            self.morphology_controls.set_settings(payload.result.morphology)
             return payload.result
         if completion.kind == "video_frame":
             if not isinstance(payload, PlaybackAdvance):

@@ -74,6 +74,7 @@ def test_publication_writes_complete_versioned_record_and_exact_artifacts(tmp_pa
     assert UUID(record["run_id"]) == receipt.run_id
     assert record["created_at"].endswith("Z")
     assert record["thresholds"] == snapshot.thresholds.as_dict()
+    assert record["morphology"] == snapshot.morphology.as_dict()
     assert record["source"]["width"] == snapshot.width
     assert record["source"]["height"] == snapshot.height
     assert record["source"]["frame_index"] is None

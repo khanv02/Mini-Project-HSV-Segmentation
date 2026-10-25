@@ -487,3 +487,30 @@ p95 **665.60 ms**), satisfying the minimum 95/100 criterion. Every timed result 
 against fresh pure processing after its timing endpoint. The separate pre-histogram zoom
 baseline remains recorded as 100/100, median 532.00 ms. FR-018 and SC-009 are therefore PASS;
 T049 and T050 remain open only for the genuine independent-human acceptance gate.
+
+## Phase 10: Clean analysis workspace
+
+T057-T064 are complete. The application now applies one dependency-free semantic light theme
+using native Segoe UI typography, slate work surfaces, a blue primary action, visible focus,
+consistent disabled/error roles and an 8-pixel spacing rhythm. The six numeric controls are
+grouped vertically by Hue, Saturation and Value in a dedicated inspector, while the flexible
+workspace preserves Original, Mask and Result simultaneously.
+
+Playback controls and frame position are hidden in empty/image contexts and appear together for
+video. Open Image remains the primary visible action; `Ctrl+O` and `Ctrl+Shift+O` provide keyboard
+paths without removing visible controls. Custom image, histogram, tooltip and experiment-dialog
+surfaces use the same semantic palette without changing source pixels, chart counts or exports.
+
+Recorded automated checks on 2026-10-25:
+
+```powershell
+$env:UV_CACHE_DIR=(Resolve-Path '.uv-cache').Path
+uv run --locked --extra test pytest tests/integration/test_workspace_ui.py tests/integration/test_image_session.py tests/integration/test_histogram_panel.py -q
+uv run --locked --extra test pytest -q
+```
+
+The focused GUI regression set reported **22 passed in 3.46 seconds**. The complete suite reported
+**248 passed in 15.04 seconds**. Automated checks cover semantic tokens, vertical channel groups,
+empty/image/video contextual states, shortcuts, the 960x640 layout, histogram visibility and all
+existing processing/export workflows. T049 and T050 remain open because their independent human
+acceptance evidence cannot be produced by automated implementation work.

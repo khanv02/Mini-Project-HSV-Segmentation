@@ -161,3 +161,23 @@ student or marking unavailable human acceptance as passed would invalidate the e
 All architecture, numerical and integration questions are resolved for this planning iteration.
 Exact package pins, runtime timing, real-image provenance and participant outcomes are outputs
 of implementation/validation tasks. They are not claimed to exist or pass in this research.
+
+## 9. Clean Desktop Workspace
+
+**Decision**: Use a light-first scientific workspace with native Segoe UI typography, neutral
+slate surfaces, one blue primary action, visible focus, an 8-pixel spacing rhythm and minimal
+elevation. Place threshold editing in a 300-pixel inspector and keep the three synchronized
+previews in the flexible work area. Hide playback controls outside video sessions while keeping
+export actions disabled until a current result exists. Use native state changes rather than
+decorative animation.
+
+**Rationale**: Image evidence and numeric bounds are the product's primary content. A stable
+two-region workspace shortens eye travel, prevents the command bar from becoming a row of equal
+weight actions, and remains implementable with the existing desktop toolkit and offline scope.
+Semantic tokens make focus, errors and disabled states consistent without introducing a theme
+dependency.
+
+**Alternatives considered**: Glassmorphism and strong gradients reduce contrast over image-heavy
+content. A dark-only developer-tool theme competes with masks and image colors. Replacing the
+three simultaneous previews with tabs violates the established comparison requirement. Migrating
+GUI frameworks would add risk and dependencies without changing the academic workflow.

@@ -179,6 +179,45 @@ the overlays follow the active bounds, and segmentation follows the original six
    six HSV controls and panel toggle are visible without overlap or scrolling; each of the three
    result views retains at least a 160 by 120 pixel preview area with aspect-preserving fitting.
 
+---
+
+### User Story 7 - Work in a Clean Analysis Workspace (Priority: P1)
+
+As a student, I want the controls to be visually organized around the segmentation workflow so
+that I can find the next action quickly, concentrate on the images, and demonstrate the tool
+without being distracted by inactive or unrelated controls.
+
+**Why this priority**: The workspace is the entry point for every image, video, histogram and
+experiment workflow; unclear hierarchy increases demonstration time and error risk even when the
+underlying processing is correct.
+
+**Independent Test**: Start at the empty application, open an image, then a video, edit all HSV
+bounds, show the histogram and operate the window at 960 by 640 and at a large desktop size.
+Verify that controls follow the current context, all three previews remain usable, and keyboard
+focus and status feedback remain visible.
+
+**Acceptance Scenarios**:
+
+1. **Given** a newly opened application, **When** no media is loaded, **Then** opening actions
+   are visually primary, output and experiment actions are unavailable, and video playback
+   controls do not compete with the empty-state workflow.
+2. **Given** an image or video is loaded, **When** the student scans the workspace, **Then** file
+   actions, HSV controls, visualization tools and status feedback form distinct, consistently
+   spaced regions with the previews receiving the largest share of the window.
+3. **Given** the student edits thresholds, **When** they move between hue, saturation and value,
+   **Then** each channel presents its lower and upper bound as one recognizable group with visible
+   units, current values and validation feedback.
+4. **Given** an image is active, **When** the interface is shown, **Then** video-only playback
+   controls are hidden; **Given** a video is active, **When** its state changes, **Then** the
+   appropriate playback controls and frame position appear without moving the preview region.
+5. **Given** the application is operated with a keyboard, **When** focus moves through interactive
+   controls, **Then** the focus indicator is visible, traversal follows the visual workflow, and
+   the primary open actions have documented shortcuts.
+6. **Given** a 960 by 640 client area or a large desktop window, **When** the histogram is shown
+   or hidden, **Then** there is no overlapping text or horizontal whole-window scrolling, all
+   three previews remain simultaneously available, and each retains at least a 160 by 120 pixel
+   drawable area.
+
 ### Edge Cases
 
 - No selected pixels produces an all-black mask and result; selecting all pixels produces an
@@ -203,6 +242,10 @@ the overlays follow the active bounds, and segmentation follows the original six
   populated. A failed source open preserves the previous charts with the previous valid session.
 - Invalid or pending threshold text must not be presented as active histogram intervals; overlays
   identify the last valid threshold set and share the result's invalid/pending status.
+- Resizing between the supported minimum and a large desktop size must preserve control order,
+  avoid clipped action labels, and keep status text separate from primary actions.
+- Contextual controls must not retain focus after they are hidden, and hiding image-only or
+  video-only actions must not change the current media, thresholds, result or playback state.
 
 ## Requirements *(mandatory)*
 
@@ -272,6 +315,25 @@ the overlays follow the active bounds, and segmentation follows the original six
   960 by 640 pixels with 100% display scaling, charts, labels, interval markers, the toggle and
   six controls MUST remain visible without overlap or scrolling, with at least a 160 by 120
   pixel preview area for each of Original, Mask and Result.
+- **FR-019**: The desktop workspace MUST use a restrained, consistent visual system with semantic
+  roles for application background, work surfaces, primary action, text, muted text, borders,
+  focus, disabled state and errors. Text and meaningful controls MUST meet a contrast ratio of
+  at least 4.5:1 and 3:1 respectively in the delivered light theme.
+- **FR-020**: The workspace MUST place HSV editing in a dedicated inspector beside the result
+  workspace. Hue, saturation and value MUST each group their lower and upper controls, expose
+  units and current values, and preserve the existing six-bound validation semantics.
+- **FR-021**: The command area MUST prioritize opening media and progressively disclose actions
+  by context. Playback and frame controls MUST appear only for video; output and experiment
+  actions MUST remain visibly unavailable until a complete current result exists.
+- **FR-022**: Original, Mask and Result MUST remain simultaneously available at the supported
+  960 by 640 minimum client area, with each preview retaining a drawable area of at least
+  160 by 120 pixels when the histogram is visible or hidden.
+- **FR-023**: Keyboard traversal MUST follow the visible workflow, every interactive control
+  MUST retain a visible focus indication, and opening image/video MUST have documented keyboard
+  shortcuts that do not replace the visible controls.
+- **FR-024**: Visual transitions MUST not delay input, move surrounding layout bounds, alter
+  processing results, or ignore the user's reduced-motion preference. The desktop implementation
+  MAY use immediate native state changes where animation would not improve comprehension.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -323,6 +385,15 @@ the overlays follow the active bounds, and segmentation follows the original six
   threshold semantics. Opening/closing the panel preserves synchronized result views. SC-003
   must still be met with the histogram panel visible. Equal-bound overlays and the minimum-size
   layout MUST meet US6 acceptance scenarios 6 and 7.
+- **SC-010**: At both 960 by 640 and the documented large desktop size, automated layout checks
+  and a manual walkthrough find zero overlapping labels or whole-window horizontal scrolling;
+  all three previews retain at least 160 by 120 drawable pixels with the histogram shown and hidden.
+- **SC-011**: In an empty, image and video session, 100 percent of controls in the acceptance
+  inventory match their specified visible, hidden, enabled or disabled context state, without
+  changing segmentation, export or playback results.
+- **SC-012**: A keyboard-only walkthrough can open the image and video dialogs, reach all visible
+  controls in workflow order, identify focus at every step, cancel safely, and return to the
+  original application state without mouse input.
 
 ### Supported-Format Demonstration Set
 
@@ -390,6 +461,9 @@ visible acceptance failures until resolved on the demonstration computer.
   components must meet the same independence and licensing requirements.
 - Object counting, tracking, machine learning, and additional segmentation algorithms are
   outside scope. The application must remain simple enough for student maintenance and explanation.
+- The refreshed interface remains a light-first Windows desktop workspace. Dark mode, custom
+  icon packages, decorative animation and a GUI-framework migration are outside this enhancement;
+  native system typography and controls are preferred where they preserve the required hierarchy.
 - Test images must be supplied or generated with documented provenance and usable permissions.
   Runtime measurements and reproducibility evidence depend on a documented demonstration
   computer, input collection, and software environment. Planning defines their recording format;

@@ -27,6 +27,35 @@ RGBImage = NDArray[np.uint8]
 BinaryMask = NDArray[np.uint8]
 
 
+@dataclass(frozen=True, slots=True)
+class MorphologySettings:
+    """Optional binary-mask cleanup applied after exact HSV thresholding."""
+
+    enabled: bool = False
+    operation: Literal["opening", "closing", "opening_closing"] = "opening"
+    kernel_size: int = 3
+
+    def __post_init__(self):
+        if not isinstance(self.enabled, bool):
+            raise ValidationError("enabled", "must be a boolean")
+        if (
+            not isinstance(self.operation, str)
+            or self.operation not in {"opening", "closing", "opening_closing"}
+        ):
+            raise ValidationError(
+                "operation", "must be opening, closing, or opening_closing"
+            )
+        if isinstance(self.kernel_size, bool) or self.kernel_size not in {3, 5, 7, 9}:
+            raise ValidationError("kernel_size", "must be one of 3, 5, 7, or 9")
+
+    def as_dict(self) -> dict[str, bool | str | int]:
+        return {
+            "enabled": self.enabled,
+            "operation": self.operation,
+            "kernel_size": self.kernel_size,
+        }
+
+
 def _bounded_integer(value, name: str, minimum: int, maximum: int | None = None) -> int:
     if isinstance(value, (bool, np.bool_)) or not isinstance(value, Integral):
         raise ValidationError(name, "must be an integer, not text, a fraction, or a boolean")
@@ -230,10 +259,13 @@ class ProcessingRequest(_SnapshotIdentity):
     source: InputMedia
     thresholds: HSVThresholdSet
     request_revision: int = 0
+    morphology: MorphologySettings = field(default_factory=MorphologySettings)
 
     def __post_init__(self):
         revision = _validate_snapshot_identity(self.source, self.thresholds, self.request_revision)
         object.__setattr__(self, "request_revision", revision)
+        if not isinstance(self.morphology, MorphologySettings):
+            raise ValidationError("morphology", "must be MorphologySettings")
 
     @property
     def rgb(self) -> RGBImage:
@@ -254,6 +286,8 @@ class SegmentationResult(_SnapshotIdentity):
     segmented_rgb: RGBImage = field(repr=False)
     request_revision: int = 0
     histogram: HSVHistogram | None = field(default=None, repr=False)
+    morphology: MorphologySettings = field(default_factory=MorphologySettings)
+    original_mask: BinaryMask | None = field(default=None, repr=False)
 
     def __post_init__(self):
         revision = _validate_snapshot_identity(self.source, self.thresholds, self.request_revision)
@@ -272,6 +306,23 @@ class SegmentationResult(_SnapshotIdentity):
         object.__setattr__(self, "segmented_rgb", _immutable_copy(self.segmented_rgb))
         if self.histogram is not None and not isinstance(self.histogram, HSVHistogram):
             raise ValidationError("histogram", "must be an HSVHistogram or None")
+        if not isinstance(self.morphology, MorphologySettings):
+            raise ValidationError("morphology", "must be MorphologySettings")
+        original_mask = self.mask if self.original_mask is None else self.original_mask
+        if (
+            not isinstance(original_mask, np.ndarray)
+            or original_mask.dtype != np.uint8
+            or original_mask.shape != shape
+            or not np.all((original_mask == 0) | (original_mask == 255))
+        ):
+            raise ValidationError(
+                "original_mask", "must be a source-sized binary uint8 mask"
+            )
+        if not self.morphology.enabled and not np.array_equal(original_mask, self.mask):
+            raise ValidationError(
+                "original_mask", "must equal mask when morphology is disabled"
+            )
+        object.__setattr__(self, "original_mask", _immutable_copy(original_mask))
 
     @property
     def original_rgb(self) -> RGBImage:
@@ -284,3 +335,11 @@ class SegmentationResult(_SnapshotIdentity):
     @property
     def width(self) -> int:
         return self.source.width
+
+    @property
+    def selected_pixel_count(self) -> int:
+        return int(np.count_nonzero(self.mask))
+
+    @property
+    def selected_pixel_percentage(self) -> float:
+        return self.selected_pixel_count * 100.0 / self.mask.size

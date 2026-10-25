@@ -150,6 +150,7 @@ def publish_experiment(
                 "backend": snapshot.source.backend,
             },
             "thresholds": snapshot.thresholds.as_dict(),
+            "morphology": snapshot.morphology.as_dict(),
             "lighting": lighting,
             "observations": observations,
             "artifacts": {

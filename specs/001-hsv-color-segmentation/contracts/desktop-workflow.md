@@ -122,3 +122,20 @@ Exercise valid image and video paths, each error/cancellation category, close du
 work, input replacement during playback, rapid edits, and source-resolution save round trips.
 Verify that a subsequent valid operation succeeds after each recoverable error. Record results
 in `docs/verification.md`; this contract does not claim those checks have already run.
+
+## Clean Workspace Presentation
+
+- The command area keeps Open Image and Open Video visible. Save and record actions remain
+  present but unavailable until a complete current result exists. Playback controls and frame
+  position are absent from the empty and image contexts and appear together for video.
+- The HSV inspector groups Hue, Saturation and Value vertically. Each group contains visible
+  lower and upper labels, values, units and the existing synchronized slider/input behavior.
+- The result workspace owns remaining width and always contains Original, Mask and Result in
+  source order. Showing the histogram must not reparent or replace any preview.
+- The application uses shared semantic styles for background, surface, primary action, muted
+  text, borders, focus, disabled state and errors. State styling must not alter widget bounds.
+- `Ctrl+O` opens the image chooser and `Ctrl+Shift+O` opens the video chooser. Keyboard focus
+  follows the visible command area, inspector and visualization tools; hidden contextual controls
+  cannot retain focus.
+- At 960x640 and 100% scaling, with histogram shown and hidden, the whole window has no horizontal
+  scrolling and each preview canvas is at least 160x120. Large windows give extra space to previews.

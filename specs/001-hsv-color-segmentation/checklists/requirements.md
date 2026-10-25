@@ -32,6 +32,9 @@
 ## Notes
 
 - Validation review completed on 2026-10-24: all 16 items pass; no outstanding issues.
+- UI workspace amendment reviewed on 2026-10-25: US7, FR-019 through FR-024 and SC-010 through
+  SC-012 are testable, technology-agnostic at specification level, and introduce no unresolved
+  clarification markers.
 - Readiness means the specification defines verifiable outcomes; it does not claim that the
   application or its experiments have already been implemented or executed.
 - FR-001 maps to Story 5 scenario 1; FR-002 and FR-003 to Story 1 scenario 1 and Story 3 scenario 1.

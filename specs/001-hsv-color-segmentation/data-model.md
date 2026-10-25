@@ -146,3 +146,19 @@ same count. Arrays own immutable bytes and cannot be changed by callers. Histogr
 no threshold revision: threshold edits move presentation overlays only. Application caching uses
 the accepted `(session_id, frame_index, source_sha256)` identity and replaces counts whenever
 that identity changes.
+
+## WorkspacePresentationState
+
+A transient GUI-only view of the existing media and processing state. It is not persisted and
+does not participate in segmentation or experiment identity.
+
+| Field | Type / constraint |
+| --- | --- |
+| media_context | `empty`, `image`, or `video`; derived from the committed session |
+| result_available | Boolean; true only for a complete current source/frame/threshold result |
+| histogram_visible | Boolean; presentation preference for the current window |
+| processing_pending | Boolean; prevents result actions from implying stale data |
+
+The state controls visibility and emphasis only. Playback controls are visible only for
+`video`; result actions are enabled only when `result_available` is true and no protected write
+is pending. Changing presentation state never changes threshold values, pixels or playback state.

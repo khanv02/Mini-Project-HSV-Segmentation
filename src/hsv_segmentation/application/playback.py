@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Protocol
 
 from ..io.video import VideoEnd, VideoReader
-from ..models import HSVThresholdSet, InputMedia, SegmentationResult
+from ..models import HSVThresholdSet, InputMedia, MorphologySettings, SegmentationResult
 from .session import ImageSession, process_source
 
 
@@ -59,11 +59,17 @@ class PlaybackSession:
         return self._reader is not None and self.state is not PlaybackState.CLOSED
 
     def prepare_open(
-        self, path: str | Path, thresholds: HSVThresholdSet, request_revision: int
+        self,
+        path: str | Path,
+        thresholds: HSVThresholdSet,
+        request_revision: int,
+        morphology: MorphologySettings | None = None,
     ) -> VideoCandidate:
         reader = self._reader_factory(path)
         try:
-            result = process_source(reader.first_frame, thresholds, request_revision)
+            result = process_source(
+                reader.first_frame, thresholds, request_revision, morphology=morphology
+            )
         except BaseException:
             reader.release()
             raise
@@ -94,7 +100,10 @@ class PlaybackSession:
         return True
 
     def prepare_next(
-        self, thresholds: HSVThresholdSet, request_revision: int
+        self,
+        thresholds: HSVThresholdSet,
+        request_revision: int,
+        morphology: MorphologySettings | None = None,
     ) -> PlaybackAdvance:
         if self._reader is None:
             raise RuntimeError("no video reader is active")
@@ -105,7 +114,9 @@ class PlaybackSession:
             return PlaybackAdvance(session_id, termination=termination)
         return PlaybackAdvance(
             session_id,
-            result=process_source(frame, thresholds, request_revision),
+            result=process_source(
+                frame, thresholds, request_revision, morphology=morphology
+            ),
         )
 
     def commit_advance(self, advance: PlaybackAdvance) -> bool:
@@ -133,19 +144,29 @@ class PlaybackSession:
         return True
 
     def reprocess_current(
-        self, thresholds: HSVThresholdSet, request_revision: int
+        self,
+        thresholds: HSVThresholdSet,
+        request_revision: int,
+        morphology: MorphologySettings | None = None,
     ) -> SegmentationResult:
         source = self.media_session.source
         if source is None or source.media_kind != "video":
             raise RuntimeError("no video frame is available")
-        return process_source(source, thresholds, request_revision)
+        return process_source(
+            source, thresholds, request_revision, morphology=morphology
+        )
 
     def prepare_restart(
-        self, thresholds: HSVThresholdSet, request_revision: int
+        self,
+        thresholds: HSVThresholdSet,
+        request_revision: int,
+        morphology: MorphologySettings | None = None,
     ) -> SegmentationResult:
         if self._reader is None:
             raise RuntimeError("no video reader is active")
-        return process_source(self._reader.restart(), thresholds, request_revision)
+        return process_source(
+            self._reader.restart(), thresholds, request_revision, morphology=morphology
+        )
 
     def commit_restart(self, result: SegmentationResult) -> bool:
         if not self.media_session.commit_frame_result(result):
