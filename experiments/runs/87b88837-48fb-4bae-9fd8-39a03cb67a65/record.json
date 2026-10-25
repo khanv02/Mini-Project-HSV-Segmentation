@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "run_id": "87b88837-48fb-4bae-9fd8-39a03cb67a65",
+  "created_at": "2026-10-24T15:15:37.620126Z",
+  "source": {
+    "path": "../../inputs/mit_main_experiment120_dir00.jpg",
+    "sha256": "76f715b6ee4e90f2830b5d5000bef5d2c3d2a017e4b1754d44b4dd223e70fb68",
+    "media_kind": "image",
+    "width": 187,
+    "height": 125,
+    "frame_index": null,
+    "backend": null
+  },
+  "thresholds": {
+    "lower_h_deg": 28,
+    "upper_h_deg": 62,
+    "lower_s_pct": 18,
+    "upper_s_pct": 82,
+    "lower_v_pct": 22,
+    "upper_v_pct": 95
+  },
+  "lighting": "Controlled real directional light 0 of 25; fixed camera and scene.",
+  "observations": "Narrow blond hair interval selected 25.42% of pixels; it reduces unwanted colors but may miss darker or less saturated target regions. No ground-truth accuracy is claimed.",
+  "artifacts": {
+    "mask": {
+      "path": "mask.png",
+      "sha256": "4b0dbca8576e23b5863fc5fcb335e4bdcd92f1ffcff7767533c0118efdda14cc",
+      "pixel_sha256": "c0220c2497ef8fe4d9379931309f329caeb52c810a015f6d46d8d37a1b89ed00"
+    },
+    "result": {
+      "path": "result.png",
+      "sha256": "dbfae628d28c13adb36ccbbfaf14a514c41c8c38f31546867c727437a475215d",
+      "pixel_sha256": "0168a364ed293fdc8b56582e2a5d8ad30ccc91125688ce23a7386809194bf032"
+    }
+  },
+  "environment": {
+    "path": "../../environment.json",
+    "sha256": "3da11c3758a95f670d1b20ebfa8159b7095038cc7b6a35f8fafacdf45fc923b3"
+  }
+}

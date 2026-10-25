@@ -5,13 +5,14 @@
 
 **Planning status**: Design completed on 2026-10-24 in `plan.md`, `research.md`,
 `data-model.md`, `contracts/` and `quickstart.md`. T001 is complete at design level.
-Phases 1 through 6 (T001-T036) are complete. The remaining 14 tasks are unimplemented.
+Phases 1 through 7 (T001-T044) are complete. Experiment evidence uses licensed real photographs,
+including one fixed MIT scene captured under two documented directional lights.
 Setup, foundation, still-image MVP, video, PNG export and comprehensive recovery checks have passed.
 
 **Execution policy (user instruction)**: Implement and verify one phase at a time,
 then stop and report before starting the next phase. See
 `docs/implementation-stages.md` for the eight stage boundaries. The current
-authorized increment is Phase 6 (T033–T036); it is complete. Stop before T037.
+authorized increment is Phase 7 (T037–T044); it is complete. Stop before Phase 8 (T045).
 
 **Tests**: Required by FR-017, the constitution, and the user's requested unit-test phase.
 
@@ -179,19 +180,19 @@ and reproduce three selected runs from source identities and recorded thresholds
 
 ### Tests for User Story 4
 
-- [ ] T037 [P] [US4] Define record persistence/failure tests in `tests/integration/test_experiment_records.py`; **Depends**: T036; **Done**: tests enforce schema_version=1, unique UUID run_id, UTC ISO timestamp, valid six integer bounds/units, dimensions/frame identity, nonempty lighting/observations, environment reference, valid relative output paths and 64-character lowercase SHA-256 hashes per `specs/001-hsv-color-segmentation/contracts/experiment-record.md`; failed artifacts cannot publish a complete record.
+- [X] T037 [P] [US4] Define record persistence/failure tests in `tests/integration/test_experiment_records.py`; **Depends**: T036; **Done**: tests enforce schema_version=1, unique UUID run_id, UTC ISO timestamp, valid six integer bounds/units, dimensions/frame identity, nonempty lighting/observations, environment reference, valid relative output paths and 64-character lowercase SHA-256 hashes per `specs/001-hsv-color-segmentation/contracts/experiment-record.md`; failed artifacts cannot publish a complete record.
   Use delayed hash/PNG/JSON operations to check background execution, responsive interaction, one active write with duplicate actions disabled, immutable captured identity, main-thread notifications, and safe close during publication (FR-012, FR-014).
-- [ ] T038 [P] [US4] Prepare `experiments/inputs/` and `experiments/manifest.json`; **Depends**: T036; **Done**: at least 10 distinct accessible images have source/permission metadata, hashes and lighting descriptions, including one photographed scene under two real lighting conditions; synthetic cases are identified separately from photographed evidence.
+- [X] T038 [P] [US4] Prepare `experiments/inputs/` and `experiments/manifest.json`; **Depends**: T036; **Done**: at least 10 distinct accessible images have source/permission metadata, hashes and lighting descriptions, including one photographed scene under two real lighting conditions; synthetic cases are identified separately from photographed evidence.
 
 ### Implementation for User Story 4
 
-- [ ] T039 [US4] Implement local JSON experiment export in `src/hsv_segmentation/io/experiments.py`; **Depends**: T037; **Done**: each run has a distinct identity and complete metadata, paths resolve to successful PNG exports, and record publication occurs only after all referenced outputs succeed.
-- [ ] T040 [US4] Add lighting/observation fields and a Record Experiment action in `src/hsv_segmentation/gui/experiment_panel.py` and `src/hsv_segmentation/gui/controller.py`; **Depends**: T039; **Done**: users can capture one consistent result snapshot with their descriptions, see saved locations, and retry failed export without losing results.
+- [X] T039 [US4] Implement local JSON experiment export in `src/hsv_segmentation/io/experiments.py`; **Depends**: T037; **Done**: each run has a distinct identity and complete metadata, paths resolve to successful PNG exports, and record publication occurs only after all referenced outputs succeed.
+- [X] T040 [US4] Add lighting/observation fields and a Record Experiment action in `src/hsv_segmentation/gui/experiment_panel.py` and `src/hsv_segmentation/gui/controller.py`; **Depends**: T039; **Done**: users can capture one consistent result snapshot with their descriptions, see saved locations, and retry failed export without losing results.
   Capture descriptions and snapshot on the GUI thread, then dispatch hashing, PNG writes and JSON publication through the same serialized background-write path as T031; apply the one-active-write policy and safe completion/failure handoff verified by T037 (FR-012, FR-014).
-- [ ] T041 [US4] Create a repeatable experiment procedure and environment record in `experiments/README.md` and `experiments/environment.json`; **Depends**: T038, T040; **Done**: a student can locate every input, apply two documented threshold sets per image, reproduce the environment, and interpret the saved mask/result/record relationships.
-- [ ] T042 [US4] Execute and retain at least 20 complete runs in `experiments/runs/`; **Depends**: T041; **Done**: all 10 images have two distinct threshold settings and saved outputs, records include lighting and qualitative observations, and failures are resolved rather than recorded as successful evidence.
-- [ ] T043 [US4] Add automatic replay checks in `tests/integration/test_experiment_reproduction.py` and prepare `experiments/reproduction.md`; **Depends**: T042; **Done**: three recorded runs reproduce identical decoded pixels automatically after source/environment checks, and the independent student/date/outcome form is prepared with human acceptance explicitly pending rather than blocking documentation preparation.
-- [ ] T044 [US4] Prepare labeled visual comparisons in `experiments/report.md`; **Depends**: T042; **Done**: every image has original/mask/result comparisons for both threshold sets and observations about missed targets, unwanted selection and lighting effects, without claiming unmeasured accuracy scores.
+- [X] T041 [US4] Create a repeatable experiment procedure and environment record in `experiments/README.md` and `experiments/environment.json`; **Depends**: T038, T040; **Done**: a student can locate every input, apply two documented threshold sets per image, reproduce the environment, and interpret the saved mask/result/record relationships.
+- [X] T042 [US4] Execute and retain at least 20 complete runs in `experiments/runs/`; **Depends**: T041; **Done**: all 10 images have two distinct threshold settings and saved outputs, records include lighting and qualitative observations, and failures are resolved rather than recorded as successful evidence.
+- [X] T043 [US4] Add automatic replay checks in `tests/integration/test_experiment_reproduction.py` and prepare `experiments/reproduction.md`; **Depends**: T042; **Done**: three recorded runs reproduce identical decoded pixels automatically after source/environment checks, and the independent student/date/outcome form is prepared with human acceptance explicitly pending rather than blocking documentation preparation.
+- [X] T044 [US4] Prepare labeled visual comparisons in `experiments/report.md`; **Depends**: T042; **Done**: every image has original/mask/result comparisons for both threshold sets and observations about missed targets, unwanted selection and lighting effects, without claiming unmeasured accuracy scores.
 
 **Checkpoint**: Experiment recording works and the required collection, comparisons, and
 reproducibility evidence are complete. Missing real inputs or independent participants remain
@@ -341,8 +342,11 @@ do not substitute for the specified automated, GUI or independent student checks
 
 ## Notes
 
-- T001-T036 are complete (Phases 1 through 6). The remaining 14 tasks are unchecked; stop before T037.
+- T001-T044 are complete (44/50 tasks). Phase 7 uses eight CC BY 4.0 SimpleCube++ photographs
+  and a CC-BY MIT fixed-scene pair under directional lights 0 and 24. Stop before Phase 8.
 - Counts: Setup 4; Foundation 3; US1 14; US3 6; US2 5; US5 4; US4 8; Polish 6.
-- Analysis remediation updated the specification, plan, contracts and traceability before T028. Phase 6 evidence is now recorded; T037-T050 require their own implementation and evidence before completion.
+- Analysis remediation updated the specification, plan, contracts and traceability before T028.
+  Phase 7 persistence, 20-run replay and comparison evidence is complete with explicit licensed
+  provenance for every input and no synthetic image presented as photographed evidence.
 - Research, data model, interface contracts and quickstart now define numeric behavior and field constraints;
   their presence is design evidence, not a substitute for running the planned tests.

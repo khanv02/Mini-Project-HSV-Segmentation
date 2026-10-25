@@ -1,0 +1,432 @@
+{
+  "schema_version": 1,
+  "criteria": {
+    "minimum_distinct_images": 10,
+    "runs_per_image": 2,
+    "photographed_same_scene_two_real_lighting_conditions": {
+      "status": "verified",
+      "scene_id": "MIT-main_experiment120",
+      "input_paths": [
+        "inputs/mit_main_experiment120_dir00.jpg",
+        "inputs/mit_main_experiment120_dir24.jpg"
+      ],
+      "lighting_conditions": [
+        "direction 0 of 25",
+        "direction 24 of 25"
+      ],
+      "evidence": "MIT dataset definition fixes the real photographed scene and camera while changing the active directional light."
+    }
+  },
+  "inputs": [
+    {
+      "id": "IMG-001",
+      "path": "inputs/simplecube_train_00_0002_natural.jpg",
+      "sha256": "aeded705a47f5143d7e5c9d74d07b925ccd6dce8f62fd5fde16de21e5ba183f1",
+      "width": 648,
+      "height": 432,
+      "kind": "real photographed color-constancy dataset image",
+      "scene_id": "SimpleCube++-train_00_0002",
+      "scene": "outdoor skate-park scene",
+      "lighting": "Natural daylight, outdoor; no shadows annotated.",
+      "provenance": "SimpleCube++ auxiliary/JPG/train_00_0002.jpg; copied without pixel edits from the official Cube++ CC BY 4.0 dataset.",
+      "permission": "CC BY 4.0; attribution to the Cube++ dataset authors is required.",
+      "runs": [
+        {
+          "setting": "broad",
+          "thresholds": {
+            "lower_h_deg": 55,
+            "upper_h_deg": 175,
+            "lower_s_pct": 12,
+            "upper_s_pct": 100,
+            "lower_v_pct": 12,
+            "upper_v_pct": 100
+          },
+          "run_id": "845d080f-ad87-455d-93a5-3ffbb89be388",
+          "record": "runs/845d080f-ad87-455d-93a5-3ffbb89be388/record.json"
+        },
+        {
+          "setting": "narrow",
+          "thresholds": {
+            "lower_h_deg": 70,
+            "upper_h_deg": 145,
+            "lower_s_pct": 25,
+            "upper_s_pct": 100,
+            "lower_v_pct": 20,
+            "upper_v_pct": 90
+          },
+          "run_id": "74385113-1c2f-4474-a5cf-96336cecd04b",
+          "record": "runs/74385113-1c2f-4474-a5cf-96336cecd04b/record.json"
+        }
+      ]
+    },
+    {
+      "id": "IMG-002",
+      "path": "inputs/simplecube_train_00_0024_natural_shadow.jpg",
+      "sha256": "350eb86bec0d43e8baa491b2dea1fe6b6f5b5f9caa4ebe42c1bb19ca1690ee3d",
+      "width": 648,
+      "height": 432,
+      "kind": "real photographed color-constancy dataset image",
+      "scene_id": "SimpleCube++-train_00_0024",
+      "scene": "outdoor wooden-sign scene",
+      "lighting": "Natural daylight, outdoor; shadows annotated.",
+      "provenance": "SimpleCube++ auxiliary/JPG/train_00_0024.jpg; copied without pixel edits from the official Cube++ CC BY 4.0 dataset.",
+      "permission": "CC BY 4.0; attribution to the Cube++ dataset authors is required.",
+      "runs": [
+        {
+          "setting": "broad",
+          "thresholds": {
+            "lower_h_deg": 5,
+            "upper_h_deg": 55,
+            "lower_s_pct": 15,
+            "upper_s_pct": 100,
+            "lower_v_pct": 10,
+            "upper_v_pct": 90
+          },
+          "run_id": "4ea15561-d94e-4bdc-8696-19acc81df799",
+          "record": "runs/4ea15561-d94e-4bdc-8696-19acc81df799/record.json"
+        },
+        {
+          "setting": "narrow",
+          "thresholds": {
+            "lower_h_deg": 12,
+            "upper_h_deg": 42,
+            "lower_s_pct": 28,
+            "upper_s_pct": 100,
+            "lower_v_pct": 16,
+            "upper_v_pct": 72
+          },
+          "run_id": "88c04cc2-e154-43d5-91a3-632b3d2c419d",
+          "record": "runs/88c04cc2-e154-43d5-91a3-632b3d2c419d/record.json"
+        }
+      ]
+    },
+    {
+      "id": "IMG-003",
+      "path": "inputs/simplecube_train_03_9168_natural_indoor.jpg",
+      "sha256": "5c9f16ef250abbfe393e08c6e95af0b3edc19cdc87198a1bd9c0df3b6cb55b67",
+      "width": 648,
+      "height": 432,
+      "kind": "real photographed color-constancy dataset image",
+      "scene_id": "SimpleCube++-train_03_9168",
+      "scene": "indoor shelf-and-globe scene",
+      "lighting": "Natural illumination, indoor; shadows annotated.",
+      "provenance": "SimpleCube++ auxiliary/JPG/train_03_9168.jpg; copied without pixel edits from the official Cube++ CC BY 4.0 dataset.",
+      "permission": "CC BY 4.0; attribution to the Cube++ dataset authors is required.",
+      "runs": [
+        {
+          "setting": "broad",
+          "thresholds": {
+            "lower_h_deg": 335,
+            "upper_h_deg": 30,
+            "lower_s_pct": 25,
+            "upper_s_pct": 100,
+            "lower_v_pct": 15,
+            "upper_v_pct": 100
+          },
+          "run_id": "4ac79172-9848-47a9-852d-5df43abd5029",
+          "record": "runs/4ac79172-9848-47a9-852d-5df43abd5029/record.json"
+        },
+        {
+          "setting": "narrow",
+          "thresholds": {
+            "lower_h_deg": 348,
+            "upper_h_deg": 16,
+            "lower_s_pct": 48,
+            "upper_s_pct": 100,
+            "lower_v_pct": 25,
+            "upper_v_pct": 88
+          },
+          "run_id": "64c4dee4-e1cc-458b-9ced-9c28729cbb64",
+          "record": "runs/64c4dee4-e1cc-458b-9ced-9c28729cbb64/record.json"
+        }
+      ]
+    },
+    {
+      "id": "IMG-004",
+      "path": "inputs/simplecube_train_16_1473_natural.jpg",
+      "sha256": "489e0b37b6bd202204778f5fcd95ad4cb1131f9007e8f2f9a3299cdcf3ba174f",
+      "width": 648,
+      "height": 432,
+      "kind": "real photographed color-constancy dataset image",
+      "scene_id": "SimpleCube++-train_16_1473",
+      "scene": "outdoor blue-telephone scene",
+      "lighting": "Natural daylight, outdoor; shadows annotated.",
+      "provenance": "SimpleCube++ auxiliary/JPG/train_16_1473.jpg; copied without pixel edits from the official Cube++ CC BY 4.0 dataset.",
+      "permission": "CC BY 4.0; attribution to the Cube++ dataset authors is required.",
+      "runs": [
+        {
+          "setting": "broad",
+          "thresholds": {
+            "lower_h_deg": 175,
+            "upper_h_deg": 260,
+            "lower_s_pct": 20,
+            "upper_s_pct": 100,
+            "lower_v_pct": 12,
+            "upper_v_pct": 100
+          },
+          "run_id": "37f605d2-8232-49d0-8371-b0cfda076662",
+          "record": "runs/37f605d2-8232-49d0-8371-b0cfda076662/record.json"
+        },
+        {
+          "setting": "narrow",
+          "thresholds": {
+            "lower_h_deg": 195,
+            "upper_h_deg": 235,
+            "lower_s_pct": 45,
+            "upper_s_pct": 100,
+            "lower_v_pct": 20,
+            "upper_v_pct": 88
+          },
+          "run_id": "2ec5d2d7-deef-4439-a670-2396271fd969",
+          "record": "runs/2ec5d2d7-deef-4439-a670-2396271fd969/record.json"
+        }
+      ]
+    },
+    {
+      "id": "IMG-005",
+      "path": "inputs/simplecube_train_00_0450_artificial.jpg",
+      "sha256": "8aa52f9b5b7e1ea0ff9e827de2f37a92e954de19390e4290709ce52841d13a64",
+      "width": 648,
+      "height": 432,
+      "kind": "real photographed color-constancy dataset image",
+      "scene_id": "SimpleCube++-train_00_0450",
+      "scene": "indoor writing-board scene",
+      "lighting": "Artificial illumination, indoor; shadows annotated.",
+      "provenance": "SimpleCube++ auxiliary/JPG/train_00_0450.jpg; copied without pixel edits from the official Cube++ CC BY 4.0 dataset.",
+      "permission": "CC BY 4.0; attribution to the Cube++ dataset authors is required.",
+      "runs": [
+        {
+          "setting": "broad",
+          "thresholds": {
+            "lower_h_deg": 65,
+            "upper_h_deg": 175,
+            "lower_s_pct": 18,
+            "upper_s_pct": 100,
+            "lower_v_pct": 12,
+            "upper_v_pct": 100
+          },
+          "run_id": "db32765d-00f0-4f93-bd6d-a9dd93fb5533",
+          "record": "runs/db32765d-00f0-4f93-bd6d-a9dd93fb5533/record.json"
+        },
+        {
+          "setting": "narrow",
+          "thresholds": {
+            "lower_h_deg": 85,
+            "upper_h_deg": 150,
+            "lower_s_pct": 42,
+            "upper_s_pct": 100,
+            "lower_v_pct": 20,
+            "upper_v_pct": 90
+          },
+          "run_id": "bc1850a2-0bf7-45b2-9590-c1dc5748abdd",
+          "record": "runs/bc1850a2-0bf7-45b2-9590-c1dc5748abdd/record.json"
+        }
+      ]
+    },
+    {
+      "id": "IMG-006",
+      "path": "inputs/simplecube_train_01_7977_artificial_night.jpg",
+      "sha256": "93ada18369d86581d99887db89bb513c8de950efd3449105c054a4e927fe192d",
+      "width": 648,
+      "height": 432,
+      "kind": "real photographed color-constancy dataset image",
+      "scene_id": "SimpleCube++-train_01_7977",
+      "scene": "night street scene",
+      "lighting": "Artificial illumination, outdoor at night; shadows annotated.",
+      "provenance": "SimpleCube++ auxiliary/JPG/train_01_7977.jpg; copied without pixel edits from the official Cube++ CC BY 4.0 dataset.",
+      "permission": "CC BY 4.0; attribution to the Cube++ dataset authors is required.",
+      "runs": [
+        {
+          "setting": "broad",
+          "thresholds": {
+            "lower_h_deg": 2,
+            "upper_h_deg": 62,
+            "lower_s_pct": 18,
+            "upper_s_pct": 100,
+            "lower_v_pct": 10,
+            "upper_v_pct": 100
+          },
+          "run_id": "46f57bfe-443a-40fd-8172-e83fbc0b520c",
+          "record": "runs/46f57bfe-443a-40fd-8172-e83fbc0b520c/record.json"
+        },
+        {
+          "setting": "narrow",
+          "thresholds": {
+            "lower_h_deg": 12,
+            "upper_h_deg": 42,
+            "lower_s_pct": 42,
+            "upper_s_pct": 100,
+            "lower_v_pct": 20,
+            "upper_v_pct": 88
+          },
+          "run_id": "a7f78dd8-7db8-441b-9d75-a5add45647f0",
+          "record": "runs/a7f78dd8-7db8-441b-9d75-a5add45647f0/record.json"
+        }
+      ]
+    },
+    {
+      "id": "IMG-007",
+      "path": "inputs/simplecube_train_02_8132_mixed.jpg",
+      "sha256": "e91cc8a01414355ff28a10bd738ef5c0b9c9181ab1727cb2daec0e996b0a2259",
+      "width": 648,
+      "height": 432,
+      "kind": "real photographed color-constancy dataset image",
+      "scene_id": "SimpleCube++-train_02_8132",
+      "scene": "indoor electrical-panel scene",
+      "lighting": "Mixed illumination, indoor; shadows annotated.",
+      "provenance": "SimpleCube++ auxiliary/JPG/train_02_8132.jpg; copied without pixel edits from the official Cube++ CC BY 4.0 dataset.",
+      "permission": "CC BY 4.0; attribution to the Cube++ dataset authors is required.",
+      "runs": [
+        {
+          "setting": "broad",
+          "thresholds": {
+            "lower_h_deg": 55,
+            "upper_h_deg": 150,
+            "lower_s_pct": 15,
+            "upper_s_pct": 100,
+            "lower_v_pct": 12,
+            "upper_v_pct": 100
+          },
+          "run_id": "4e244a4c-37fe-43bf-9ba3-3f869d118ef2",
+          "record": "runs/4e244a4c-37fe-43bf-9ba3-3f869d118ef2/record.json"
+        },
+        {
+          "setting": "narrow",
+          "thresholds": {
+            "lower_h_deg": 70,
+            "upper_h_deg": 125,
+            "lower_s_pct": 35,
+            "upper_s_pct": 100,
+            "lower_v_pct": 20,
+            "upper_v_pct": 88
+          },
+          "run_id": "6414ce08-e1ed-4948-ad15-4f23d3ecf14a",
+          "record": "runs/6414ce08-e1ed-4948-ad15-4f23d3ecf14a/record.json"
+        }
+      ]
+    },
+    {
+      "id": "IMG-008",
+      "path": "inputs/simplecube_train_12_0361_mixed.jpg",
+      "sha256": "69c4ccbfc345a675a7cbe934396114b176dddbeca20a42be673de518a1173867",
+      "width": 648,
+      "height": 432,
+      "kind": "real photographed color-constancy dataset image",
+      "scene_id": "SimpleCube++-train_12_0361",
+      "scene": "outdoor shopping-street scene",
+      "lighting": "Mixed illumination, outdoor in daytime; shadows annotated.",
+      "provenance": "SimpleCube++ auxiliary/JPG/train_12_0361.jpg; copied without pixel edits from the official Cube++ CC BY 4.0 dataset.",
+      "permission": "CC BY 4.0; attribution to the Cube++ dataset authors is required.",
+      "runs": [
+        {
+          "setting": "broad",
+          "thresholds": {
+            "lower_h_deg": 175,
+            "upper_h_deg": 270,
+            "lower_s_pct": 20,
+            "upper_s_pct": 100,
+            "lower_v_pct": 12,
+            "upper_v_pct": 100
+          },
+          "run_id": "a387a66c-d20c-4ed1-b800-a714b04bfd4d",
+          "record": "runs/a387a66c-d20c-4ed1-b800-a714b04bfd4d/record.json"
+        },
+        {
+          "setting": "narrow",
+          "thresholds": {
+            "lower_h_deg": 195,
+            "upper_h_deg": 245,
+            "lower_s_pct": 42,
+            "upper_s_pct": 100,
+            "lower_v_pct": 20,
+            "upper_v_pct": 90
+          },
+          "run_id": "3327f406-7ab6-4b9f-86c0-3740def377da",
+          "record": "runs/3327f406-7ab6-4b9f-86c0-3740def377da/record.json"
+        }
+      ]
+    },
+    {
+      "id": "IMG-009",
+      "path": "inputs/mit_main_experiment120_dir00.jpg",
+      "sha256": "76f715b6ee4e90f2830b5d5000bef5d2c3d2a017e4b1754d44b4dd223e70fb68",
+      "width": 187,
+      "height": 125,
+      "kind": "real photographed multi-illumination image",
+      "scene_id": "MIT-main_experiment120",
+      "scene": "fixed hair-and-spheres scene",
+      "lighting": "Controlled real directional light 0 of 25; fixed camera and scene.",
+      "provenance": "MIT CSAIL Multi-Illumination Dataset scene main_experiment120, dir_0_mip5.jpg; copied without pixel edits.",
+      "permission": "CC-BY; attribution to Murmann, Gharbi, Aittala, and Durand (ICCV 2019).",
+      "runs": [
+        {
+          "setting": "broad",
+          "thresholds": {
+            "lower_h_deg": 18,
+            "upper_h_deg": 78,
+            "lower_s_pct": 8,
+            "upper_s_pct": 100,
+            "lower_v_pct": 12,
+            "upper_v_pct": 100
+          },
+          "run_id": "70334bd1-1e1c-4993-9eec-0644b075d1a3",
+          "record": "runs/70334bd1-1e1c-4993-9eec-0644b075d1a3/record.json"
+        },
+        {
+          "setting": "narrow",
+          "thresholds": {
+            "lower_h_deg": 28,
+            "upper_h_deg": 62,
+            "lower_s_pct": 18,
+            "upper_s_pct": 82,
+            "lower_v_pct": 22,
+            "upper_v_pct": 95
+          },
+          "run_id": "87b88837-48fb-4bae-9fd8-39a03cb67a65",
+          "record": "runs/87b88837-48fb-4bae-9fd8-39a03cb67a65/record.json"
+        }
+      ]
+    },
+    {
+      "id": "IMG-010",
+      "path": "inputs/mit_main_experiment120_dir24.jpg",
+      "sha256": "0802de5f8fe9a405a40962a4d8b4b496b55ceca821b615090af5c5f41c16f726",
+      "width": 187,
+      "height": 125,
+      "kind": "real photographed multi-illumination image",
+      "scene_id": "MIT-main_experiment120",
+      "scene": "fixed hair-and-spheres scene",
+      "lighting": "Controlled real directional light 24 of 25; fixed camera and scene.",
+      "provenance": "MIT CSAIL Multi-Illumination Dataset scene main_experiment120, dir_24_mip5.jpg; copied without pixel edits.",
+      "permission": "CC-BY; attribution to Murmann, Gharbi, Aittala, and Durand (ICCV 2019).",
+      "runs": [
+        {
+          "setting": "broad",
+          "thresholds": {
+            "lower_h_deg": 18,
+            "upper_h_deg": 78,
+            "lower_s_pct": 8,
+            "upper_s_pct": 100,
+            "lower_v_pct": 12,
+            "upper_v_pct": 100
+          },
+          "run_id": "3540f795-abfb-4d8c-b8c8-a064f35f3103",
+          "record": "runs/3540f795-abfb-4d8c-b8c8-a064f35f3103/record.json"
+        },
+        {
+          "setting": "narrow",
+          "thresholds": {
+            "lower_h_deg": 28,
+            "upper_h_deg": 62,
+            "lower_s_pct": 18,
+            "upper_s_pct": 82,
+            "lower_v_pct": 22,
+            "upper_v_pct": 95
+          },
+          "run_id": "95ad2f49-138e-4866-9c62-a422cb6666cc",
+          "record": "runs/95ad2f49-138e-4866-9c62-a422cb6666cc/record.json"
+        }
+      ]
+    }
+  ]
+}

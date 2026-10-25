@@ -19,4 +19,5 @@ Thumbs.db
 .vscode/
 .idea/
 # Curated experiment inputs, records and evidence are intentionally retained.
+dataset/
 

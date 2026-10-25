@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "platform": "Windows-10-10.0.26200-SP0",
+  "machine": "AMD64",
+  "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel",
+  "python": "3.11.9",
+  "python_implementation": "CPython",
+  "tcl": "8.6",
+  "tk": "8.6",
+  "packages": {
+    "numpy": "2.4.6",
+    "Pillow": "12.3.0",
+    "opencv-python": "4.14.0.94",
+    "pytest": "9.1.1"
+  },
+  "opencv": "4.14.0",
+  "video_backend": "OpenCV FFMPEG (enabled in the locked Windows build)",
+  "application_revision": "e9fdac4a646465ac5d5d4cb3dfd4ebced896e994",
+  "working_tree_dirty": true,
+  "generation_command": ".\\.venv\\Scripts\\python.exe experiments\\generate_evidence.py"
+}

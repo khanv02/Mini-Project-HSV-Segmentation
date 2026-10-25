@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "run_id": "46f57bfe-443a-40fd-8172-e83fbc0b520c",
+  "created_at": "2026-10-24T15:15:36.823786Z",
+  "source": {
+    "path": "../../inputs/simplecube_train_01_7977_artificial_night.jpg",
+    "sha256": "93ada18369d86581d99887db89bb513c8de950efd3449105c054a4e927fe192d",
+    "media_kind": "image",
+    "width": 648,
+    "height": 432,
+    "frame_index": null,
+    "backend": null
+  },
+  "thresholds": {
+    "lower_h_deg": 2,
+    "upper_h_deg": 62,
+    "lower_s_pct": 18,
+    "upper_s_pct": 100,
+    "lower_v_pct": 10,
+    "upper_v_pct": 100
+  },
+  "lighting": "Artificial illumination, outdoor at night; shadows annotated.",
+  "observations": "Broad orange interval selected 79.50% of pixels; it retains more shaded target colors but may include similarly colored background regions. No ground-truth accuracy is claimed.",
+  "artifacts": {
+    "mask": {
+      "path": "mask.png",
+      "sha256": "5c66210dcb3371d62b7daadbf55e2a9655f6d9ea6053be1d38bcb22feb1b3801",
+      "pixel_sha256": "c4bf7b93a6afd3fbe7e0816326b4e372c9243337525c7bfce9d2d0041a855dd4"
+    },
+    "result": {
+      "path": "result.png",
+      "sha256": "b9d4c47e4e51431f4c4f227e149333e05ecab6dafdf901a19c37180d2cdf9899",
+      "pixel_sha256": "eb0be2401effb9f32b7ce8d66c7b41376939cdb7b0dd25aefa118137c32edbf9"
+    }
+  },
+  "environment": {
+    "path": "../../environment.json",
+    "sha256": "3da11c3758a95f670d1b20ebfa8159b7095038cc7b6a35f8fafacdf45fc923b3"
+  }
+}

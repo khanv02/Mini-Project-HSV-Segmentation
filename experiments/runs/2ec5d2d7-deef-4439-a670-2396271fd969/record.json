@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "run_id": "2ec5d2d7-deef-4439-a670-2396271fd969",
+  "created_at": "2026-10-24T15:15:36.333407Z",
+  "source": {
+    "path": "../../inputs/simplecube_train_16_1473_natural.jpg",
+    "sha256": "489e0b37b6bd202204778f5fcd95ad4cb1131f9007e8f2f9a3299cdcf3ba174f",
+    "media_kind": "image",
+    "width": 648,
+    "height": 432,
+    "frame_index": null,
+    "backend": null
+  },
+  "thresholds": {
+    "lower_h_deg": 195,
+    "upper_h_deg": 235,
+    "lower_s_pct": 45,
+    "upper_s_pct": 100,
+    "lower_v_pct": 20,
+    "upper_v_pct": 88
+  },
+  "lighting": "Natural daylight, outdoor; shadows annotated.",
+  "observations": "Narrow blue interval selected 0.92% of pixels; it reduces unwanted colors but may miss darker or less saturated target regions. No ground-truth accuracy is claimed.",
+  "artifacts": {
+    "mask": {
+      "path": "mask.png",
+      "sha256": "ad5503571c5e7c06c5fc8f8f0b073627efbae08c902a3a3397080cceccc7ce65",
+      "pixel_sha256": "170f4455d1aaefff68aa6b2ade0b4e841bc3eaea5281fc0a44d95d5aeed58710"
+    },
+    "result": {
+      "path": "result.png",
+      "sha256": "516c424b76fd464897eed7747e07f098b57ae3c83661b5efeacf85c24377ee11",
+      "pixel_sha256": "1f5844324b3594c6317819158a06d1730750722b2db7b7524f12ed2e93b347fa"
+    }
+  },
+  "environment": {
+    "path": "../../environment.json",
+    "sha256": "3da11c3758a95f670d1b20ebfa8159b7095038cc7b6a35f8fafacdf45fc923b3"
+  }
+}

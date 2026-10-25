@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from ..models import SegmentationResult
+from .experiment_panel import ExperimentPanel
 from .image_view import ImageView
 
 
@@ -18,7 +19,7 @@ class MainWindow:
         container = ttk.Frame(self.root, padding=10)
         container.pack(fill="both", expand=True)
         container.columnconfigure(0, weight=1)
-        container.rowconfigure(2, weight=1)
+        container.rowconfigure(3, weight=1)
 
         self.input_section = ttk.LabelFrame(container, text="File Input", padding=8)
         self.input_section.grid(row=0, column=0, sticky="ew", pady=(0, 8))
@@ -50,10 +51,14 @@ class MainWindow:
         self.parameter_section = ttk.LabelFrame(container, text="HSV Parameters", padding=8)
         self.parameter_section.grid(row=1, column=0, sticky="ew", pady=(0, 8))
 
+        self.experiment_panel = ExperimentPanel(container)
+        self.experiment_panel.grid(row=2, column=0, sticky="ew", pady=(0, 8))
+        self.record_experiment_button = self.experiment_panel.record_button
+
         self.visualization_section = ttk.LabelFrame(
             container, text="Result Visualization", padding=8
         )
-        self.visualization_section.grid(row=2, column=0, sticky="nsew")
+        self.visualization_section.grid(row=3, column=0, sticky="nsew")
         for column in range(3):
             self.visualization_section.columnconfigure(column, weight=1, uniform="view")
         self.visualization_section.rowconfigure(0, weight=1)
@@ -69,7 +74,7 @@ class MainWindow:
 
         self.status_var = tk.StringVar(value="Ready — open a PNG, JPEG, or BMP image.")
         ttk.Label(container, textvariable=self.status_var, anchor="w").grid(
-            row=3, column=0, sticky="ew", pady=(8, 0)
+            row=4, column=0, sticky="ew", pady=(8, 0)
         )
 
     def show_result(self, result: SegmentationResult) -> None:
@@ -85,12 +90,14 @@ class MainWindow:
         self.status_var.set(message)
 
     def set_commands(
-        self, *, open_image, open_video, save_mask, save_result, play, pause, restart
+        self, *, open_image, open_video, save_mask, save_result, record_experiment,
+        play, pause, restart
     ) -> None:
         self.open_image_button.configure(command=open_image)
         self.open_video_button.configure(command=open_video)
         self.save_mask_button.configure(command=save_mask)
         self.save_result_button.configure(command=save_result)
+        self.experiment_panel.set_command(record_experiment)
         self.play_button.configure(command=play)
         self.pause_button.configure(command=pause)
         self.restart_button.configure(command=restart)
@@ -104,6 +111,9 @@ class MainWindow:
         state = "normal" if available else "disabled"
         self.save_mask_button.configure(state=state)
         self.save_result_button.configure(state=state)
+
+    def set_experiment_available(self, available: bool) -> None:
+        self.experiment_panel.set_available(available)
 
     def update_video_controls(self, state: str) -> None:
         self.play_button.configure(state="normal" if state == "paused" else "disabled")

@@ -15,6 +15,7 @@ from ..application.processing_worker import ProcessingWorker, WorkerCompletion
 from ..application.session import ImageSession
 from ..errors import ValidationError, format_recovery_message
 from ..io.export import ExportReceipt, export_snapshot
+from ..io.experiments import ExperimentReceipt, publish_experiment
 from ..models import HSVThresholdSet, ProcessingRequest, SegmentationResult
 from .main_window import MainWindow
 from .threshold_controls import ThresholdControls
@@ -30,6 +31,7 @@ class ApplicationController:
         root: tk.Tk,
         *,
         exporter: Callable[..., ExportReceipt] = export_snapshot,
+        experiment_recorder: Callable[..., ExperimentReceipt] = publish_experiment,
     ):
         self.root = root
         self.window = MainWindow(root)
@@ -37,6 +39,8 @@ class ApplicationController:
         self.playback = PlaybackSession(self.session)
         self.worker = ProcessingWorker()
         self._exporter = exporter
+        self._experiment_recorder = experiment_recorder
+        self.experiment_panel = self.window.experiment_panel
         self.controls = ThresholdControls(
             self.window.parameter_section,
             initial=self.session.thresholds,
@@ -50,12 +54,14 @@ class ApplicationController:
         self._export_in_flight = False
         self._export_snapshot_valid = False
         self.last_export_receipt: ExportReceipt | None = None
+        self.last_experiment_receipt: ExperimentReceipt | None = None
         self._closed = False
         self.window.set_commands(
             open_image=self.choose_image,
             open_video=self.choose_video,
             save_mask=self.choose_save_mask,
             save_result=self.choose_save_result,
+            record_experiment=self.choose_record_experiment,
             play=self.play_video,
             pause=self.pause_video,
             restart=self.restart_video,
@@ -217,6 +223,56 @@ class ApplicationController:
     def save_result_path(self, path: str | Path | None) -> bool:
         return self._begin_export("result", path)
 
+    def choose_record_experiment(self) -> None:
+        runs_dir = filedialog.askdirectory(title="Choose Experiment Runs Directory")
+        if runs_dir:
+            self.record_experiment_to(
+                runs_dir, Path.cwd() / "experiments" / "environment.json"
+            )
+
+    def record_experiment_to(
+        self,
+        runs_dir: str | Path | None,
+        environment_path: str | Path | None = None,
+    ) -> bool:
+        if runs_dir is None or str(runs_dir) == "":
+            return False
+        snapshot = self.session.result
+        lighting, observations = self.experiment_panel.descriptions()
+        if not lighting or not observations:
+            self.window.show_status(
+                "Lighting and observations are required before recording an experiment."
+            )
+            return False
+        if (
+            self._export_in_flight
+            or not self._export_snapshot_valid
+            or snapshot is None
+            or snapshot.thresholds != self.session.thresholds
+        ):
+            self.window.show_status(
+                "Recording is unavailable until a complete current result is ready."
+            )
+            return False
+        environment = Path(environment_path or Path.cwd() / "experiments" / "environment.json")
+        self._resume_video_after_export = self.playback.state is PlaybackState.PLAYING
+        if self._resume_video_after_export:
+            self.playback.pause()
+            self.window.update_video_controls(self.playback.state.value)
+        revision = self._latest_request_revision
+        self._export_in_flight = True
+        self._refresh_export_controls()
+        self.window.show_status("Recording experiment…")
+        self.worker.submit_operation(
+            "experiment_record",
+            revision,
+            lambda: self._experiment_recorder(
+                snapshot, lighting, observations, Path(runs_dir), environment
+            ),
+            replace_pending=False,
+        )
+        return True
+
     def _begin_export(self, kind: str, path: str | Path | None) -> bool:
         if path is None or str(path) == "":
             return False
@@ -266,6 +322,7 @@ class ApplicationController:
             and result.thresholds == self.session.thresholds
         )
         self.window.set_export_available(available)
+        self.window.set_experiment_available(available)
 
     def _poll_worker(self) -> None:
         if self._closed:
@@ -275,7 +332,7 @@ class ApplicationController:
         self._poll_id = self.root.after(self.POLL_MS, self._poll_worker)
 
     def _handle_completion(self, completion: WorkerCompletion) -> None:
-        if completion.kind in {"export_mask", "export_result"}:
+        if completion.kind in {"export_mask", "export_result", "experiment_record"}:
             self._handle_export_completion(completion)
             return
         if completion.request_revision == self._video_request_in_flight:
@@ -320,6 +377,13 @@ class ApplicationController:
             self.window.show_status(message)
             self._refresh_export_controls()
             messagebox.showerror("HSV Color Segmentation", message, parent=self.root)
+        elif isinstance(completion.result, ExperimentReceipt):
+            receipt = completion.result
+            self.last_experiment_receipt = receipt
+            self.window.show_status(
+                f"Recorded experiment {receipt.run_id} at {receipt.record_path}."
+            )
+            self._refresh_export_controls()
         elif isinstance(completion.result, ExportReceipt):
             receipt = completion.result
             self.last_export_receipt = receipt

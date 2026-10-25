@@ -331,3 +331,40 @@ Focused result: **13 passed in 3.38 seconds**. Final project result: **185 passe
 and all source/test modules compiled successfully.
 
 T033-T036 are complete. Stop before T037; experiment recording and collection work has not started.
+
+## Phase 7: Experiment Records and Comparisons
+
+Scope: T037-T044. The implementation publishes one UUID-named directory per immutable snapshot.
+`mask.png` and `result.png` are written before an atomically replaced `record.json`; failed
+artifact writes never publish a complete record. Records include UTC time, source/frame identity,
+six integer thresholds, lighting/observation text, relative paths, and SHA-256 values for source,
+environment, PNG bytes and decoded pixels.
+
+The GUI adds an Experiment Record panel and serializes hashing/PNG/JSON work through the existing
+background worker. Tests confirm responsive event handling, disabled duplicate writes, captured
+identity across source replacement, and safe close during delayed publication.
+
+`experiments/manifest.json` indexes 10 distinct images and two threshold settings each.
+`experiments/runs/` contains 20 complete records, masks and results. The report links both
+comparisons for every input and avoids accuracy claims without ground truth. Three runs are
+automatically reconstructed after source/environment hash checks and compared by exact decoded
+mask/result pixels. The independent-student form remains honestly pending.
+
+The manifest documents permitted reuse and attribution for all inputs. Its MIT CSAIL pair shows
+the same photographed scene under directional lights 0 and 24, satisfying the real-lighting
+condition. No synthetic or unrelated pair is presented as real evidence. T037-T044 are complete.
+
+### Recorded checks - 2026-10-24
+
+```powershell
+.\.venv\Scripts\python.exe experiments\generate_evidence.py
+.\.venv\Scripts\python.exe -m pytest tests\integration\test_experiment_records.py tests\integration\test_experiment_reproduction.py -q
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m compileall -q src tests experiments\generate_evidence.py
+```
+
+Evidence generation published **20 runs for 10 distinct images**. Focused result: **10 passed in
+1.52 seconds**. Final project result: **195 passed in 9.12 seconds**, with no skipped tests.
+Dependency consistency reported no broken requirements, and all source/test/generator modules
+compiled successfully. Task ledger: **44/50 complete**; Phase 8 remains pending.
