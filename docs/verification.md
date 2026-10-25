@@ -367,4 +367,64 @@ condition. No synthetic or unrelated pair is presented as real evidence. T037-T0
 Evidence generation published **20 runs for 10 distinct images**. Focused result: **10 passed in
 1.52 seconds**. Final project result: **195 passed in 9.12 seconds**, with no skipped tests.
 Dependency consistency reported no broken requirements, and all source/test/generator modules
-compiled successfully. Task ledger: **44/50 complete**; Phase 8 remains pending.
+compiled successfully. Task ledger: **44/50 complete** at the Phase 7 checkpoint.
+
+## Phase 8: Polish and acceptance status
+
+T045-T048 are complete. `docs/algorithm.md` records the implemented equations and limits;
+`experiments/performance.md` retains a real 100-edit Full-HD Tk measurement; README, quickstart,
+and `docs/demo.md` provide the operational and presentation instructions.
+
+The first performance run failed with 13/100 updates within one second (median 1,399.77 ms).
+After caching HSV per immutable `(session_id, frame_index)` and avoiding redundant Original-view
+rendering, the accepted run achieved **100/100**, median **557.28 ms**, p95 **638.01 ms**, and
+maximum **903.43 ms**. Every measured final output was also compared exactly with fresh pure
+processing. Individual samples are in `experiments/performance_results.json`.
+
+Automated checkpoint on 2026-10-25:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m compileall -q src tests experiments\benchmark_performance.py experiments\generate_evidence.py
+```
+
+Result: **195 passed in 8.97 seconds**, no broken requirements, and successful compilation.
+The runtime source contains no network client and has no Image Restoration dependency.
+
+### FR/SC evidence matrix
+
+`PASS` means the stated automated or retained-artifact evidence was executed on the recorded
+machine. `PENDING` is deliberately not a pass.
+
+| ID | Tasks | Test/procedure and actual outcome | Evidence | Status |
+|---|---|---|---|---|
+| FR-001 | T015,T020,T034 | Tk checks found the named window and labeled input, parameter, experiment and three-view sections. | `test_image_session.py`; `main_window.py` | PASS |
+| FR-002 | T014,T016,T022,T024,T027,T034,T047,T049 | All FMT-001..007 fixtures opened; MJPG/AVI and mp4v/MP4 decoded through FFMPEG. | `test_format_inventory.py`; `docs/acceptance.md` | PASS |
+| FR-003 | T017,T020,T025,T026 | Image and first paused video frame produced matching original/mask/result snapshots. | image/playback integration tests | PASS |
+| FR-004 | T008-T012,T045 | Analytical and `colorsys` comparisons passed; equations match float64 implementation. | unit processing tests; algorithm doc | PASS |
+| FR-005 | T011,T018,T045 | Six integer controls, displayed units/ranges and validation cases passed. | segmentation/image-session tests | PASS |
+| FR-006 | T009,T011,T012 | Inclusive endpoints, equal intervals and wrapped hue cases passed exactly. | `test_segmentation.py` | PASS |
+| FR-007 | T009,T012,T021,T028,T030 | Masks were only 0/255; retained RGB and black exclusions matched source dimensions exactly. | segmentation/export tests | PASS |
+| FR-008 | T018-T021,T033,T035 | Automatic update, invalid-edit preservation, coalescing and stale-result rejection passed. | image-session/error-recovery tests | PASS |
+| FR-009 | T015,T020,T021,T026 | Three synchronized source-aspect previews matched the committed source/frame. | image-session/playback tests | PASS |
+| FR-010 | T022-T027 | Open-paused, play, pause, edit, EOF, restart and replacement checks passed. | video/playback tests | PASS |
+| FR-011 | T028-T032 | Still and displayed-video-frame PNGs reopened at exact dimensions/pixels. | image-export/export-session tests | PASS |
+| FR-012 | T029-T032,T037,T040 | Overwrite/cancel/failure, captured snapshot, background write and responsive Tk checks passed. | export/experiment-record tests | PASS |
+| FR-013 | T006,T024,T030,T033-T036 | Invalid file/parameter/decode/write/resource cases had required recovery fields and allowed a valid follow-up. | error-recovery and format tests | PASS |
+| FR-014 | T005,T037,T039,T040 | UUID records retained identity, frame, thresholds, UTC date, descriptions, paths and hashes. | experiment-record tests; retained runs | PASS |
+| FR-015 | T038,T041-T044,T049 | Ten licensed inputs, two settings each, real-light pair, environment/procedure and exact automated replay are retained. | manifest, report, reproduction test | PASS |
+| FR-016 | T002-T004,T047,T049,T050 | Full suite/workflows ran locally; source/dependencies contain no service or Image Restoration integration. | `pyproject.toml`; import review; full suite | PASS |
+| FR-017 | T007-T013,T045,T050 | Pure core tests cover conversion, inclusive/wrapped selection, extraction, boundaries and invalid data without Tk/files. | unit suite; algorithm doc | PASS |
+| SC-001 | T014,T016,T022,T024,T027,T034,T049 | All seven hashed format cases passed; video lifecycle completed without mismatched views. | format/playback tests; inventory | PASS |
+| SC-002 | T007-T013 | All analytical/reference pixels and extracted colors matched exactly within documented tolerance. | unit processing suite | PASS |
+| SC-003 | T019,T021,T046 | Full-HD real-GUI measurement achieved 100/100 <=1 s; final pixels matched final controls. | performance markdown/JSON | PASS |
+| SC-004 | T028-T032 | Every automated image and video-frame export reopened with exact dimensions/pixels. | export integration tests | PASS |
+| SC-005 | T037-T043,T049 | Twenty runs/ten images/light pair and three automated exact replays pass; second-student replay has not occurred. | runs, manifest, reproduction record | **PENDING** |
+| SC-006 | T047-T049 | Five-minute no-help student workflow is prepared but no genuine participant/time is recorded. | quickstart, demo, reproduction form | **PENDING** |
+| SC-007 | T033-T036,T049 | Automated invalid-file/parameter/save cases verified message fields, preservation and valid follow-up. | error-recovery tests | PASS |
+| SC-008 | T038,T042,T044,T048,T049 | Report labels two comparisons for all ten images and discusses misses, unwanted selection and lighting. | experiment report; demo | PASS |
+
+T049 remains incomplete because SC-005's second-student replay and SC-006's independent timed
+workflow require real participants. T050 remains dependency-blocked by T049. No checkbox is
+advanced for either task. Current ledger: **48/50 complete**.

@@ -13,6 +13,7 @@ class MainWindow:
 
     def __init__(self, root: tk.Tk | None = None):
         self.root = root or tk.Tk()
+        self._displayed_source_identity: tuple[str, int | None] | None = None
         self.root.title("HSV Color Segmentation")
         self.root.minsize(960, 640)
 
@@ -78,7 +79,10 @@ class MainWindow:
         )
 
     def show_result(self, result: SegmentationResult) -> None:
-        self.original_view.show_array(result.original_rgb)
+        source_identity = (result.session_id, result.frame_index)
+        if source_identity != self._displayed_source_identity:
+            self.original_view.show_array(result.original_rgb)
+            self._displayed_source_identity = source_identity
         self.mask_view.show_array(result.mask)
         self.result_view.show_array(result.segmented_rgb)
         self.source_label.configure(text=result.source.source_path.name)

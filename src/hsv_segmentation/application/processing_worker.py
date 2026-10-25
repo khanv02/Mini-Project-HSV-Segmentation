@@ -9,6 +9,8 @@ from threading import RLock
 
 from ..io.images import load_image
 from ..models import HSVThresholdSet, ProcessingRequest, SegmentationResult
+from ..processing.color import rgb_to_hsv
+from ..processing.segmentation import apply_mask, generate_mask
 from .session import process_source
 
 
@@ -34,15 +36,33 @@ class _WorkItem:
     replaceable: bool = True
 
 
-def _default_processor(request: ProcessingRequest) -> SegmentationResult:
-    return process_source(request.source, request.thresholds, request.request_revision)
+class _CachedProcessor:
+    """Reuse HSV while only thresholds change for one immutable source snapshot."""
+
+    def __init__(self):
+        self._source_identity: tuple[str, int | None] | None = None
+        self._hsv = None
+
+    def __call__(self, request: ProcessingRequest) -> SegmentationResult:
+        identity = (request.session_id, request.frame_index)
+        if identity != self._source_identity:
+            self._hsv = rgb_to_hsv(request.rgb)
+            self._source_identity = identity
+        mask = generate_mask(self._hsv, request.thresholds)
+        return SegmentationResult(
+            source=request.source,
+            thresholds=request.thresholds,
+            mask=mask,
+            segmented_rgb=apply_mask(request.rgb, mask),
+            request_revision=request.request_revision,
+        )
 
 
 class ProcessingWorker:
     """Run one job at a time and retain at most one replaceable pending job."""
 
     def __init__(self, processor: Processor | None = None):
-        self._processor = processor or _default_processor
+        self._processor = processor or _CachedProcessor()
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hsv-processing")
         # add_done_callback may run synchronously when a very fast operation has
         # already completed. Re-entry keeps that completion from deadlocking the

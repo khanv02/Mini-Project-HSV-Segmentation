@@ -12,7 +12,8 @@ Setup, foundation, still-image MVP, video, PNG export and comprehensive recovery
 **Execution policy (user instruction)**: Implement and verify one phase at a time,
 then stop and report before starting the next phase. See
 `docs/implementation-stages.md` for the eight stage boundaries. The current
-authorized increment is Phase 7 (T037–T044); it is complete. Stop before Phase 8 (T045).
+authorized increment has advanced through Phase 8 documentation and automated validation
+(T045–T048). T049 and dependent T050 remain open for genuine external acceptance.
 
 **Tests**: Required by FR-017, the constitution, and the user's requested unit-test phase.
 
@@ -202,10 +203,10 @@ visible unmet criteria; do not invent evidence.
 
 **Purpose**: Verify responsiveness, explain the algorithm, and prepare the academic demonstration.
 
-- [ ] T045 [P] Document RGB/HSV conversion, formulas/conventions, precision, inclusive masks and hue wraparound in `docs/algorithm.md`; **Depends**: T036; **Done**: explanations match the tested implementation, define units and neutral behavior, explain grayscale/alpha handling, and describe limitations in presentation-ready terms.
-- [ ] T046 [P] Measure 100 threshold changes on a 1920x1080 still image and retain the procedure/results in `experiments/performance.md`; **Depends**: T036; **Done**: the documented computer meets at least 95 updates within one second, final outputs match final controls, and any needed fixes are made and remeasured before marking this task complete.
-- [ ] T047 Update `README.md` and `specs/001-hsv-color-segmentation/quickstart.md`; **Depends**: T043, T044, T045, T046; **Done**: setup, launch, tests, supported formats/codecs, six controls, video behavior, export, experiment replay, limitations and offline independence have accurate copyable instructions.
-- [ ] T048 Prepare `docs/demo.md`; **Depends**: T047; **Done**: a timed walkthrough covers the image MVP, video, export, recovery, all 10 experiment images and lighting comparisons, with matching saved artifacts and an explanation of why HSV is used.
+- [X] T045 [P] Document RGB/HSV conversion, formulas/conventions, precision, inclusive masks and hue wraparound in `docs/algorithm.md`; **Depends**: T036; **Done**: explanations match the tested implementation, define units and neutral behavior, explain grayscale/alpha handling, and describe limitations in presentation-ready terms.
+- [X] T046 [P] Measure 100 threshold changes on a 1920x1080 still image and retain the procedure/results in `experiments/performance.md`; **Depends**: T036; **Done**: the documented computer meets at least 95 updates within one second, final outputs match final controls, and any needed fixes are made and remeasured before marking this task complete.
+- [X] T047 Update `README.md` and `specs/001-hsv-color-segmentation/quickstart.md`; **Depends**: T043, T044, T045, T046; **Done**: setup, launch, tests, supported formats/codecs, six controls, video behavior, export, experiment replay, limitations and offline independence have accurate copyable instructions.
+- [X] T048 Prepare `docs/demo.md`; **Depends**: T047; **Done**: a timed walkthrough covers the image MVP, video, export, recovery, all 10 experiment images and lighting comparisons, with matching saved artifacts and an explanation of why HSV is used.
 - [ ] T049 Run the full automated/offline acceptance workflow and independent student checks, recording outcomes in `docs/verification.md` and `experiments/reproduction.md`; **Depends**: T048; **Done**: automated tests pass, every FR/SC has evidence, a second student genuinely reproduces three runs, and a student completes the documented image/edit/compare/save flow within five minutes without help; unavailable external acceptance keeps this final task incomplete.
   Populate the evidence matrix for all 25 FR/SC IDs below with covering task IDs, test/procedure, command/actions, actual outcome and evidence location. Execute every required FMT case on the recorded demonstration computer; skipped codecs, missing fixtures and pending human checks remain unmet acceptance.
 - [ ] T050 Review module boundaries, naming, dependency necessity, and constitution compliance in `specs/001-hsv-color-segmentation/plan.md` and `docs/verification.md`; **Depends**: T049; **Done**: processing imports neither GUI nor file I/O, every core function has independent tests, no unused frameworks/services or out-of-scope features exist, and every remaining acceptance limitation is identified.
@@ -342,8 +343,11 @@ do not substitute for the specified automated, GUI or independent student checks
 
 ## Notes
 
-- T001-T044 are complete (44/50 tasks). Phase 7 uses eight CC BY 4.0 SimpleCube++ photographs
-  and a CC-BY MIT fixed-scene pair under directional lights 0 and 24. Stop before Phase 8.
+- T001-T048 are complete (48/50 tasks). Phase 7 uses eight CC BY 4.0 SimpleCube++ photographs
+  and a CC-BY MIT fixed-scene pair under directional lights 0 and 24. Phase 8 automated,
+  performance, documentation and demo preparation are complete.
+- T049 remains open for a genuine second-student replay and independent five-minute workflow;
+  T050 remains dependency-blocked by T049. Pending human evidence is not marked complete.
 - Counts: Setup 4; Foundation 3; US1 14; US3 6; US2 5; US5 4; US4 8; Polish 6.
 - Analysis remediation updated the specification, plan, contracts and traceability before T028.
   Phase 7 persistence, 20-run replay and comparison evidence is complete with explicit licensed

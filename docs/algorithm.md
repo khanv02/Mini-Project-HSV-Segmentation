@@ -1,0 +1,98 @@
+# HSV segmentation algorithm
+
+This document describes the equations and conventions implemented by
+`src/hsv_segmentation/processing/`. The processing layer accepts in-memory arrays only;
+it does not import Tk, open files, or resize the source.
+
+## Input and units
+
+An input is a non-empty NumPy `uint8` RGB array with shape `(height, width, 3)` and at
+most 12,000,000 pixels. Channel order is red, green, blue. Each channel is normalized
+to `[0,1]` in `float64` before conversion. The output HSV array is also `float64`:
+
+- hue `H` is measured in degrees in `[0,360)`;
+- saturation `S` is a percentage in `[0,100]`; and
+- value `V` is a percentage in `[0,100]`.
+
+Pillow performs file decoding at the I/O boundary. Eight-bit grayscale is replicated
+into R, G, and B. LA and RGBA alpha channels are ignored rather than composited, palette
+images are converted to RGB, and supported RGB PNG/JPEG/BMP data reaches this algorithm
+as three-channel `uint8`. Processing and exported results keep source dimensions.
+
+## RGB to HSV conversion
+
+For normalized channels `r`, `g`, and `b`, define:
+
+```text
+Cmax  = max(r, g, b)
+Cmin  = min(r, g, b)
+delta = Cmax - Cmin
+V     = 100 * Cmax
+S     = 0                         when Cmax = 0
+        100 * delta / Cmax        otherwise
+```
+
+Hue is zero for an achromatic pixel (`delta = 0`). Otherwise the implementation uses
+the first matching maximum channel in R, G, B order:
+
+```text
+H' = ((g - b) / delta) mod 6      when Cmax = r
+H' = ((b - r) / delta) + 2        when Cmax = g
+H' = ((r - g) / delta) + 4        when Cmax = b
+H  = (60 * H') mod 360
+```
+
+Equality tests between a maximum and a channel are exact because both values come from
+the same normalized array. Division is performed only where its denominator is nonzero.
+There is no epsilon, integer quantization, or rounding before threshold membership.
+
+Black, white, and gray pixels are neutral: `H = 0`, `S = 0`, while `V` retains their
+brightness percentage. Consequently, a range containing `H=0` and `S=0` can select
+neutral pixels; hue alone is not meaningful for them.
+
+## Six inclusive controls
+
+The user supplies six integers. Lower hue is `0..359`, upper hue is `0..360`, and all
+S/V bounds are `0..100`. S and V require lower <= upper. Hue deliberately permits a
+reversed pair to express an interval crossing red at zero.
+
+For an ordered hue pair (`lower_h <= upper_h`):
+
+```text
+hue_selected = lower_h <= H <= upper_h
+```
+
+For a wrapped pair (`lower_h > upper_h`):
+
+```text
+hue_selected = H >= lower_h OR H <= upper_h
+```
+
+The final mask is the conjunction of hue selection and the inclusive S and V intervals:
+
+```text
+selected = hue_selected
+           AND lower_s <= S <= upper_s
+           AND lower_v <= V <= upper_v
+```
+
+Selected pixels receive mask value 255; all others receive 0. The segmented result
+copies the original RGB value at mask 255 and writes black `(0,0,0)` elsewhere. The
+default `(H 0..360, S 0..100, V 0..100)` therefore selects the complete hue domain.
+Although 360 is a valid upper endpoint, converted pixel hues are always less than 360.
+
+## Precision, reproducibility, and limitations
+
+Conversion and comparisons use NumPy `float64`. Tests compare analytical and independent
+`colorsys` references with circular hue error at most `1e-10` degrees and S/V absolute
+error at most `1e-10` percentage points. Mask and extracted RGB comparisons are exact.
+Immutable snapshots prevent later caller changes from altering a recorded result.
+
+HSV thresholding is deterministic and easy to explain, but it is not object recognition.
+It cannot distinguish different objects with overlapping colors, and shadows, highlights,
+white balance, compression artifacts, reflections, and illumination changes can move pixels
+across fixed thresholds. Hue is unstable when saturation is near zero. The application does
+not denoise, learn thresholds, track objects, estimate accuracy without ground truth, process
+audio, or encode a complete output video. Preview images may be resized for display, while
+processing, masks, experiment artifacts, and exports remain at source resolution.
+

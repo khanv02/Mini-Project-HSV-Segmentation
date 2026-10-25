@@ -1,9 +1,9 @@
 ﻿# Quickstart and Validation: HSV Color Segmentation
 
-**Stage guide, 2026-10-24**: Phases 1 through 4 provide the package setup, shared
-contracts, independently tested HSV processing, image loading, and bounded sequential
-video playback in the desktop GUI. A total of 154 automated checks are recorded in
-docs/verification.md. Export, experiment evidence, and performance measurements remain later phases.
+**Stage guide, 2026-10-25**: Phases 1 through 7 and the automated/documentation portion of
+Phase 8 are implemented. The last full-suite checkpoint records 195 automated checks; the
+Full-HD GUI benchmark separately records 100/100 updates within one second. Final acceptance
+remains open until real independent students complete the two documented human checks.
 
 ## Prerequisites
 
@@ -100,3 +100,28 @@ in experiments/performance.md. Synthetic scheduling tests alone do not establish
 
 Record evidence and unresolved failures in docs/verification.md and experiments/reproduction.md.
 Final submission requires the independent checks; their absence must not be disguised as a pass.
+
+Replay the retained automated experiment checks with:
+
+```powershell
+uv run --locked --extra test pytest tests/integration/test_experiment_reproduction.py -q
+```
+
+Regenerate the deterministic evidence only when intentionally replacing the retained collection:
+
+```powershell
+.\.venv\Scripts\python.exe experiments\generate_evidence.py
+```
+
+The latter rewrites `experiments/runs/` and its manifest/report, so it is not required for an
+ordinary replay. See `experiments/README.md` for provenance and run-layout details, and follow
+`docs/demo.md` for the timed academic presentation.
+
+## Limits and offline operation
+
+The program uses no network service at runtime and does not depend on Image Restoration.
+HSV selection is sensitive to illumination, white balance, reflection, compression and low
+saturation; it cannot identify semantic objects that share colors. Preview fitting does not
+change source-resolution computation/export. Video is sequential viewing and single-frame
+export only: there is no seeking, tracking, audio processing or full-video encoding. The local
+OpenCV build determines which MP4/AVI codecs decode beyond the published MJPG and mp4v fixtures.
