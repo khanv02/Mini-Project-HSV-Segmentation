@@ -373,7 +373,7 @@ compiled successfully. Task ledger: **44/50 complete** at the Phase 7 checkpoint
 
 T045-T048 are complete. `docs/algorithm.md` records the implemented equations and limits;
 `experiments/performance.md` retains a real 100-edit Full-HD Tk measurement; README, quickstart,
-and `docs/demo.md` provide the operational and presentation instructions.
+and the experiment reproduction guide provide operational instructions.
 
 The first performance run failed with 13/100 updates within one second (median 1,399.77 ms).
 After caching HSV per immutable `(session_id, frame_index)` and avoiding redundant Original-view
@@ -423,9 +423,9 @@ machine. `PENDING` is deliberately not a pass.
 | SC-003 | T019,T021,T046,T056 | Full-HD real-GUI measurement with histogram visible achieved 99/100 <=1 s; final pixels matched final controls. | performance markdown/JSON | PASS |
 | SC-004 | T028-T032 | Every automated image and video-frame export reopened with exact dimensions/pixels. | export integration tests | PASS |
 | SC-005 | T037-T043,T049 | Twenty runs/ten images/light pair and three automated exact replays pass; second-student replay has not occurred. | runs, manifest, reproduction record | **PENDING** |
-| SC-006 | T047-T049 | Five-minute no-help student workflow is prepared but no genuine participant/time is recorded. | quickstart, demo, reproduction form | **PENDING** |
+| SC-006 | T047-T049 | Five-minute no-help student workflow is prepared but no genuine participant/time is recorded. | quickstart, reproduction form | **PENDING** |
 | SC-007 | T033-T036,T049 | Automated invalid-file/parameter/save cases verified message fields, preservation and valid follow-up. | error-recovery tests | PASS |
-| SC-008 | T038,T042,T044,T048,T049 | Report labels two comparisons for all ten images and discusses misses, unwanted selection and lighting. | experiment report; demo | PASS |
+| SC-008 | T038,T042,T044,T048,T049 | Report labels two comparisons for all ten images and discusses misses, unwanted selection and lighting. | experiment report | PASS |
 | SC-009 | T051-T056 | All analytical H/S/V bins and totals passed; threshold edits reused counts, moved overlays and preserved all three views. | histogram unit/integration tests; algorithm doc | PASS |
 
 T049 remains incomplete because SC-005's second-student replay and SC-006's independent timed

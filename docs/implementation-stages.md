@@ -19,7 +19,7 @@ human acceptance tasks T049-T050 remain open.
 | 5. Output | T028–T032 | PNG mask/result and video-frame export | Saved dimensions and decoded pixels match the source result |
 | 6. Error recovery | T033–T036 | Validation and recoverable input/output errors | Each failure is followed by a successful valid operation |
 | 7. Experiments | T037–T044 | Recording, at least 10 images and 20 runs, comparisons | Automatic replay succeeds; licensed real-lighting pair is documented |
-| 8. Verification baseline and final gate | T045–T050 | Performance/docs/demo baseline, then independent acceptance after Phase 9 | T045–T048 complete; T049–T050 require actual student evidence |
+| 8. Verification baseline and final gate | T045–T050 | Performance and documentation baseline, then independent acceptance after Phase 9 | T045–T048 complete; T049–T050 require actual student evidence |
 | 9. HSV histogram aid | T051–T056 | Source/frame H/S/V counts, continuous threshold overlays and cache | Analytical/GUI tests pass and panel-visible Full-HD benchmark meets SC-003 |
 
 Phase 1 does not deliver an executable desktop window or image processing code.

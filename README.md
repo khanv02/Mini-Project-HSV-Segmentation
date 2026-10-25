@@ -194,7 +194,7 @@ Xem thêm tại [scripts/README.md](scripts/README.md).
 ├── tests/                  # Unit, integration và fixture
 ├── experiments/            # Dataset, benchmark và bằng chứng tái lập
 ├── scripts/                # Công cụ tạo fixture/evidence và benchmark
-├── docs/                   # Thuật toán, demo, acceptance và verification
+├── docs/                   # Thuật toán, acceptance và verification
 ├── specs/                  # Specification, plan, contracts và task ledger
 ├── pyproject.toml          # Package metadata và entrypoint
 └── uv.lock                 # Dependency lock chính thức
@@ -204,7 +204,6 @@ Xem thêm tại [scripts/README.md](scripts/README.md).
 
 - [Thuật toán và quy ước số](docs/algorithm.md)
 - [Hướng dẫn acceptance](docs/acceptance.md)
-- [Kịch bản demo](docs/demo.md)
 - [Kết quả verification](docs/verification.md)
 - [Đặc tả tính năng](specs/001-hsv-color-segmentation/spec.md)
 - [Implementation plan](specs/001-hsv-color-segmentation/plan.md)
@@ -226,5 +225,6 @@ Project hiện không bao gồm:
 
 ## Trạng thái bản quyền
 
-Repository hiện chưa khai báo license cho mã nguồn ứng dụng. License và provenance của dữ liệu
-thực nghiệm được ghi riêng trong `experiments/manifest.json` và tài liệu đi kèm.
+Mã nguồn ứng dụng được cấp phép theo [MIT License](LICENSE), bản quyền © 2026 Khang Pham.
+License này chỉ áp dụng cho mã nguồn; license và provenance của dữ liệu thực nghiệm được ghi
+riêng trong `experiments/manifest.json` và tài liệu đi kèm.
