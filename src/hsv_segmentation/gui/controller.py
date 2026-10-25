@@ -170,6 +170,9 @@ class ApplicationController:
     def _on_thresholds(self, thresholds: HSVThresholdSet) -> None:
         self.session.accept_thresholds(thresholds)
         source = self.session.source
+        self.window.update_histogram_thresholds(
+            thresholds, pending=source is not None
+        )
         if source is None:
             self.window.show_status("Thresholds ready — open an image or video.")
             return
@@ -182,6 +185,7 @@ class ApplicationController:
 
     def _on_invalid_thresholds(self, error: ValidationError) -> None:
         self._export_snapshot_valid = False
+        self.window.mark_histogram_invalid()
         self._refresh_export_controls()
         self.window.show_status(
             format_recovery_message(

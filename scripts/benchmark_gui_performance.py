@@ -69,6 +69,8 @@ def run(input_path: Path, output_path: Path) -> dict[str, object]:
     try:
         controller.open_image_path(str(input_path))
         pump_until(root, lambda: controller.session.result is not None, 30.0)
+        controller.window.set_histogram_visible(True)
+        root.update()
 
         for index in range(100):
             values = threshold_values(index)
@@ -127,7 +129,8 @@ def run(input_path: Path, output_path: Path) -> dict[str, object]:
         "final_output_exact": True,
         "measurement_scope": (
             "final Tk variable edit, 75 ms debounce, controller submission, serialized worker "
-            "processing, 25 ms polling, three ImageView updates, and Tk idle rendering"
+            "processing with cached source histogram, 25 ms polling, three ImageView updates, "
+            "visible histogram overlay updates, and Tk idle rendering"
         ),
     }
     output_path.write_text(json.dumps(result_data, indent=2) + "\n", encoding="utf-8")

@@ -129,3 +129,20 @@ Acceptance evidence distinguishes automatic reproduction of three runs from inde
 student reproduction and the timed five-minute workflow. Record participant/date/outcome and
 observed issues; keep unavailable evidence pending. Documentation can be prepared before these
 human checks, but final academic acceptance cannot be declared complete without them.
+
+## HSVHistogram
+
+An immutable in-memory summary of one accepted HSV source/frame, independent of thresholds.
+
+| Field | Type / constraint |
+| --- | --- |
+| hue_counts | 360 nonnegative integer counts; bin `i` contains `i <= H < i+1` only where `S >= 5` |
+| saturation_counts | 101 nonnegative integer counts; bin `i` contains `i <= S < i+1`, with exact `S=100` in bin 100 |
+| value_counts | 101 nonnegative integer counts; bin `i` contains `i <= V < i+1`, with exact `V=100` in bin 100 |
+| excluded_hue_count | Number of pixels with `S < 5`, omitted from hue only |
+
+The S and V totals equal the source pixel count. Hue total plus `excluded_hue_count` equals the
+same count. Arrays own immutable bytes and cannot be changed by callers. Histogram counts carry
+no threshold revision: threshold edits move presentation overlays only. Application caching uses
+the accepted `(session_id, frame_index, source_sha256)` identity and replaces counts whenever
+that identity changes.

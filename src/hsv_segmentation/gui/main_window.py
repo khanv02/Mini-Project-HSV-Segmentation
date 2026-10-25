@@ -5,6 +5,7 @@ from tkinter import ttk
 
 from ..models import SegmentationResult
 from .experiment_panel import ExperimentPanel
+from .hsv_histogram import HSVHistogramPanel
 from .image_view import ImageView
 
 
@@ -16,6 +17,11 @@ class MainWindow:
         self._displayed_source_identity: tuple[str, int | None] | None = None
         self.root.title("HSV Color Segmentation")
         self.root.minsize(960, 640)
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        initial_width = max(960, min(1400, screen_width - 80))
+        initial_height = max(640, min(900, screen_height - 100))
+        self.root.geometry(f"{initial_width}x{initial_height}")
 
         container = ttk.Frame(self.root, padding=10)
         container.pack(fill="both", expand=True)
@@ -62,7 +68,14 @@ class MainWindow:
         self.visualization_section.grid(row=3, column=0, sticky="nsew")
         for column in range(3):
             self.visualization_section.columnconfigure(column, weight=1, uniform="view")
-        self.visualization_section.rowconfigure(0, weight=1)
+        self.visualization_section.rowconfigure(1, weight=1)
+
+        visualization_toolbar = ttk.Frame(self.visualization_section)
+        visualization_toolbar.grid(row=0, column=0, columnspan=3, sticky="e", padx=4)
+        self.histogram_toggle_button = ttk.Button(
+            visualization_toolbar, text="Show Histogram", command=self.toggle_histogram
+        )
+        self.histogram_toggle_button.pack(side="right")
 
         self.original_view = ImageView(self.visualization_section, title="Original")
         self.mask_view = ImageView(
@@ -71,7 +84,14 @@ class MainWindow:
         self.result_view = ImageView(self.visualization_section, title="Segmented Result")
         self.views = (self.original_view, self.mask_view, self.result_view)
         for column, view in enumerate(self.views):
-            view.grid(row=0, column=column, sticky="nsew", padx=4)
+            view.grid(row=1, column=column, sticky="nsew", padx=4)
+
+        self.histogram_panel = HSVHistogramPanel(self.visualization_section)
+        self.histogram_panel.grid(
+            row=2, column=0, columnspan=3, sticky="ew", padx=4, pady=(4, 0)
+        )
+        self.histogram_panel.grid_remove()
+        self._histogram_visible = False
 
         self.status_var = tk.StringVar(value="Ready — open a PNG, JPEG, or BMP image.")
         ttk.Label(container, textvariable=self.status_var, anchor="w").grid(
@@ -89,6 +109,31 @@ class MainWindow:
         self.frame_var.set(
             "Frame: —" if result.frame_index is None else f"Frame: {result.frame_index}"
         )
+        if result.histogram is not None:
+            self.histogram_panel.set_histogram(result.histogram, result.thresholds)
+
+    @property
+    def histogram_visible(self) -> bool:
+        return self._histogram_visible
+
+    def toggle_histogram(self) -> None:
+        self.set_histogram_visible(not self._histogram_visible)
+
+    def set_histogram_visible(self, visible: bool) -> None:
+        self._histogram_visible = bool(visible)
+        if self._histogram_visible:
+            self.histogram_panel.grid()
+            self.histogram_toggle_button.configure(text="Hide Histogram")
+        else:
+            self.histogram_panel.grid_remove()
+            self.histogram_toggle_button.configure(text="Show Histogram")
+
+    def update_histogram_thresholds(self, thresholds, *, pending: bool = True) -> None:
+        if pending:
+            self.histogram_panel.mark_pending(thresholds)
+
+    def mark_histogram_invalid(self) -> None:
+        self.histogram_panel.mark_invalid()
 
     def show_status(self, message: str) -> None:
         self.status_var.set(message)

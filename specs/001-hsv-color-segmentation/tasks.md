@@ -11,9 +11,13 @@ Setup, foundation, still-image MVP, video, PNG export and comprehensive recovery
 
 **Execution policy (user instruction)**: Implement and verify one phase at a time,
 then stop and report before starting the next phase. See
-`docs/implementation-stages.md` for the eight stage boundaries. The current
-authorized increment has advanced through Phase 8 documentation and automated validation
-(T045–T048). T049 and dependent T050 remain open for genuine external acceptance.
+`docs/implementation-stages.md` for the original eight stage boundaries; the histogram
+extension is defined below as Phase 9. The current delivered increment includes the completed
+Phase 8 documentation/performance baseline (T045–T048) and Phase 9 (T051-T056).
+T049 and dependent T050 are a separate final acceptance/review gate and remain open for genuine
+external acceptance. The requested HSV histogram is implemented as Phase 9 (T051-T056), before that
+final gate. Histogram implementation and verification evidence are recorded in the Phase 9
+tasks and `docs/verification.md`.
 
 **Tests**: Required by FR-017, the constitution, and the user's requested unit-test phase.
 
@@ -21,6 +25,8 @@ authorized increment has advanced through Phase 8 documentation and automated va
 core algorithm, processing tests, GUI display, and interactive controls. Video and export are
 both P2; video precedes export to follow the requested progression. Basic validation belongs
 in each increment; US5 adds comprehensive recovery checks. Experiments and documentation follow.
+US6 adds source/frame HSV distribution charts using existing dependencies. Stable task IDs are
+retained; the new dependency edges place T051-T056 before final acceptance T049-T050.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -199,7 +205,7 @@ and reproduce three selected runs from source identities and recorded thresholds
 reproducibility evidence are complete. Missing real inputs or independent participants remain
 visible unmet criteria; do not invent evidence.
 
-## Phase 8: Polish & Cross-Cutting Concerns
+## Phase 8: Documentation, Performance and Demo Baseline
 
 **Purpose**: Verify responsiveness, explain the algorithm, and prepare the academic demonstration.
 
@@ -207,8 +213,41 @@ visible unmet criteria; do not invent evidence.
 - [X] T046 [P] Measure 100 threshold changes on a 1920x1080 still image and retain the procedure/results in `experiments/performance.md`; **Depends**: T036; **Done**: the documented computer meets at least 95 updates within one second, final outputs match final controls, and any needed fixes are made and remeasured before marking this task complete.
 - [X] T047 Update `README.md` and `specs/001-hsv-color-segmentation/quickstart.md`; **Depends**: T043, T044, T045, T046; **Done**: setup, launch, tests, supported formats/codecs, six controls, video behavior, export, experiment replay, limitations and offline independence have accurate copyable instructions.
 - [X] T048 Prepare `docs/demo.md`; **Depends**: T047; **Done**: a timed walkthrough covers the image MVP, video, export, recovery, all 10 experiment images and lighting comparisons, with matching saved artifacts and an explanation of why HSV is used.
-- [ ] T049 Run the full automated/offline acceptance workflow and independent student checks, recording outcomes in `docs/verification.md` and `experiments/reproduction.md`; **Depends**: T048; **Done**: automated tests pass, every FR/SC has evidence, a second student genuinely reproduces three runs, and a student completes the documented image/edit/compare/save flow within five minutes without help; unavailable external acceptance keeps this final task incomplete.
-  Populate the evidence matrix for all 25 FR/SC IDs below with covering task IDs, test/procedure, command/actions, actual outcome and evidence location. Execute every required FMT case on the recorded demonstration computer; skipped codecs, missing fixtures and pending human checks remain unmet acceptance.
+
+**Checkpoint**: The baseline documentation, performance evidence and demo script are complete.
+The pending human acceptance and final review belong to the separate gate after Phase 9.
+
+## Phase 9: User Story 6 - Inspect HSV Distributions (Priority: P2)
+
+**Goal**: Help students choose the six manual HSV bounds using distributions of the current
+source/frame, without altering conversion, threshold membership, exports or recorded results.
+
+**Independent Test**: Open a known-color image, inspect exact H/S/V counts and the reported
+low-saturation exclusion, move ordered/wrapped bounds, then replace the input and advance/pause
+a video. Verify source/frame identity, overlays, unchanged source counts on threshold-only edits,
+and segmentation pixels against the existing pure implementation.
+
+**Ordering**: T048 supplies the delivered baseline. Complete this extension before T049-T050
+so the final acceptance assesses the delivered version including histograms. This phase does
+not depend on collecting the still-pending human acceptance evidence first.
+
+- [X] T051 [P] [US6] Define the histogram data/processing contracts in `specs/001-hsv-color-segmentation/data-model.md` and `specs/001-hsv-color-segmentation/contracts/processing.md`, and add analytical tests in `tests/unit/test_histogram.py`; **Depends**: T048; **Done**: cases specify 360 H bins, 101 S/V bins, integer-part bin assignment with exact 100 in the last S/V bin, exact S=5 inclusion and S<5 exclusion from hue only, excluded-count reporting, count totals, empty-hue/grayscale cases, invalid inputs and preservation of source HSV values.
+- [X] T052 [US6] Implement pure histogram counting in `src/hsv_segmentation/processing/histogram.py` and its immutable result representation in `src/hsv_segmentation/models.py`; **Depends**: T051; **Done**: analytical counts pass exactly, H total plus excluded count and each S/V total equal source pixel count, arrays are independent of thresholds, inputs are not mutated, and the implementation imports neither GUI nor file I/O.
+- [X] T053 [P] [US6] Specify histogram interactions in `specs/001-hsv-color-segmentation/contracts/desktop-workflow.md` and add GUI integration checks in `tests/integration/test_histogram_panel.py`; **Depends**: T048; **Done**: checks cover show/hide, all three result views remaining available, axis/count labels and the fixed S>=5 hue note, ordered/equal/full/wrapped bounds, no-media and empty-hue states, invalid/pending edits, source/frame replacement, failed-open preservation and stale-completion rejection. Verify overlays use numeric coordinates without snapping to bins, equal bounds draw a labeled line, and S=5.9 in bin 5 remains excluded by S=5..5. At a 960x640 client area with 100% display scaling, showing and hiding the panel preserves unclipped charts/labels/markers/toggle/controls without overlap or scrolling and at least a 160x120 preview area per result view.
+- [X] T054 [US6] Add the compact show/hide histogram widget in `src/hsv_segmentation/gui/hsv_histogram.py` and layout support in `src/hsv_segmentation/gui/main_window.py`; **Depends**: T052, T053; **Done**: Tkinter Canvas renders three source frequency charts, active valid ranges and the excluded hue count. Overlay boundaries map to the numeric H 0..360 and S/V 0..100 axes independently of bar widths, equal bounds appear as a labeled line, and wrapped hue marks both axis ends; shaded bins are not presented as exact selected-pixel counts. At a 960x640 client area and 100% display scaling, charts/labels/markers/toggle/six controls remain visible without overlap or scrolling and each result view has at least a 160x120 aspect-preserving preview area. Viewing or hiding charts does not edit thresholds or outputs; no plotting dependency is added.
+- [X] T055 [US6] Coordinate histogram counts and overlays in `src/hsv_segmentation/application/processing_worker.py` and `src/hsv_segmentation/gui/controller.py`; **Depends**: T054; **Done**: counts are computed outside GUI handlers and cached by accepted session/frame identity, threshold-only edits reuse counts and update overlays, source/frame changes invalidate the cache, invalid controls retain a clearly marked last-valid overlay, and delayed/replaced work cannot publish stale charts. Image/video masks, exports and experiment artifacts retain existing exact-pixel behavior.
+- [X] T056 [US6] Validate the histogram workflow and document it in `docs/algorithm.md`, `docs/demo.md`, `README.md`, `specs/001-hsv-color-segmentation/quickstart.md`, `docs/implementation-stages.md` and `docs/verification.md`; **Depends**: T055; **Done**: relevant analytical/integration checks and unchanged segmentation/replay checks pass, FR-018/SC-009 have recorded evidence, the 100-edit Full-HD benchmark meets SC-003 with the panel visible, and `experiments/performance.md` records the new measurement separately from the pre-histogram baseline. Explain bins, the fixed hue display cutoff, overlays and manual selection; show the current image and video frame without claiming Otsu or automatic threshold selection.
+
+**Checkpoint**: Histogram counts and source/frame synchronization are verified, the six-bound
+segmentation semantics are preserved, and the final acceptance T049-T050 can assess this version.
+
+## Final Acceptance and Review Gate
+
+**Purpose**: Accept the complete version after Phase 9, including genuine independent student
+checks. These tasks retain their original IDs for traceability and are no longer part of Phase 8.
+
+- [ ] T049 Run the full automated/offline acceptance workflow and independent student checks, recording outcomes in `docs/verification.md` and `experiments/reproduction.md`; **Depends**: T048, T056; **Done**: automated tests pass, every FR/SC has evidence, a second student genuinely reproduces three runs, and a student completes the documented image/edit/compare/save flow within five minutes without help; unavailable external acceptance keeps this final task incomplete.
+  Populate the evidence matrix for all 27 FR/SC IDs below with covering task IDs, test/procedure, command/actions, actual outcome and evidence location. Include histogram evidence from T056. Execute every required FMT case on the recorded demonstration computer; skipped codecs, missing fixtures and pending human checks remain unmet acceptance.
 - [ ] T050 Review module boundaries, naming, dependency necessity, and constitution compliance in `specs/001-hsv-color-segmentation/plan.md` and `docs/verification.md`; **Depends**: T049; **Done**: processing imports neither GUI nor file I/O, every core function has independent tests, no unused frameworks/services or out-of-scope features exist, and every remaining acceptance limitation is identified.
 
 ## Dependencies & Execution Order
@@ -223,15 +262,18 @@ Setup T001-T004
   -> US2 T028-T032 (image/frame export)
   -> US5 T033-T036 (comprehensive recovery)
   -> US4 T037-T044 (records and 10-image evaluation)
-  -> Final integration T047-T050
+  -> Delivered documentation/performance baseline T045-T048
+  -> US6 T051-T056 (implemented HSV histograms)
+  -> Final acceptance/review T049-T050
 
 After US5: T045 algorithm docs and T046 performance evidence can overlap US4.
 ```
 
 T003 and T004 must both finish before Phase 2. Within phases, follow each task's explicit
 prerequisites. A passing lower-level unit test does not replace the story checkpoint.
-The numbering is the default sequential execution order; the declared dependency edges permit
-only the parallel exceptions listed below.
+Within the original phases, numbering gives the default sequential order subject to the
+parallel opportunities below. For the extension, the explicit sequence is T048 -> T051-T056
+-> T049 -> T050; stable IDs do not override these dependency edges.
 
 ### User Story Dependencies
 
@@ -242,6 +284,7 @@ only the parallel exceptions listed below.
 | US2 | US1 and US3 in this schedule | Lossless still/frame exports and overwrite/failure handling |
 | US5 | US1, US3 and US2 | Error recovery with a preserved session and subsequent valid action |
 | US4 | Working export and recovery | Complete experiment records, 20 runs and replayable comparisons |
+| US6 | Delivered Phase 8 automated/documentation baseline T048 | Exact source/frame distributions, valid overlays and unchanged segmentation semantics |
 
 Export could be implemented immediately after US1 if delivery priorities change; move its
 video-specific checks after US3. This list keeps video before export as the user suggested.
@@ -260,6 +303,8 @@ Parallel windows are T003/T004 after T002; T006/T007 after T005;
 T008/T009 after foundation; T014/T015 after T013;
 T022/T023 after T021; T028/T029 after T027;
 T033/T034 after T032; and T037/T038/T045/T046 after T036.
+For US6, T051 core contracts/tests and T053 workflow contracts/tests can run after T048 in
+separate files; T052 can follow T051 while T053 is prepared. GUI integration follows both.
 These windows modify distinct files. Coordinate any later tasks sharing the controller,
 verification log or plan sequentially. No sub-agents are required by this task list.
 
@@ -273,6 +318,7 @@ verification log or plan sequentially. No sub-agents are required by this task l
 | US2 | T028 PNG tests and T029 snapshot tests | T027 video validated |
 | US5 | T033 recovery tests and T034 GUI acceptance procedure | T032 export validated |
 | US4 | T037 persistence tests and T038 image collection | T036 recovery validated |
+| US6 | T051 core contracts/tests and T053 GUI contracts/tests | T048 delivered baseline |
 
 ## Implementation Strategy
 
@@ -289,8 +335,9 @@ not optional replacements for the image MVP.
 2. Add video, then image/frame export and comprehensive recovery.
 3. Add experiment capture and the 10-image/20-run evaluation.
 4. Finish measured responsiveness, student reproduction, documentation and the demo.
-5. Keep counting, tracking, machine learning, audio, full-video export, databases and services
-   outside this implementation. No optional enhancements are needed to satisfy this backlog.
+5. Add the requested HSV histogram aid in T051-T056, then complete T049-T050 on that version.
+6. Keep counting, tracking, machine learning, automatic threshold selection, audio, full-video
+   export, databases and services outside this implementation.
 
 ### Requested Stage Coverage
 
@@ -306,11 +353,13 @@ not optional replacements for the image MVP.
 | Validation/error handling | T006, T011, T018, T029, T033-T036 |
 | Testing with at least 10 images | T038, T041-T044 |
 | Documentation/demo | T004, T045-T050 |
+| HSV histogram assistance | T051-T056 |
 
 ## Requirement-to-Task Traceability
 
 This table maps planned implementation and verification coverage, not acceptance status.
-T049 records actual evidence for every row in `docs/verification.md`; checked tasks alone
+T056 records histogram and updated performance evidence; T049 completes actual evidence for
+every row in `docs/verification.md`. Checked tasks alone
 do not substitute for the specified automated, GUI or independent student checks.
 
 | Requirement ID | Covering task IDs | Expected evidence |
@@ -332,23 +381,28 @@ do not substitute for the specified automated, GUI or independent student checks
 | FR-015 | T038, T041, T042, T043, T044, T049 | Input provenance, environment, twenty runs and reproduction |
 | FR-016 | T002, T003, T004, T047, T049, T050 | Installation and full offline acceptance |
 | FR-017 | T007, T008, T009, T010, T011, T012, T013, T045, T050 | Independent core tests and algorithm explanations |
+| FR-018 | T051, T052, T053, T054, T055, T056 | Exact bin counts, low-saturation hue exclusion, active overlays and current source/frame identity |
 | SC-001 | T014, T016, T022, T024, T027, T034, T049 | All FMT cases and complete playback walkthrough |
 | SC-002 | T007, T008, T009, T010, T011, T012, T013 | Exact known-color masks and retained colors |
-| SC-003 | T019, T021, T046 | 100-change timing record and final revision consistency |
+| SC-003 | T019, T021, T046, T056 | Baseline and histogram-visible 100-change timings with final revision consistency |
 | SC-004 | T028, T029, T030, T031, T032 | Source-resolution exact decoded-pixel comparisons |
 | SC-005 | T037, T038, T039, T040, T041, T042, T043, T049 | Twenty runs, lighting coverage and three independent replays |
 | SC-006 | T047, T048, T049 | Timed student workflow without assistance |
 | SC-007 | T033, T034, T035, T036, T049 | Message-content matrix and subsequent valid operations |
 | SC-008 | T038, T042, T044, T048, T049 | Labeled ten-image comparisons and observations |
+| SC-009 | T051, T052, T053, T054, T055, T056 | Analytical counts, stable source counts during edits, wrapped overlays and preserved views |
 
 ## Notes
 
-- T001-T048 are complete (48/50 tasks). Phase 7 uses eight CC BY 4.0 SimpleCube++ photographs
+- T001-T048 and T051-T056 are complete (54/56 tasks). Phase 7 uses eight CC BY 4.0 SimpleCube++ photographs
   and a CC-BY MIT fixed-scene pair under directional lights 0 and 24. Phase 8 automated,
   performance, documentation and demo preparation are complete.
 - T049 remains open for a genuine second-student replay and independent five-minute workflow;
-  T050 remains dependency-blocked by T049. Pending human evidence is not marked complete.
-- Counts: Setup 4; Foundation 3; US1 14; US3 6; US2 5; US5 4; US4 8; Polish 6.
+  it now also depends on T056 histogram evidence. T050 remains dependency-blocked by T049.
+  Pending human evidence is not marked complete. Phase 9 histogram implementation and its
+  panel-visible performance measurement are complete.
+- Counts: Setup 4; Foundation 3; US1 14; US3 6; US2 5; US5 4; US4 8;
+  Phase 8 baseline 4; US6 6; Final acceptance/review 2.
 - Analysis remediation updated the specification, plan, contracts and traceability before T028.
   Phase 7 persistence, 20-run replay and comparison evidence is complete with explicit licensed
   provenance for every input and no synthetic image presented as photographed evidence.

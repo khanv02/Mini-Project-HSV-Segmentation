@@ -13,11 +13,32 @@ User-facing application: **HSV Color Segmentation**. Planned implementation live
   with matching source/frame identity and aspect-preserving fitted previews. Black/white mask
   scaling uses nearest-neighbor display sampling to avoid misleading intermediate intensities.
 - Experiment panel: lighting description, observations, destination and saved record location.
+- Optional HSV Histogram panel: a show/hide toggle and three compact Canvas charts for the
+  accepted source/frame. Charts label H/S/V axes and counts, disclose the fixed `S >= 5%` hue
+  cutoff and omitted count, and overlay the last valid six bounds without choosing thresholds.
 
 Opening is available without existing media. Threshold edits without media may change defaults
 for the next open but do not create a result. Play/pause/restart apply only to loaded video.
 Export/record actions require valid visible controls and a complete current displayed snapshot.
 GUI callbacks validate/dispatch; they never implement HSV or file encoding algorithms.
+
+## HSV Histogram Panel
+
+The panel starts hidden and may be shown or hidden without changing source pixels, thresholds,
+mask, result, export eligibility or experiment state. All three result views remain present.
+At a 960x640 client area and 100% scaling, labels, charts, markers, toggle and six controls do
+not overlap or require whole-window scrolling; each preview retains at least 160x120 pixels.
+
+Counts are computed on the serialized worker for the exact accepted source/frame and cached by
+session, frame and source hash. A threshold-only request reuses counts and updates only overlay
+coordinates. A source/frame change replaces the cache. Normal revision checks reject stale
+counts exactly as they reject stale segmentation results; failed opens retain prior charts.
+
+Overlay coordinates use continuous numeric axes H 0..360 and S/V 0..100 rather than snapping
+to bin rectangles. Ordered bounds shade one interval, wrapped hue shades both axis ends, and an
+equal bound draws a labeled line. Shading describes the control interval, not an exact selected
+pixel count. While valid edits are processing, label the overlay pending; invalid visible text
+keeps and clearly labels the last-valid overlay. With no media, show an explicit no-data state.
 
 ## Open Image
 

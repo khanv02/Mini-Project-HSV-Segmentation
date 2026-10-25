@@ -3,22 +3,33 @@
 from pathlib import Path
 
 from ..io.images import load_image
-from ..models import HSVThresholdSet, InputMedia, SegmentationResult
-from ..processing.segmentation import segment
+from ..models import HSVHistogram, HSVThresholdSet, InputMedia, SegmentationResult
+from ..processing.color import rgb_to_hsv
+from ..processing.histogram import compute_hsv_histogram
+from ..processing.segmentation import apply_mask, generate_mask
 from ..processing.thresholds import validate_thresholds
 
 
 def process_source(
-    source: InputMedia, thresholds: HSVThresholdSet, request_revision: int
+    source: InputMedia,
+    thresholds: HSVThresholdSet,
+    request_revision: int,
+    *,
+    hsv=None,
+    histogram: HSVHistogram | None = None,
 ) -> SegmentationResult:
     """Create one immutable result for an already decoded source snapshot."""
-    mask, segmented_rgb = segment(source.rgb, thresholds)
+    hsv_array = rgb_to_hsv(source.rgb) if hsv is None else hsv
+    histogram = histogram or compute_hsv_histogram(hsv_array)
+    mask = generate_mask(hsv_array, thresholds)
+    segmented_rgb = apply_mask(source.rgb, mask)
     return SegmentationResult(
         source=source,
         thresholds=thresholds,
         mask=mask,
         segmented_rgb=segmented_rgb,
         request_revision=request_revision,
+        histogram=histogram,
     )
 
 

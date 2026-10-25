@@ -96,6 +96,53 @@ class HSVThresholdSet:
 
 
 @dataclass(frozen=True, slots=True, eq=False)
+class HSVHistogram:
+    """Immutable source/frame HSV distributions, independent of thresholds."""
+
+    hue_counts: NDArray[np.int64] = field(repr=False)
+    saturation_counts: NDArray[np.int64] = field(repr=False)
+    value_counts: NDArray[np.int64] = field(repr=False)
+    excluded_hue_count: int = 0
+
+    def __post_init__(self):
+        arrays = (
+            ("hue_counts", self.hue_counts, 360),
+            ("saturation_counts", self.saturation_counts, 101),
+            ("value_counts", self.value_counts, 101),
+        )
+        for name, counts, size in arrays:
+            if (
+                not isinstance(counts, np.ndarray)
+                or counts.dtype != np.int64
+                or counts.shape != (size,)
+                or np.any(counts < 0)
+            ):
+                raise ValidationError(
+                    name, f"must be a nonnegative int64 array with shape ({size},)"
+                )
+            object.__setattr__(self, name, _immutable_copy(counts))
+        excluded = _bounded_integer(
+            self.excluded_hue_count, "excluded_hue_count", 0
+        )
+        object.__setattr__(self, "excluded_hue_count", excluded)
+        pixel_count = int(self.saturation_counts.sum())
+        if int(self.value_counts.sum()) != pixel_count:
+            raise ValidationError("value_counts", "total must equal saturation total")
+        if int(self.hue_counts.sum()) + excluded != pixel_count:
+            raise ValidationError(
+                "hue_counts", "total plus excluded hue count must equal pixel count"
+            )
+
+    @property
+    def pixel_count(self) -> int:
+        return int(self.saturation_counts.sum())
+
+    @property
+    def included_hue_count(self) -> int:
+        return int(self.hue_counts.sum())
+
+
+@dataclass(frozen=True, slots=True, eq=False)
 class InputMedia:
     """One fully decoded image/frame, with trusted identity and owned RGB pixels.
 
@@ -206,6 +253,7 @@ class SegmentationResult(_SnapshotIdentity):
     mask: BinaryMask = field(repr=False)
     segmented_rgb: RGBImage = field(repr=False)
     request_revision: int = 0
+    histogram: HSVHistogram | None = field(default=None, repr=False)
 
     def __post_init__(self):
         revision = _validate_snapshot_identity(self.source, self.thresholds, self.request_revision)
@@ -222,6 +270,8 @@ class SegmentationResult(_SnapshotIdentity):
             raise ValidationError("segmented_rgb", "must preserve selected RGB and black out the rest")
         object.__setattr__(self, "mask", _immutable_copy(self.mask))
         object.__setattr__(self, "segmented_rgb", _immutable_copy(self.segmented_rgb))
+        if self.histogram is not None and not isinstance(self.histogram, HSVHistogram):
+            raise ValidationError("histogram", "must be an HSVHistogram or None")
 
     @property
     def original_rgb(self) -> RGBImage:

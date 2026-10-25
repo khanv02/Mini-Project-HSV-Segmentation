@@ -67,6 +67,21 @@ Compose the authoritative conversion, selection and extraction functions. Applic
 reuse a validated cached HSV image when only thresholds change, without duplicating algorithms.
 Pure functions do not attach GUI state; the application adds source and revision metadata.
 
+## compute_hsv_histogram(hsv) -> HSVHistogram
+
+Module: `src/hsv_segmentation/processing/histogram.py`.
+
+Validate the same float64 HSV contract used by mask generation without mutating the input.
+Return 360 hue counts and 101 counts each for saturation and value. Bin assignment uses the
+integer part (`floor`) of each nonnegative component; exact S/V 100 remains in bin 100. Hue is
+counted only for pixels whose unrounded saturation is `>= 5.0`; pixels below that fixed display
+cutoff increment `excluded_hue_count`. Saturation and value always include every pixel.
+
+The histogram is descriptive and independent of all six thresholds. For `N` pixels,
+`sum(H) + excluded_hue_count = sum(S) = sum(V) = N`. Empty included-hue data is valid for a
+fully neutral image. The result arrays are immutable owned integer arrays. The function imports
+neither GUI nor file I/O and raises `ValidationError` for invalid HSV arrays.
+
 ## Required Verification Cases
 
 - Hand-derived primary/secondary colors, black/white/gray, and independent deterministic

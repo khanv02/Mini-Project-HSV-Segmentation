@@ -377,8 +377,9 @@ and `docs/demo.md` provide the operational and presentation instructions.
 
 The first performance run failed with 13/100 updates within one second (median 1,399.77 ms).
 After caching HSV per immutable `(session_id, frame_index)` and avoiding redundant Original-view
-rendering, the accepted run achieved **100/100**, median **557.28 ms**, p95 **638.01 ms**, and
-maximum **903.43 ms**. Every measured final output was also compared exactly with fresh pure
+rendering, the accepted run achieved **100/100**. After adding zoomable canvases, the repeated
+measurement remained **100/100**, with median **532.00 ms**, p95 **650.60 ms**, and maximum
+**884.83 ms**. Every measured final output was also compared exactly with fresh pure
 processing. Individual samples are in `experiments/performance_results.json`.
 
 Automated checkpoint on 2026-10-25:
@@ -416,18 +417,20 @@ machine. `PENDING` is deliberately not a pass.
 | FR-015 | T038,T041-T044,T049 | Ten licensed inputs, two settings each, real-light pair, environment/procedure and exact automated replay are retained. | manifest, report, reproduction test | PASS |
 | FR-016 | T002-T004,T047,T049,T050 | Full suite/workflows ran locally; source/dependencies contain no service or Image Restoration integration. | `pyproject.toml`; import review; full suite | PASS |
 | FR-017 | T007-T013,T045,T050 | Pure core tests cover conversion, inclusive/wrapped selection, extraction, boundaries and invalid data without Tk/files. | unit suite; algorithm doc | PASS |
+| FR-018 | T051-T056 | Exact analytical bin/cutoff totals, continuous ordered/equal/wrapped overlays, current source/frame replacement and cache reuse checks passed. | `test_histogram.py`; `test_histogram_panel.py`; histogram contracts | PASS |
 | SC-001 | T014,T016,T022,T024,T027,T034,T049 | All seven hashed format cases passed; video lifecycle completed without mismatched views. | format/playback tests; inventory | PASS |
 | SC-002 | T007-T013 | All analytical/reference pixels and extracted colors matched exactly within documented tolerance. | unit processing suite | PASS |
-| SC-003 | T019,T021,T046 | Full-HD real-GUI measurement achieved 100/100 <=1 s; final pixels matched final controls. | performance markdown/JSON | PASS |
+| SC-003 | T019,T021,T046,T056 | Full-HD real-GUI measurement with histogram visible achieved 99/100 <=1 s; final pixels matched final controls. | performance markdown/JSON | PASS |
 | SC-004 | T028-T032 | Every automated image and video-frame export reopened with exact dimensions/pixels. | export integration tests | PASS |
 | SC-005 | T037-T043,T049 | Twenty runs/ten images/light pair and three automated exact replays pass; second-student replay has not occurred. | runs, manifest, reproduction record | **PENDING** |
 | SC-006 | T047-T049 | Five-minute no-help student workflow is prepared but no genuine participant/time is recorded. | quickstart, demo, reproduction form | **PENDING** |
 | SC-007 | T033-T036,T049 | Automated invalid-file/parameter/save cases verified message fields, preservation and valid follow-up. | error-recovery tests | PASS |
 | SC-008 | T038,T042,T044,T048,T049 | Report labels two comparisons for all ten images and discusses misses, unwanted selection and lighting. | experiment report; demo | PASS |
+| SC-009 | T051-T056 | All analytical H/S/V bins and totals passed; threshold edits reused counts, moved overlays and preserved all three views. | histogram unit/integration tests; algorithm doc | PASS |
 
 T049 remains incomplete because SC-005's second-student replay and SC-006's independent timed
 workflow require real participants. T050 remains dependency-blocked by T049. No checkbox is
-advanced for either task. Current ledger: **48/50 complete**.
+advanced for either task. Current ledger after Phase 9: **54/56 complete**.
 
 ## Repository refactor checkpoint
 
@@ -444,3 +447,43 @@ The post-refactor checkpoint used the locked dependencies on CPython 3.11 and pr
 - a valid `uv.lock` plus importable `hsv` entrypoint.
 
 This structural cleanup did not change T049/T050 acceptance status.
+
+## Zoomable preview checkpoint
+
+Each Original, Binary Mask and Segmented Result view now starts in Fit mode, provides `−`,
+`Fit` and `+` controls, supports mouse-wheel zoom, preserves the viewport center and exposes
+scrollbars for panning. Double-click restores Fit. Source arrays and exported pixels remain
+unchanged; only preview rendering is resized.
+
+The post-change suite reported **196 passed in 9.21 seconds**. The required 1920x1080 GUI
+benchmark was rerun and retained **100/100** matching updates within one second.
+
+## Phase 9: HSV histogram aid
+
+T051-T056 are complete. The processing layer now produces immutable, threshold-independent
+counts for 360 hue bins and 101 bins each for saturation/value. Exact S/V 100 maps to bin 100;
+the hue chart includes exact S>=5% and reports the excluded S<5% count. Tests also verify that
+inputs are unchanged and the processing module imports neither GUI nor file I/O.
+
+The optional Tk Canvas panel renders the current accepted image or video frame, with continuous
+numeric overlays for ordered, wrapped, equal and full-domain bounds. Invalid input is labeled as
+the last-valid overlay; valid pending input is labeled pending. At a 960x640 client area the
+toggle, charts, labels, six controls and three previews remain available, with every preview at
+least 160x120. Counts are cached by session, frame and source hash; threshold-only edits reuse
+the same immutable histogram, while replacement/frame advancement and stale completions are
+handled by the existing revision protocol.
+
+Recorded checks on 2026-10-25:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m compileall -q src tests scripts
+uv run python scripts/benchmark_gui_performance.py
+```
+
+The full suite reported **210 passed in 17.55 seconds**. The 1920x1080 real-Tk benchmark ran with the histogram
+panel visible and achieved **99/100** matching updates within one second (median **566.34 ms**,
+p95 **665.60 ms**), satisfying the minimum 95/100 criterion. Every timed result was checked
+against fresh pure processing after its timing endpoint. The separate pre-histogram zoom
+baseline remains recorded as 100/100, median 532.00 ms. FR-018 and SC-009 are therefore PASS;
+T049 and T050 remain open only for the genuine independent-human acceptance gate.

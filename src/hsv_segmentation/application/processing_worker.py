@@ -10,8 +10,9 @@ from threading import RLock
 import numpy as np
 
 from ..io.images import load_image
-from ..models import HSVThresholdSet, ProcessingRequest, SegmentationResult
+from ..models import HSVHistogram, HSVThresholdSet, ProcessingRequest, SegmentationResult
 from ..processing.color import rgb_to_hsv
+from ..processing.histogram import compute_hsv_histogram
 from ..processing.segmentation import apply_mask, generate_mask
 from .session import process_source
 
@@ -44,15 +45,20 @@ class _CachedProcessor:
     def __init__(self):
         self._source_identity: tuple[str, int | None, str] | None = None
         self._hsv: np.ndarray | None = None
+        self._histogram: HSVHistogram | None = None
 
     def __call__(self, request: ProcessingRequest) -> SegmentationResult:
         identity = (request.session_id, request.frame_index, request.source.source_sha256)
         if identity != self._source_identity:
             self._hsv = rgb_to_hsv(request.rgb)
+            self._histogram = compute_hsv_histogram(self._hsv)
             self._source_identity = identity
         hsv = self._hsv
         if hsv is None:  # Defensive guard for static analysis and future cache changes.
             raise RuntimeError("HSV cache was not initialized")
+        histogram = self._histogram
+        if histogram is None:
+            raise RuntimeError("HSV histogram cache was not initialized")
         mask = generate_mask(hsv, request.thresholds)
         return SegmentationResult(
             source=request.source,
@@ -60,6 +66,7 @@ class _CachedProcessor:
             mask=mask,
             segmented_rgb=apply_mask(request.rgb, mask),
             request_revision=request.request_revision,
+            histogram=histogram,
         )
 
 

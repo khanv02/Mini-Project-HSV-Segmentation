@@ -142,6 +142,43 @@ open a valid file and confirm normal operation.
 3. **Given** an open or save dialog, **When** the student cancels it, **Then** the current
    input, thresholds, results, and existing files remain unchanged.
 
+### User Story 6 - Inspect HSV Distributions (Priority: P2)
+
+As a student, I want to inspect the hue, saturation, and value distributions of the displayed
+image or video frame so that I can choose HSV bounds with visual evidence rather than guessing.
+
+**Why this priority**: Distribution charts explain how the current source relates to the six
+manual bounds, while keeping the validated threshold-membership algorithm unchanged.
+
+**Independent Test**: Open a synthetic image with known HSV components, display the histogram
+panel, and compare every bin and excluded low-saturation hue count with hand-derived values.
+Move ordered and wrapped threshold bounds and verify the source bin counts stay unchanged,
+the overlays follow the active bounds, and segmentation follows the original six-bound rules.
+
+**Acceptance Scenarios**:
+
+1. **Given** a loaded still image or current video frame, **When** the histogram panel is shown,
+   **Then** it presents three labeled frequency charts with hue bins of one degree and
+   saturation/value bins of one percentage point, alongside all three result views.
+2. **Given** pixels with saturation below 5 percent, **When** the hue chart is computed,
+   **Then** those pixels are excluded from hue bins and their count is reported; all pixels
+   remain included in saturation and value charts.
+3. **Given** a valid threshold edit, **When** the new values become active, **Then** the charts
+   update their selected-range overlays immediately; a wrapped hue interval is highlighted on
+   both ends of the hue axis, without changing segmentation semantics.
+4. **Given** a source replacement or video frame advance, **When** the accepted source/frame
+   changes, **Then** all three distributions update to match that exact source/frame and no
+   stale chart is labeled as current.
+5. **Given** the histogram panel is opened or closed, **When** the student compares the result,
+   **Then** the original, binary mask, and segmented result remain available and synchronized.
+6. **Given** equal lower and upper bounds, **When** the corresponding interval is displayed,
+   **Then** it appears as a labeled boundary line at that numeric value rather than shading an
+   entire histogram bin. For example, S=5.9 belongs to bin 5 but is excluded by S=5..5.
+7. **Given** a 960 by 640 pixel application client area at 100% display scaling, **When** the
+   histogram panel is shown, **Then** all three charts, their labels and interval markers, the
+   six HSV controls and panel toggle are visible without overlap or scrolling; each of the three
+   result views retains at least a 160 by 120 pixel preview area with aspect-preserving fitting.
+
 ### Edge Cases
 
 - No selected pixels produces an all-black mask and result; selecting all pixels produces an
@@ -161,6 +198,11 @@ open a valid file and confirm normal operation.
   processing or export resolution. Inputs beyond available resources fail with a useful error.
 - A failed experiment export must not report a complete record when referenced outputs failed
   to save; the student can retry without losing the displayed result.
+- Without loaded media, the histogram panel shows an empty state. If every pixel has S < 5%,
+  the hue chart has zero counts and reports every pixel as excluded; the S and V charts remain
+  populated. A failed source open preserves the previous charts with the previous valid session.
+- Invalid or pending threshold text must not be presented as active histogram intervals; overlays
+  identify the last valid threshold set and share the result's invalid/pending status.
 
 ## Requirements *(mandatory)*
 
@@ -214,6 +256,22 @@ open a valid file and confirm normal operation.
 - **FR-017**: Algorithm explanations and automated correctness checks MUST cover HSV conversion,
   inclusive interval selection, hue wraparound, and extraction, including boundary and invalid
   cases. Core processing MUST be verifiable without operating the GUI, as the constitution requires.
+- **FR-018**: The application MUST provide an optional HSV histogram panel for the current image
+  or video frame. It MUST show 360 one-degree hue bins and 101 one-percentage-point bins each for
+  saturation and value. Hue counts MUST exclude pixels with saturation below 5 percent, and the
+  excluded count MUST be visible; saturation and value counts MUST include every pixel. The panel
+  MUST overlay current valid threshold intervals, show wrapped hue as both end intervals, update
+  on accepted source/frame changes and valid threshold edits, and MUST NOT itself change
+  thresholds or segmentation results. Counts MUST describe the complete source/frame rather
+  than just mask-selected pixels. Viewing or hiding the panel MUST preserve all three result
+  views. Each nonnegative component value belongs to the bin labeled by its integer part;
+  saturation/value equal to 100 belong to the final bin, and there is no hue bin at 360.
+  Interval overlays MUST use the actual numeric bounds on the channel axis without snapping
+  to whole bins; equal bounds MUST appear as a labeled line. Highlighted bins MUST NOT be
+  presented as an exact count of selected pixels. At the supported minimum client area of
+  960 by 640 pixels with 100% display scaling, charts, labels, interval markers, the toggle and
+  six controls MUST remain visible without overlap or scrolling, with at least a 160 by 120
+  pixel preview area for each of Original, Mask and Result.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -222,6 +280,8 @@ open a valid file and confirm normal operation.
 - **HSV Threshold Set**: Six named bounds with units and explicit hue wraparound semantics.
 - **Segmentation Result**: A binary mask and extracted color image associated with exactly one
   source image or frame and one valid threshold set.
+- **HSV Histogram**: Source/frame-associated frequency counts for H, S and V, plus the count
+  omitted from hue due to low saturation. Counts are independent of segmentation thresholds.
 - **Experiment Record**: An identified run linking source, thresholds, outputs, date, lighting
   conditions, and observations; accompanying experiment documentation identifies the environment.
 - **Test Image Collection**: At least 10 distinct images with documented provenance and lighting
@@ -256,6 +316,13 @@ open a valid file and confirm normal operation.
   with a valid operation afterward. Cancellation preserves state and requires no error message.
 - **SC-008**: The demonstration report includes labeled comparisons and observations about
   missed targets, unwanted selections, and lighting effects for all 10 test images.
+- **SC-009**: For a known-color reference image, all 360 hue-bin counts (using S >= 5 percent),
+  the excluded low-saturation count, and all 101 saturation/value-bin counts match hand-derived
+  values. Moving valid bounds keeps these counts fixed and updates the interval overlays,
+  including both pieces of a wrapped hue interval, while mask/result updates retain the original
+  threshold semantics. Opening/closing the panel preserves synchronized result views. SC-003
+  must still be met with the histogram panel visible. Equal-bound overlays and the minimum-size
+  layout MUST meet US6 acceptance scenarios 6 and 7.
 
 ### Supported-Format Demonstration Set
 
@@ -310,6 +377,13 @@ visible acceptance failures until resolved on the demonstration computer.
 - Local experiment records and exported images provide comparison evidence; a separate
   experiment gallery or session database is not required. Students supply lighting descriptions
   and observations. No login, backend service, or database is needed.
+- HSV histograms are descriptive aids only; the hue chart excludes pixels with S < 5 percent
+  because hue is unstable near zero saturation, while S and V charts include all pixels. The
+  5-percent cutoff is fixed and disclosed in the panel; charts never choose thresholds
+  automatically. Histogram calculation uses the current decoded source/frame; its binning and
+  hue display cutoff do not round HSV values or filter pixels for segmentation. Histogram image
+  export, histogram persistence in experiment records, and automatic methods such as Otsu are
+  outside this enhancement.
 - Existing compatible GUI and utility components may be reused where available and suitably
   licensed, but reuse must not require running or installing the Image Restoration project.
   Planning found no reusable application modules in the current repository; any later supplied

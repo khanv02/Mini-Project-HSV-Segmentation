@@ -81,6 +81,27 @@ copies the original RGB value at mask 255 and writes black `(0,0,0)` elsewhere. 
 default `(H 0..360, S 0..100, V 0..100)` therefore selects the complete hue domain.
 Although 360 is a valid upper endpoint, converted pixel hues are always less than 360.
 
+## HSV histogram aid
+
+The optional histogram panel summarizes the current decoded image or video frame; it does not
+change segmentation. Hue uses 360 one-degree bins (`floor(H)`), while saturation and value use
+101 one-percentage-point bins (`floor(S)` and `floor(V)`). Exact S/V value 100 is therefore
+stored in bin 100. Counts are integers and each S/V histogram totals the source pixel count.
+
+Hue is visually unstable for near-neutral colors, so the hue chart includes only pixels whose
+unrounded saturation is at least 5%. The panel reports the excluded count explicitly, and the
+hue-bin total plus that count equals the source pixel count. This fixed display cutoff applies
+only to the hue chart: it does not remove pixels from S/V charts, alter HSV values, or affect the
+mask. In particular, S=5.9 belongs to display bin 5 but is not selected by the exact threshold
+interval S=5..5.
+
+Red overlays show the six active threshold values on continuous H 0..360 and S/V 0..100 axes;
+they do not snap to bar boundaries. An equal lower/upper pair is drawn as a labeled line, and a
+wrapped hue interval is drawn at both ends of the hue axis. The charts are a manual selection
+aid only. The application does not infer thresholds and does not implement Otsu or another
+automatic thresholding method. Counts are cached by accepted source/frame identity, while an
+edit updates only the overlay until its matching segmentation result is published.
+
 ## Precision, reproducibility, and limitations
 
 Conversion and comparisons use NumPy `float64`. Tests compare analytical and independent

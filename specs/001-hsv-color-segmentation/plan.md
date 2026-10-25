@@ -11,7 +11,9 @@ the checked-out Git branch is `main`. No branch was created or switched during p
 Build a local Windows desktop application for academic HSV color segmentation. Deliver the
 still-image workflow first: open an image, edit six HSV bounds, and compare original, binary
 mask, and extracted colors. Add video playback/frame exports, reliable file handling, and
-recorded experiments across at least 10 images and 20 threshold configurations afterward.
+recorded experiments across at least 10 images and 20 threshold configurations afterward. Plan
+a Phase 9 HSV histogram panel to help students choose those manual bounds from source
+distributions; it is explanatory and does not change threshold selection or segmentation.
 
 Use vectorized NumPy float64 equations for the core RGB-to-HSV conversion and thresholding,
 Tkinter/Pillow for presentation and image files, and OpenCV for sequential video decoding.
@@ -30,12 +32,34 @@ Pixel hue remains in [0,360), so default hue bounds (0,360) select the entire hu
 This corrects the previously inconsistent (0,359) full-domain assumption without quantizing
 pixels or adding a seventh control. The spec and tasks are synchronized with this decision.
 
+Histogram design: calculate 360 one-degree hue bins and 101 one-percentage-point bins each for
+saturation and value from the current accepted HSV source/frame. Count hue only where S >= 5%
+and display the omitted-pixel count because hue is unstable near zero saturation; S and V include
+all pixels. Mark current valid intervals as overlays, including two end regions for wrapped hue.
+Position overlays on continuous numeric axes (H 0..360, S/V 0..100), independently of histogram
+bin widths. Ordered intervals shade the numeric lower-to-upper span and label the boundaries;
+equal bounds draw a labeled line. Do not snap bounds to bin edges or sum shaded bins as an exact
+selected-pixel count. In particular, S=5.9 contributes to bin 5 but is not selected by S=5..5.
+Cache counts by source/frame identity so threshold-only changes update overlays without scanning
+the image again. Use NumPy and Tkinter Canvas; do not add a plotting package or let histogram
+values alter the mask.
+Bin index is the integer part of each component: H has indices 0..359, S/V have indices 0..100
+with exact 100 in the final bin. This quantization applies only to chart counts. The source HSV
+array and threshold membership retain their existing unrounded float64 semantics. Calculate
+counts outside Tk handlers; publish them only with a matching accepted session/frame. Retain
+at most the current source/frame counts and avoid adding an independent unbounded job queue.
+The supported minimum client area is 960x640 pixels at 100% display scaling. With the panel
+shown, all three charts, axis/interval labels, panel toggle and six HSV controls remain visible
+without overlap or scrolling. Each result view keeps a drawable preview area of at least
+160x120 pixels and fits its source aspect ratio. Verify layout at this size with the panel both
+shown and hidden; adapt spacing and chart sizing without replacing a result view.
+
 ## Technical Context
 
 **Language/Version**: CPython 3.11, 64-bit Windows distribution with Tcl/Tk; record the exact
 patch version in the locked demonstration environment during setup.
 
-**Primary Dependencies**: NumPy (float64 array mathematics), Pillow (PNG/JPEG/BMP decoding,
+**Primary Dependencies**: NumPy (float64 array mathematics and histogram bin counts), Pillow (PNG/JPEG/BMP decoding,
 display conversion, PNG writing), opencv-python (video capture only), pytest (test dependency),
 and setuptools (packaging build dependency). Tkinter, colorsys, dataclasses, concurrent.futures,
 queue, json, hashlib, pathlib, and uuid come from Python's standard library.
@@ -47,8 +71,9 @@ that dependency compatibility or a clean installation has already been tested du
 record. No database, remote storage, authentication, or backend service.
 
 **Testing**: pytest unit and integration tests, hand-derived RGB/HSV cases, independent colorsys
-comparisons, temporary-file round trips, deterministic playback doubles, real video smoke checks,
-and a manual GUI/reproduction acceptance guide. Core tests require no GUI or input files.
+comparisons, exact histogram-bin references (including hue exclusion below 5% saturation),
+temporary-file round trips, deterministic playback doubles, real video smoke checks, and a manual
+GUI/reproduction acceptance guide. Core tests require no GUI or input files.
 
 **Target Platform**: Windows 10/11 x64; first verify the intended university machine and record
 its OS, CPU, RAM, Python, Tcl/Tk, package versions and selected video backend. Other OSes are
@@ -61,6 +86,7 @@ not acceptance targets. Use the Windows CPython launcher rather than assuming th
 **Performance Goals**: For a 1920x1080 still image, at least 95 of 100 valid control changes
 produce a rendered current result within one second after the final edit. Timing includes
 coordination, processing, preview preparation and GUI rendering, rather than just mask creation.
+Histogram overlays are included in that latency measure and reuse cached source/frame counts.
 No guaranteed real-time video frame rate. Playback may slow while preserving synchronization.
 
 **Constraints**: Six numeric controls, source-resolution computation/export, inclusive comparisons,
@@ -74,9 +100,10 @@ project resource policy, not a claim that all smaller images fit every computer.
 with recorded resource measurements and corresponding documentation/tests.
 
 **Scale/Scope**: One active media session; bounded previous and candidate source state during
-opening; three visible previews; still-image exports and individual video-frame exports;
-at least 10 distinct images, two settings per image, and one photographed scene under two
-lighting conditions. No tracking, counting, ML, audio, seeking, or full-video encoding.
+opening; three synchronized result previews and an optional compact HSV histogram panel;
+still-image exports and individual video-frame exports; at least 10 distinct images, two settings
+per image, and one photographed scene under two lighting conditions. No tracking, counting, ML,
+automatic threshold selection, audio, seeking, or full-video encoding.
 
 ## Constitution Check
 
@@ -87,12 +114,12 @@ steps preserve each principle. These passes assess design, not unbuilt runtime b
 
 | Principle | Design constraint and validation evidence planned | Pre | Post |
 | --- | --- | --- | --- |
-| I. Correctness and clarity | Explicit float64 equations, units, endpoint rules; analytical and independent reference tests in processing contract | PASS | PASS |
-| II. Modular architecture | One authoritative processing implementation; models/errors are shared leaves; no dependency cycles | PASS | PASS |
-| III. GUI/processing/I/O separation | GUI delegates through application; processing consumes memory only; I/O owns paths/codecs | PASS | PASS |
+| I. Correctness and clarity | Explicit float64 equations, units, endpoint rules; exact reference tests for HSV conversion, mask and histogram bins | PASS | PASS |
+| II. Modular architecture | One authoritative processing implementation; histogram counts stay in pure processing; models/errors are shared leaves; no dependency cycles | PASS | PASS |
+| III. GUI/processing/I/O separation | GUI delegates through application; processing consumes memory only; I/O owns paths/codecs; Canvas only renders histogram data | PASS | PASS |
 | IV. Student maintainability | One package, stdlib desktop toolkit; three runtime packages (NumPy, Pillow, OpenCV), pytest for tests and setuptools for builds | PASS | PASS |
 | V. Naming and clean code | snake_case modules, unit-bearing fields, documented constants, no speculative interfaces | PASS | PASS |
-| VI. Independent core tests | Conversion, threshold validation, mask generation and extraction callable without Tk/files | PASS | PASS |
+| VI. Independent core tests | Conversion, threshold validation, mask generation, extraction and histogram counts callable without Tk/files | PASS | PASS |
 | VII. Tests and reproducibility | Exact mask tests, explicit conversion tolerances, locked environment, source hashes and 20 runs | PASS | PASS |
 | VIII. Strict academic scope | No services/database; every dependency has a specific documented role in research.md | PASS | PASS |
 | IX. Academic explanation | Equations, pipeline, parameter meanings, limitations and labeled experiment comparisons | PASS | PASS |
@@ -133,6 +160,7 @@ src/hsv_segmentation/
   processing/
     __init__.py
     color.py
+    histogram.py
     thresholds.py
     segmentation.py
   io/
@@ -150,13 +178,16 @@ src/hsv_segmentation/
     __init__.py
     main_window.py
     image_view.py
+    hsv_histogram.py
     threshold_controls.py
     experiment_panel.py
     controller.py
 tests/
   fixtures/color_cases.py
   unit/
+    test_histogram.py
   integration/
+    test_histogram_panel.py
 scripts/
   generate_acceptance_media.py
   generate_experiment_evidence.py
@@ -187,6 +218,10 @@ Image Restoration; reassess any later supplied reusable components against the s
 Imports flow from GUI to application; application uses models, processing and I/O. Processing
 and I/O may import shared models/errors, but neither imports the GUI. Experiment I/O writes a
 provided snapshot; it does not run algorithms. __main__ composes the window and controller.
+For Phase 9, a pure processing function consumes the in-memory HSV array and returns histogram
+counts plus the excluded hue count. The application layer owns source/frame cache identity; a
+Tk Canvas widget only renders counts and threshold overlays. This keeps core calculations
+independently testable and avoids rescanning a still image during threshold-only edits.
 
 ### Phase 0: Research Decisions
 
@@ -207,27 +242,33 @@ Resolve earlier analysis findings as follows: fill constitution gates (C1); perm
 and test near-origin red (I1); prepare package metadata/dependencies before skeleton but install
 the local package only after skeleton creation (I2); separate automated replay from independent
 student acceptance so documentation preparation can proceed (U1). Task IDs remain stable.
-Current task ledger: T001-T037 and T039-T040 are marked complete (39/50 tasks). T038 remains
-unchecked because no authentic same-scene/two-real-lighting pair is documented. T041-T044
-artifacts are prepared but remain dependency-gated; T045-T050 are the unstarted final phase.
-`tasks.md` is the completion ledger; `docs/verification.md` holds execution evidence.
+Current task ledger: T001-T048 and Phase 9 T051-T056 are complete, including the Phase 8
+documentation/performance baseline and the histogram implementation/evidence. T049-T050 form a
+separate final acceptance and review gate, rather than unfinished Phase 8 work. Stable task IDs
+are retained even though the dependency edges put T051-T056 before T049-T050. `tasks.md`
+is the completion ledger; `docs/verification.md` holds execution evidence.
 The design-level constitution gates above do not assert that remaining runtime acceptance passed.
 
 ### Acceptance Traceability
 
 Use the FR/SC-to-task table in tasks.md to populate an evidence matrix in
-`docs/verification.md`. Each of the 25 requirement IDs must identify its covering tasks,
+`docs/verification.md`. Each of the 27 requirement IDs must identify its covering tasks,
 automated test or manual procedure, command/actions, actual result, and evidence location.
 Pending, failed and skipped checks remain explicit; task coverage alone does not mean acceptance.
 T034 prepares the seven-case supported-format inventory defined in spec.md, including both
 MJPG/AVI and mp4v/MP4 cases. T049 executes it against the recorded demonstration environment;
 required codec cases cannot pass by being skipped. T033-T036 verify the FR-013 message contents
 and preserved state, and T029/T032/T037 verify background-write behavior for FR-012.
+Phase 9 maps FR-018/SC-009 to exact histogram references and GUI overlay/cache checks. T056
+records the additional evidence and reruns SC-003 with the panel visible; T049 will complete the
+expanded evidence matrix after T056. No new runtime dependency is required. Existing timing
+evidence remains recorded separately as the pre-histogram baseline.
 
 ## Complexity Tracking
 
 No constitution exceptions or additional infrastructure are required. One serialized worker,
 revisioned snapshots and local files address the existing responsiveness/reproducibility
 requirements without services, a database, or a plugin framework. Runtime verification for
-experiment persistence, 20 runs and automatic replay is recorded. T038's real-lighting
-provenance and T045-T050 final acceptance remain pending.
+experiment persistence, 20 runs and automatic replay is recorded. The final acceptance gate's
+two independent human checks remain pending. The histogram reuses NumPy and Tkinter Canvas;
+source/frame counts are cached and only small interval overlays move during threshold edits.

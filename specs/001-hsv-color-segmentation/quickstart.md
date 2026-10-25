@@ -1,9 +1,10 @@
 ﻿# Quickstart and Validation: HSV Color Segmentation
 
-**Stage guide, 2026-10-25**: Phases 1 through 7 and the automated/documentation portion of
-Phase 8 are implemented. The last full-suite checkpoint records 195 automated checks; the
-Full-HD GUI benchmark separately records 100/100 updates within one second. Final acceptance
-remains open until real independent students complete the two documented human checks.
+**Stage guide, 2026-10-25**: Phases 1 through 9, excluding the separate final human acceptance
+gate, are implemented. The latest full-suite checkpoint records 210 automated checks; the
+Full-HD GUI benchmark with the histogram panel visible records 99/100 updates within one second
+against the 95/100 requirement. Final acceptance remains open until real independent students
+complete the two documented human checks.
 
 ## Prerequisites
 
@@ -59,6 +60,21 @@ uv run hsv
 Expected numeric behavior is defined in [processing contract](contracts/processing.md), rather
 than inferred only from appearance. Use its analytical cases for pixel-level acceptance.
 
+## HSV Histogram
+
+1. With the image open, choose **Show Histogram**. Confirm H, S and V charts appear while all
+   three image views and six threshold controls remain usable.
+2. Confirm the panel states that hue includes only S>=5% and reports excluded pixels. H has 360
+   one-degree bins; S/V have bins 0..100, with exact 100 in the final bin.
+3. Change valid thresholds. Counts must remain tied to the same image while continuous red
+   overlays move. Test ordered, wrapped, equal and full-domain bounds.
+4. Enter an invalid value. The panel must label the prior valid overlay rather than presenting
+   invalid text as active. Restore a valid value and confirm synchronized output.
+5. Open/play a video and pause on another frame. Confirm the counts change with the accepted
+   frame and are not replaced by a delayed result from an earlier source/frame.
+6. Hide and show the panel. This must not edit thresholds, masks or exports. Treat the charts as
+   a manual aid only; no Otsu or automatic threshold selection is implemented.
+
 ## Video and Export
 
 1. Open the known MP4/AVI fixture; verify first frame opens paused at index 0.
@@ -78,7 +94,8 @@ After each recoverable error, complete another valid operation without restartin
 work is pending and verify captures/work are released and no stale callbacks update Tk.
 
 Record 100 distinct valid edit events on the documented demonstration computer using a
-1920x1080 still image. Measure from the final edit event to presentation of its matching result,
+1920x1080 still image with the histogram panel visible. Measure from the final edit event to
+presentation of its matching result and overlay,
 including debounce and rendering. Allow one result to render before the next measured edit;
 measure rapid-edit coalescing separately. At least 95 of 100 timings must be <=1 second.
 Report hardware/software, input, six-bound sequence, individual timings and counting method

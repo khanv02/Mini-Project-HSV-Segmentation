@@ -11,6 +11,7 @@ from PIL import Image
 from hsv_segmentation.application.processing_worker import ProcessingWorker
 from hsv_segmentation.application.session import ImageSession, process_source
 from hsv_segmentation.gui.controller import ApplicationController
+from hsv_segmentation.gui.image_view import ImageView
 from hsv_segmentation.gui.main_window import MainWindow
 from hsv_segmentation.gui.threshold_controls import ThresholdControls
 from hsv_segmentation.models import HSVThresholdSet, InputMedia, ProcessingRequest
@@ -149,6 +150,37 @@ def test_window_has_named_sections_three_views_and_six_controls() -> None:
         assert len(controls.fields) == 6
         assert "360" in controls.range_text
         assert "wrap" in controls.range_text.lower()
+    finally:
+        root.destroy()
+
+
+def test_image_view_supports_zoom_fit_and_scrollable_canvas() -> None:
+    tkinter = pytest.importorskip("tkinter")
+    root = _create_tk_root(tkinter)
+    root.geometry("480x320")
+    try:
+        view = ImageView(root, title="Zoom test")
+        view.pack(fill="both", expand=True)
+        image = np.zeros((600, 900, 3), dtype=np.uint8)
+        image[100:500, 200:700] = [40, 120, 220]
+        view.show_array(image)
+        root.update()
+
+        assert view.zoom_factor == 1.0
+        assert view.canvas.cget("scrollregion")
+        assert view.zoom_text == "Fit"
+
+        view.zoom_in()
+        root.update()
+        assert view.zoom_factor > 1.0
+        assert "%" in view.zoom_text
+
+        view.zoom_out()
+        view.fit()
+        root.update()
+        assert view.zoom_factor == 1.0
+        assert view.zoom_text == "Fit"
+        np.testing.assert_array_equal(view.source_array, image)
     finally:
         root.destroy()
 

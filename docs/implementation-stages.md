@@ -5,9 +5,10 @@ its results, then stop at the boundary. Do not start the next phase automaticall
 The authoritative individual task criteria remain in
 `specs/001-hsv-color-segmentation/tasks.md`.
 
-Current status: **Phases 1 through 7 complete and verified on 2026-10-24**. Phase 7 includes a
-fixed photographed scene under two documented real lighting conditions, with source permission
-and hashes recorded. Phase 8 has not started.
+Current status: **Phases 1 through 7 and Phase 9 are complete; the automated/documentation
+portion of Phase 8 is complete**. Phase 7 includes a fixed photographed scene under two
+documented real lighting conditions, with source permission and hashes recorded. The final
+human acceptance tasks T049-T050 remain open.
 
 | Phase | Tasks | Deliverable | Exit check |
 | --- | --- | --- | --- |
@@ -18,7 +19,8 @@ and hashes recorded. Phase 8 has not started.
 | 5. Output | T028–T032 | PNG mask/result and video-frame export | Saved dimensions and decoded pixels match the source result |
 | 6. Error recovery | T033–T036 | Validation and recoverable input/output errors | Each failure is followed by a successful valid operation |
 | 7. Experiments | T037–T044 | Recording, at least 10 images and 20 runs, comparisons | Automatic replay succeeds; licensed real-lighting pair is documented |
-| 8. Final verification | T045–T050 | Performance evidence, docs, demo and independent acceptance | Measured criteria and actual student acceptance are recorded |
+| 8. Verification baseline and final gate | T045–T050 | Performance/docs/demo baseline, then independent acceptance after Phase 9 | T045–T048 complete; T049–T050 require actual student evidence |
+| 9. HSV histogram aid | T051–T056 | Source/frame H/S/V counts, continuous threshold overlays and cache | Analytical/GUI tests pass and panel-visible Full-HD benchmark meets SC-003 |
 
 Phase 1 does not deliver an executable desktop window or image processing code.
 Phase 2 adds data validation and independent reference fixtures, with 60 passing
@@ -26,6 +28,8 @@ foundation checks. Phase 3 delivers the first working image application; Phase 4
 bounded sequential video playback; Phase 5 adds lossless still/video-frame PNG export;
 Phase 6 adds structured recovery and the seven-case format inventory. Phase 7 adds atomic local
 records, a GUI experiment panel, 20 retained runs, exact replay, and licensed photographs under
-two documented real lighting conditions. The 195 automated checks pass.
-Independent human acceptance in
-Phase 8 must be performed by actual participants; unavailable evidence stays open.
+two documented real lighting conditions. Phase 9 adds a compact optional histogram panel using
+the existing NumPy/Tk stack; source/frame counts are cached while overlays follow exact numeric
+thresholds. The 210 automated checks pass and the panel-visible benchmark meets SC-003 at
+99/100 updates within one second. Independent human acceptance in Phase 8 must be performed by
+actual participants; unavailable evidence stays open.

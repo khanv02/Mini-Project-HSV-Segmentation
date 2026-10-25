@@ -10,7 +10,8 @@ from .color import rgb_to_hsv
 from .thresholds import validate_thresholds
 
 
-def _validate_hsv(hsv: np.ndarray) -> tuple[int, int]:
+def validate_hsv(hsv: np.ndarray) -> tuple[int, int]:
+    """Validate the shared float64 HSV array contract."""
     if not isinstance(hsv, np.ndarray) or hsv.dtype != np.float64:
         raise ValidationError("hsv", "must be a float64 NumPy array")
     if hsv.ndim != 3 or hsv.shape[2] != 3 or min(hsv.shape[:2]) == 0:
@@ -37,7 +38,7 @@ def generate_mask(
     thresholds: HSVThresholdSet | Mapping[str, object],
 ) -> np.ndarray:
     """Select pixels in all three inclusive intervals as a 0/255 mask."""
-    _validate_hsv(hsv)
+    validate_hsv(hsv)
     bounds = validate_thresholds(thresholds)
     hue = hsv[..., 0]
     saturation = hsv[..., 1]
