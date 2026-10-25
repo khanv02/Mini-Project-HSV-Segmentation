@@ -1,108 +1,130 @@
 # HSV Color Segmentation
 
-[![Python][Python-shield]][Python-url]
-[![Tkinter][Tkinter-shield]][Tkinter-url]
-[![NumPy][NumPy-shield]][NumPy-url]
-[![Pillow][Pillow-shield]][Pillow-url]
-[![OpenCV][OpenCV-shield]][OpenCV-url]
-[![pytest][Pytest-shield]][Pytest-url]
-[![uv][UV-shield]][UV-url]
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Tkinter](https://img.shields.io/badge/GUI-Tkinter%20%2F%20ttk-2563EB)](https://docs.python.org/3/library/tkinter.html)
+[![NumPy](https://img.shields.io/badge/NumPy-2.x-013243?logo=numpy&logoColor=white)](https://numpy.org/)
+[![OpenCV](https://img.shields.io/badge/OpenCV-4.x-5C3EE8?logo=opencv&logoColor=white)](https://opencv.org/)
+[![Tests](https://img.shields.io/badge/tests-248%20passed-16A34A)](docs/verification.md)
+[![Status](https://img.shields.io/badge/status-62%2F64%20tasks-F59E0B)](specs/001-hsv-color-segmentation/tasks.md)
 
-Ứng dụng desktop phục vụ học tập và trình diễn phân đoạn màu bằng sáu ngưỡng HSV.
-Người dùng có thể mở ảnh hoặc video, điều chỉnh khoảng H/S/V, quan sát đồng thời ảnh gốc,
-mask nhị phân và kết quả tách màu, sau đó lưu ảnh hoặc ghi lại experiment có thể tái lập.
+Ứng dụng desktop độc lập dùng để học tập, trình diễn và đánh giá phân đoạn màu bằng
+ngưỡng HSV. Toàn bộ workflow hoạt động offline: mở ảnh hoặc video, điều chỉnh sáu ngưỡng,
+so sánh ảnh gốc với mask và kết quả phân đoạn, sau đó xuất PNG hoặc lưu một experiment
+có thể tái lập.
 
-## Công nghệ
+## Đây là gì?
 
-- **Python 3.11** — ngôn ngữ và môi trường chạy chính.
-- **Tkinter / ttk** — giao diện desktop native, không cần web server.
-- **NumPy** — chuyển đổi RGB → HSV và xử lý ma trận ảnh vector hóa.
-- **Pillow** — đọc ảnh, dựng preview và xuất PNG lossless.
-- **OpenCV** — giải mã tuần tự video MP4/AVI.
-- **pytest** — kiểm thử unit, integration và tái lập experiment.
-- **uv** — quản lý môi trường, dependency và lệnh chạy.
+HSV Color Segmentation là công cụ trực quan hóa thuật toán phân đoạn màu theo ba thành phần:
 
-## Tính năng chính
+- **Hue (H)** — góc màu trong khoảng `[0°, 360°)`;
+- **Saturation (S)** — độ bão hòa trong khoảng `[0%, 100%]`;
+- **Value (V)** — độ sáng trong khoảng `[0%, 100%]`.
 
-- Đọc ảnh PNG, JPEG, BMP; chuẩn hóa ảnh xám, palette và ảnh có alpha về RGB.
-- Đọc tuần tự video MP4/AVI, hỗ trợ phát, tạm dừng, kết thúc và phát lại.
-- Sáu điều khiển HSV theo đơn vị độ/phần trăm, so sánh biên bao hàm và hỗ trợ hue vòng qua 0°.
-- Hiển thị đồng bộ Original, Binary Mask và Segmented Result.
-- Panel histogram HSV tùy chọn cho ảnh/frame hiện tại, có marker ngưỡng liên tục và thống kê
-  riêng số pixel saturation dưới 5% bị loại khỏi biểu đồ hue.
-- Xuất mask và ảnh kết quả PNG ở đúng độ phân giải nguồn.
-- Ghi experiment theo UUID cùng threshold, mô tả ánh sáng, nhận xét và SHA-256.
+Ứng dụng dành cho sinh viên và giảng viên cần một công cụ dễ giải thích, có kết quả xác định,
+không phụ thuộc dịch vụ mạng và có đủ bằng chứng kiểm thử cho báo cáo học thuật.
+
+## Điểm nổi bật
+
+- Mở ảnh **PNG, JPEG, BMP** và video **MP4, AVI** được decoder cục bộ hỗ trợ.
+- Hiển thị đồng thời **Original**, **Binary Mask** và **Segmented Result**.
+- Sáu ngưỡng HSV dạng số nguyên, cập nhật tự động và hỗ trợ hue vòng qua `0°`.
+- Preset khởi đầu cho Red, Yellow, Green và Blue.
+- Lấy mẫu trực tiếp từ một pixel hoặc vùng ROI để đề xuất khoảng HSV.
+- Morphology tùy chọn với Opening, Closing hoặc Opening + Closing.
+- Chế độ overlay, so sánh mask trước/sau morphology và thống kê tỷ lệ pixel được chọn.
+- Histogram H/S/V cho frame hiện tại với marker ngưỡng liên tục.
+- Zoom, Fit, cuộn và pan độc lập trên từng vùng preview.
+- Xuất mask và kết quả dưới dạng PNG lossless ở đúng độ phân giải nguồn.
+- Lưu experiment gồm UUID, nguồn, frame, threshold, ghi chú, SHA-256 và các artifact liên quan.
 - Xử lý nền có revision để loại bỏ kết quả cũ khi người dùng chỉnh nhanh.
-- Hoạt động offline; không cần tài khoản, database, dịch vụ mạng hay project khác.
+- Giao diện light-first theo kiểu scientific workspace, hỗ trợ bàn phím và hoạt động offline.
 
-## Trạng thái
-
-- **210/210** kiểm thử tự động đã đạt ở checkpoint gần nhất.
-- Benchmark GUI Full HD khi hiện histogram đạt **99/100** lần cập nhật dưới một giây trên máy
-  đã ghi nhận, vượt tiêu chí tối thiểu 95/100.
-- Hoàn thành **54/56** task.
-- Còn T049 (hai kiểm tra nghiệm thu độc lập với người thật) và T050 (rà soát cuối sau T049).
-
-Chi tiết nằm trong [kết quả xác minh](docs/verification.md),
-[thuật toán](docs/algorithm.md) và [kịch bản demo](docs/demo.md).
-
-## Cấu trúc dự án
+## Kiến trúc
 
 ```text
-HSV Segmentation/
-├── src/hsv_segmentation/       # Mã nguồn ứng dụng
-│   ├── processing/             # Thuật toán RGB/HSV thuần, không phụ thuộc GUI/I/O
-│   ├── io/                     # Đọc ảnh/video, xuất file và experiment
-│   ├── application/            # Session, playback và background worker
-│   └── gui/                    # Cửa sổ, widget và controller Tk
-├── tests/
-│   ├── unit/                   # Kiểm thử thuật toán và model độc lập
-│   ├── integration/            # Kiểm thử workflow ảnh/video/export/recovery
-│   └── fixtures/               # Dữ liệu kiểm thử nhỏ, tái tạo được
-├── scripts/                    # Công cụ sinh fixture, experiment và benchmark
-├── experiments/                # Dataset demo đã tuyển chọn và bằng chứng thực nghiệm
-├── docs/                       # Thuật toán, nghiệm thu, demo và kết quả xác minh
-├── specs/                      # Specification, plan, contract và task ledger
-├── pyproject.toml              # Metadata, dependency và entrypoint
-└── uv.lock                     # Dependency lock chính thức
+Local image / video
+        │
+        ▼
+┌────────────────┐     ┌──────────────────────┐
+│ I/O adapters   │ ──▶ │ Session + playback   │
+│ Pillow/OpenCV  │     │ Revision coordination│
+└────────────────┘     └──────────┬───────────┘
+                                  │
+                                  ▼
+                       ┌──────────────────────┐
+                       │ Pure processing      │
+                       │ RGB→HSV, mask,       │
+                       │ morphology, histogram│
+                       └──────────┬───────────┘
+                                  │
+                    ┌─────────────┴─────────────┐
+                    ▼                           ▼
+             Tkinter workspace          PNG / experiment export
 ```
 
-## Cài đặt
+| Layer | Trách nhiệm |
+|---|---|
+| `processing/` | Thuật toán thuần trên mảng NumPy; không đọc file và không phụ thuộc GUI |
+| `io/` | Đọc ảnh/video, xuất PNG và ghi experiment |
+| `application/` | Session, playback, background worker và kiểm soát revision |
+| `gui/` | Theme, controls, preview, histogram, dialog và controller Tk |
 
-Yêu cầu Windows 10/11 x64, Python 3.11 có Tcl/Tk và `uv`.
+## Yêu cầu
+
+- Windows 10/11 x64
+- Python 3.11 có Tcl/Tk
+- [uv](https://docs.astral.sh/uv/)
+
+Ứng dụng không yêu cầu tài khoản, database, web server hoặc kết nối mạng khi chạy.
+
+## Cài đặt và chạy
 
 ```powershell
+git clone <repository-url>
+cd "HSV Segmentation"
 uv sync --locked --extra test
-```
-
-Lần đồng bộ đầu tiên cần Internet hoặc cache package. Sau khi cài đặt, toàn bộ workflow chạy
-offline. `uv.lock` là lockfile chính; `requirements-lock.txt` được giữ làm bản ghi môi trường
-lịch sử của giai đoạn thiết lập.
-
-## Chạy ứng dụng
-
-```powershell
 uv run hsv
 ```
 
-Alias tương thích dài hơn vẫn được giữ:
+Entrypoint tương đương:
 
 ```powershell
 uv run hsv-segmentation
 ```
 
-## Cách sử dụng nhanh
+## Sử dụng nhanh
 
 1. Chọn **Open Image…** hoặc **Open Video…**.
-2. Điều chỉnh Lower/Upper H, S và V. H dùng độ; S/V dùng phần trăm.
-3. Nếu Lower H lớn hơn Upper H, khoảng hue sẽ vòng qua 0° (ví dụ `350..10`).
-4. So sánh ba khung Original, Binary Mask và Segmented Result.
-5. Bật **Show Histogram** để xem phân bố H/S/V của ảnh hoặc frame hiện tại. Vùng đỏ biểu diễn
-   đúng các ngưỡng đang dùng; biểu đồ chỉ hỗ trợ chọn thủ công, không tự tìm ngưỡng.
-6. Dùng `−`, `Fit`, `+` hoặc con lăn chuột trên từng khung để thu/phóng; kéo thanh cuộn
-   để xem vùng ảnh khi đã zoom và double-click để trở về Fit.
-7. Dùng **Save Mask…** hoặc **Save Result…** để xuất PNG lossless.
-8. Nhập mô tả ánh sáng/nhận xét rồi dùng **Record Experiment** khi cần lưu bằng chứng.
+2. Điều chỉnh Lower/Upper của Hue, Saturation và Value trong inspector bên trái.
+3. So sánh ba preview Original, Mask và Result.
+4. Dùng **Pick Color** với chế độ Pixel hoặc ROI nếu cần một khoảng HSV khởi đầu.
+5. Bật Morphology khi cần loại nhiễu nhỏ hoặc lấp các lỗ nhỏ trong mask.
+6. Mở **Show Histogram** để đối chiếu phân bố màu với các ngưỡng đang dùng.
+7. Dùng **Save Mask…**, **Save Result…** hoặc **Record Experiment…** để lưu kết quả.
+
+Hue cho phép khoảng vòng qua gốc đỏ. Ví dụ `H = 350°..10°` chọn cả phần cuối và phần
+đầu của vòng màu. Các khoảng S và V luôn phải có lower không lớn hơn upper.
+
+### Phím tắt
+
+| Phím | Hành động |
+|---|---|
+| `Ctrl+O` | Mở ảnh |
+| `Ctrl+Shift+O` | Mở video |
+| Con lăn chuột trên preview | Phóng to hoặc thu nhỏ |
+| Double-click trên preview | Trở về Fit |
+
+## Định dạng hỗ trợ
+
+| Loại | Định dạng | Ghi chú |
+|---|---|---|
+| Ảnh | PNG, JPEG, BMP | Ảnh xám được nhân thành RGB; alpha được bỏ qua |
+| Video | MP4, AVI | Codec thực tế phụ thuộc OpenCV backend trên máy chạy |
+| Xuất ảnh | PNG | Mask chỉ chứa 0/255; result giữ nguyên pixel RGB được chọn |
+| Experiment | JSON + PNG | Metadata, hash và đường dẫn artifact cục bộ |
+
+Bộ acceptance hiện có fixture cho RGB PNG/JPEG/BMP, grayscale PNG, RGBA PNG, MJPG/AVI
+và mp4v/MP4.
 
 ## Kiểm thử
 
@@ -112,62 +134,97 @@ Chạy toàn bộ test:
 uv run --locked --extra test pytest -q
 ```
 
-Chạy riêng từng lớp:
+Chạy theo lớp:
 
 ```powershell
 uv run --locked --extra test pytest tests/unit -q
 uv run --locked --extra test pytest tests/integration -q
 ```
 
-## Script hỗ trợ
+Checkpoint gần nhất:
+
+- **248/248** test tự động đạt;
+- GUI Full HD với histogram đạt **99/100** cập nhật trong một giây;
+- **62/64** task hoàn tất;
+- T049 và T050 vẫn mở vì cần nghiệm thu độc lập với người tham gia thật.
+
+Chi tiết lệnh, môi trường và kết quả nằm trong
+[docs/verification.md](docs/verification.md).
+
+## Experiment và khả năng tái lập
+
+`experiments/manifest.json` quản lý 10 ảnh có provenance và SHA-256. Mỗi ảnh có hai
+cấu hình threshold, tạo thành 20 run hoàn chỉnh. Bộ dữ liệu chính gồm tám ảnh
+SimpleCube++ CC BY 4.0 và hai ảnh MIT của cùng một cảnh dưới hai hướng chiếu sáng.
+
+```text
+experiments/
+├── inputs/                 # 10 ảnh được manifest quản lý
+├── runs/<uuid>/            # mask.png, result.png, record.json
+├── manifest.json           # provenance, hash và liên kết run
+├── environment.json        # môi trường tái lập
+├── performance_results.json
+├── report.md
+└── reproduction.md
+```
+
+Không chạy generator experiment nếu muốn giữ nguyên bộ bằng chứng hiện tại. Script chủ động
+từ chối ghi đè thư mục `experiments/runs/` không rỗng.
+
+## Công cụ bảo trì
 
 ```powershell
-# Tạo lại bộ fixture định dạng nhỏ
+# Tạo lại fixture định dạng nhỏ
 uv run python scripts/generate_acceptance_media.py
 
-# Tạo lại 20 experiment (chỉ chạy khi muốn thay bộ bằng chứng hiện tại)
+# Tạo bộ experiment mới có chủ đích
 uv run python scripts/generate_experiment_evidence.py
 
-# Đo 100 lần cập nhật GUI trên ảnh 1920×1080
+# Benchmark 100 lần cập nhật GUI trên ảnh 1920×1080
 uv run python scripts/benchmark_gui_performance.py
 ```
 
-Script experiment từ chối ghi đè thư mục `experiments/runs/` không rỗng nhằm bảo vệ bằng chứng
-đang giữ. Xem [hướng dẫn experiment](experiments/README.md) trước khi tái tạo.
+Xem thêm tại [scripts/README.md](scripts/README.md).
 
-## Thuật toán và giới hạn
+## Cấu trúc repository
 
-RGB được chuẩn hóa sang `float64`, chuyển sang H trong `[0,360)` và S/V trong `[0,100]`.
-Mask dùng so sánh bao hàm, có giá trị đúng `0` hoặc `255`; pixel được chọn giữ nguyên RGB,
-pixel còn lại chuyển thành đen. Công thức đầy đủ nằm tại [docs/algorithm.md](docs/algorithm.md).
-Histogram dùng 360 bin H và 101 bin cho mỗi S/V. Biểu đồ H bỏ qua pixel có S dưới 5% vì hue
-không ổn định ở vùng gần trung tính; quy tắc hiển thị này không thay đổi phép phân đoạn.
+```text
+.
+├── src/hsv_segmentation/   # Mã nguồn ứng dụng
+├── tests/                  # Unit, integration và fixture
+├── experiments/            # Dataset, benchmark và bằng chứng tái lập
+├── scripts/                # Công cụ tạo fixture/evidence và benchmark
+├── docs/                   # Thuật toán, demo, acceptance và verification
+├── specs/                  # Specification, plan, contracts và task ledger
+├── pyproject.toml          # Package metadata và entrypoint
+└── uv.lock                 # Dependency lock chính thức
+```
 
-HSV thresholding không phải nhận dạng vật thể. Bóng, vùng chói, cân bằng trắng, nén ảnh,
-phản xạ và màu có saturation thấp có thể làm kết quả thay đổi. Phạm vi hiện tại không gồm
-tracking, audio, camera trực tiếp, tìm kiếm frame hay mã hóa toàn bộ video đầu ra.
+## Tài liệu
 
-## Dữ liệu và khả năng tái lập
+- [Thuật toán và quy ước số](docs/algorithm.md)
+- [Hướng dẫn acceptance](docs/acceptance.md)
+- [Kịch bản demo](docs/demo.md)
+- [Kết quả verification](docs/verification.md)
+- [Đặc tả tính năng](specs/001-hsv-color-segmentation/spec.md)
+- [Implementation plan](specs/001-hsv-color-segmentation/plan.md)
+- [Task ledger](specs/001-hsv-color-segmentation/tasks.md)
 
-`experiments/manifest.json` quản lý 10 ảnh có provenance và hash, gồm tám ảnh SimpleCube++
-CC BY 4.0 và hai ảnh cùng một cảnh MIT dưới hai hướng chiếu sáng thật (CC-BY). Hai threshold
-được lưu cho mỗi ảnh, tạo thành 20 run hoàn chỉnh. Không sử dụng các ảnh ngoài manifest làm
-bằng chứng chính thức.
+## Giới hạn phạm vi
 
-Việc nghiệm thu cuối cần một sinh viên thứ hai tái lập ba run và một sinh viên hoàn thành luồng
-mở ảnh → chỉnh HSV → so sánh → lưu kết quả trong tối đa năm phút mà không được hỗ trợ.
+HSV thresholding không phải nhận dạng vật thể. Bóng, vùng chói, phản xạ, cân bằng trắng,
+nén ảnh và màu có saturation thấp có thể làm pixel dịch chuyển khỏi khoảng ngưỡng cố định.
 
-[Python-shield]: https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white
-[Python-url]: https://docs.python.org/3.11/
-[Tkinter-shield]: https://img.shields.io/badge/Tkinter-ttk-2C5F2D?style=for-the-badge&logo=python&logoColor=white
-[Tkinter-url]: https://docs.python.org/3.11/library/tkinter.html
-[NumPy-shield]: https://img.shields.io/badge/NumPy-2.x-013243?style=for-the-badge&logo=numpy&logoColor=white
-[NumPy-url]: https://numpy.org/
-[Pillow-shield]: https://img.shields.io/badge/Pillow-Imaging-8A2BE2?style=for-the-badge&logo=python&logoColor=white
-[Pillow-url]: https://pillow.readthedocs.io/
-[OpenCV-shield]: https://img.shields.io/badge/OpenCV-4.x-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white
-[OpenCV-url]: https://opencv.org/
-[Pytest-shield]: https://img.shields.io/badge/pytest-Testing-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white
-[Pytest-url]: https://docs.pytest.org/
-[UV-shield]: https://img.shields.io/badge/uv-Package%20Manager-DE5FE9?style=for-the-badge&logo=uv&logoColor=white
-[UV-url]: https://docs.astral.sh/uv/
+Project hiện không bao gồm:
+
+- object detection hoặc machine learning;
+- object counting và tracking;
+- camera trực tiếp, audio hoặc tìm kiếm frame;
+- tự động chọn threshold;
+- mã hóa toàn bộ video kết quả;
+- backend, database hoặc dịch vụ mạng.
+
+## Trạng thái bản quyền
+
+Repository hiện chưa khai báo license cho mã nguồn ứng dụng. License và provenance của dữ liệu
+thực nghiệm được ghi riêng trong `experiments/manifest.json` và tài liệu đi kèm.

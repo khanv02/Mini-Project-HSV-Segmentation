@@ -15,10 +15,35 @@ htmlcov/
 .env*
 *.log
 *.tmp
+*.bak
+*.orig
+*.rej
 *.swp
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+coverage.xml
+junit.xml
+.coverage.*
+
+# Local AI/codebase snapshots and one-off README generator input.
+repomix-output.*
+template.md
+
+# Locally installed design skills are development tools, not application source.
+.agents/skills/banner-design/
+.agents/skills/brand/
+.agents/skills/design/
+.agents/skills/design-system/
+.agents/skills/slides/
+.agents/skills/ui-styling/
+.agents/skills/ui-ux-pro-max/
+
+# Ad-hoc sample photos not referenced by experiments/manifest.json.
+experiments/inputs/apple_*.jpg
+experiments/inputs/banana_*.jpg
+experiments/inputs/mixed_*.jpg
+experiments/inputs/orange_*.jpg
 # Curated experiment inputs, records and evidence are intentionally retained.
 
