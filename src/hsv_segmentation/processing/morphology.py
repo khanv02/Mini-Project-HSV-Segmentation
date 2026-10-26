@@ -28,19 +28,20 @@ def apply_morphology(mask: np.ndarray, settings: MorphologySettings) -> np.ndarr
     if not settings.enabled:
         return mask.copy()
 
+    # An odd square kernel gives a centered, symmetric neighborhood. Sizes
+    # are deliberately bounded in MorphologySettings to avoid over-cleaning.
     kernel = cv2.getStructuringElement(
         cv2.MORPH_RECT, (settings.kernel_size, settings.kernel_size)
     )
+    operations = {
+        "opening": (cv2.MORPH_OPEN,),
+        "closing": (cv2.MORPH_CLOSE,),
+        "opening_closing": (cv2.MORPH_OPEN, cv2.MORPH_CLOSE),
+    }[settings.operation]
     result = mask
-    if settings.operation in {"opening", "opening_closing"}:
-        result = cv2.morphologyEx(
-            result, cv2.MORPH_OPEN, kernel,
-            borderType=cv2.BORDER_CONSTANT, borderValue=0,
-        )
-    if settings.operation in {"closing", "opening_closing"}:
-        result = cv2.morphologyEx(
-            result, cv2.MORPH_CLOSE, kernel,
-            borderType=cv2.BORDER_CONSTANT, borderValue=0,
-        )
-    return np.asarray(result, dtype=np.uint8).copy()
+    for operation in operations:
+        # OpenCV's morphologyDefaultBorderValue is operation-aware: it avoids
+        # treating pixels outside the image as background during erosion.
+        result = cv2.morphologyEx(result, operation, kernel)
+    return result.copy()
 

@@ -36,6 +36,18 @@ def test_closing_fills_small_background_hole() -> None:
     np.testing.assert_array_equal(result, expected)
 
 
+def test_closing_preserves_foreground_touching_image_border() -> None:
+    mask = np.zeros((7, 7), dtype=np.uint8)
+    mask[0:5, 0:5] = 255
+    mask[2, 2] = 0
+
+    result = apply_morphology(mask, MorphologySettings(True, "closing", 3))
+
+    expected = np.zeros((7, 7), dtype=np.uint8)
+    expected[0:5, 0:5] = 255
+    np.testing.assert_array_equal(result, expected)
+
+
 def test_disabled_morphology_preserves_pixels_and_returns_owned_mask() -> None:
     mask = np.array([[0, 255], [255, 0]], dtype=np.uint8)
 
