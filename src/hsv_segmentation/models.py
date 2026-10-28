@@ -6,7 +6,7 @@ neither a caller's later mutation nor setflags(write=True) can change a snapshot
 """
 
 from dataclasses import dataclass, field
-from numbers import Integral
+from numbers import Integral, Real
 from pathlib import Path
 import re
 from typing import Final, Literal
@@ -25,6 +25,12 @@ THRESHOLD_FIELDS: Final = (
 )
 RGBImage = NDArray[np.uint8]
 BinaryMask = NDArray[np.uint8]
+
+
+def _boolean(value, name: str) -> bool:
+    if not isinstance(value, (bool, np.bool_)):
+        raise ValidationError(name, "must be a boolean")
+    return bool(value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +58,67 @@ class MorphologySettings:
         return {
             "enabled": self.enabled,
             "operation": self.operation,
+            "kernel_size": self.kernel_size,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class AnalysisSettings:
+    """Optional measurements derived from the current HSV/morphology mask."""
+
+    enabled: bool = False
+    connectivity: Literal[4, 8] = 8
+    min_area_px: int = 0
+
+    def __post_init__(self):
+        object.__setattr__(self, "enabled", _boolean(self.enabled, "analysis.enabled"))
+        if isinstance(self.connectivity, (bool, np.bool_)) or self.connectivity not in {4, 8}:
+            raise ValidationError("connectivity", "must be 4 or 8")
+        object.__setattr__(self, "connectivity", int(self.connectivity))
+        object.__setattr__(
+            self, "min_area_px", _bounded_integer(self.min_area_px, "min_area_px", 0)
+        )
+
+    def as_dict(self) -> dict[str, bool | int]:
+        return {
+            "enabled": self.enabled,
+            "connectivity": self.connectivity,
+            "min_area_px": self.min_area_px,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class WatershedSettings:
+    """Explicit marker-controlled separation parameters."""
+
+    enabled: bool = False
+    seed_fraction: float = 0.5
+    background_iterations: int = 1
+    kernel_size: int = 3
+
+    def __post_init__(self):
+        object.__setattr__(self, "enabled", _boolean(self.enabled, "watershed.enabled"))
+        value = self.seed_fraction
+        if (
+            isinstance(value, (bool, np.bool_))
+            or not isinstance(value, Real)
+            or not np.isfinite(value)
+            or not 0.0 < float(value) < 1.0
+        ):
+            raise ValidationError("seed_fraction", "must be finite and strictly between 0 and 1")
+        object.__setattr__(self, "seed_fraction", float(value))
+        object.__setattr__(self, "background_iterations", _bounded_integer(
+            self.background_iterations, "background_iterations", 0, 10
+        ))
+        if isinstance(self.kernel_size, bool) or self.kernel_size not in {3, 5, 7, 9}:
+            raise ValidationError("kernel_size", "must be one of 3, 5, 7, or 9")
+        object.__setattr__(self, "kernel_size", int(self.kernel_size))
+
+    def as_dict(self) -> dict[str, bool | int | float]:
+        return {
+            "enabled": self.enabled,
+            "seed_fraction": self.seed_fraction,
+            "background_iterations": self.background_iterations,
             "kernel_size": self.kernel_size,
         }
 
@@ -86,6 +153,199 @@ def _immutable_copy(array: np.ndarray) -> np.ndarray:
     # A write-disabled owning ndarray could be made writeable again. A bytes
     # buffer cannot; it also detaches noncontiguous views from their input owner.
     return np.frombuffer(array.tobytes(order="C"), dtype=array.dtype).reshape(array.shape)
+
+
+def _validate_binary_mask(mask: np.ndarray, name: str, shape=None) -> tuple[int, int]:
+    if (
+        not isinstance(mask, np.ndarray)
+        or mask.dtype != np.uint8
+        or mask.ndim != 2
+        or min(mask.shape, default=0) == 0
+        or not np.all((mask == 0) | (mask == 255))
+        or (shape is not None and mask.shape != shape)
+    ):
+        suffix = f" with shape {shape}" if shape is not None else ""
+        raise ValidationError(name, f"must be a nonempty binary uint8 array{suffix}")
+    if mask.size > MAX_IMAGE_PIXELS:
+        raise ValidationError(name, f"exceeds the {MAX_IMAGE_PIXELS:,}-pixel limit")
+    return mask.shape
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class RegionStatistics:
+    region_id: int
+    area_px: int
+    centroid_x: float
+    centroid_y: float
+    box: tuple[int, int, int, int]
+    contours: tuple[np.ndarray, ...] = field(default_factory=tuple, repr=False)
+
+    def __post_init__(self):
+        object.__setattr__(self, "region_id", _bounded_integer(self.region_id, "region_id", 1))
+        object.__setattr__(self, "area_px", _bounded_integer(self.area_px, "area_px", 1))
+        for name in ("centroid_x", "centroid_y"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, Real) or not np.isfinite(value):
+                raise ValidationError(name, "must be a finite coordinate")
+            object.__setattr__(self, name, float(value))
+        if (
+            not isinstance(self.box, tuple) or len(self.box) != 4
+            or any(isinstance(v, bool) or not isinstance(v, Integral) for v in self.box)
+            or self.box[0] < 0 or self.box[1] < 0 or self.box[2] <= 0 or self.box[3] <= 0
+        ):
+            raise ValidationError("box", "must be (x, y, positive width, positive height)")
+        object.__setattr__(self, "box", tuple(int(v) for v in self.box))
+        normalized = []
+        for contour in self.contours:
+            if not isinstance(contour, np.ndarray) or contour.dtype != np.int32:
+                raise ValidationError("contours", "must contain int32 point arrays")
+            if contour.ndim != 3 or contour.shape[1:] != (1, 2) or contour.shape[0] == 0:
+                raise ValidationError("contours", "must use OpenCV shape (points, 1, 2)")
+            normalized.append(_immutable_copy(contour))
+        object.__setattr__(self, "contours", tuple(normalized))
+
+    def as_dict(self) -> dict:
+        return {
+            "id": self.region_id,
+            "area_px": self.area_px,
+            "centroid": [self.centroid_x, self.centroid_y],
+            "box": list(self.box),
+        }
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class RegionAnalysis:
+    labels: NDArray[np.int32] = field(repr=False)
+    filtered_mask: BinaryMask = field(repr=False)
+    raw_count: int = 0
+    regions: tuple[RegionStatistics, ...] = field(default_factory=tuple)
+
+    def __post_init__(self):
+        if (
+            not isinstance(self.labels, np.ndarray)
+            or self.labels.dtype != np.int32
+            or self.labels.ndim != 2
+            or min(self.labels.shape, default=0) == 0
+            or np.any(self.labels < 0)
+        ):
+            raise ValidationError("labels", "must be a nonempty nonnegative int32 array")
+        _validate_binary_mask(self.filtered_mask, "filtered_mask", self.labels.shape)
+        raw = _bounded_integer(self.raw_count, "raw_count", 0)
+        if raw < len(self.regions):
+            raise ValidationError("raw_count", "must be at least the retained region count")
+        ids = tuple(region.region_id for region in self.regions)
+        if ids != tuple(range(1, len(ids) + 1)):
+            raise ValidationError("regions", "must use contiguous IDs starting at 1")
+        expected = self.labels > 0
+        if not np.array_equal(self.filtered_mask == 255, expected):
+            raise ValidationError("filtered_mask", "must select exactly positive labels")
+        actual_ids = set(np.unique(self.labels))
+        expected_ids = set(range(1, len(ids) + 1))
+        if actual_ids not in (expected_ids, expected_ids | {0}):
+            raise ValidationError("labels", "must contain exactly background and retained IDs")
+        object.__setattr__(self, "raw_count", raw)
+        object.__setattr__(self, "labels", _immutable_copy(self.labels))
+        object.__setattr__(self, "filtered_mask", _immutable_copy(self.filtered_mask))
+
+    @property
+    def retained_count(self) -> int:
+        return len(self.regions)
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class WatershedResult:
+    status: Literal["applied", "empty", "not_applied"]
+    labels: NDArray[np.int32] = field(repr=False)
+    boundaries: BinaryMask = field(repr=False)
+    foreground_mask: BinaryMask = field(repr=False)
+    reason: str | None = None
+    analysis: RegionAnalysis | None = None
+
+    def __post_init__(self):
+        if self.status not in {"applied", "empty", "not_applied"}:
+            raise ValidationError("watershed.status", "must be applied, empty, or not_applied")
+        if not isinstance(self.labels, np.ndarray) or self.labels.dtype != np.int32:
+            raise ValidationError("watershed.labels", "must be an int32 array")
+        if self.labels.ndim != 2 or min(self.labels.shape, default=0) == 0 or np.any(self.labels < 0):
+            raise ValidationError("watershed.labels", "must be nonempty and nonnegative")
+        _validate_binary_mask(self.boundaries, "watershed.boundaries", self.labels.shape)
+        _validate_binary_mask(self.foreground_mask, "watershed.foreground", self.labels.shape)
+        if not np.array_equal(self.foreground_mask == 255, self.labels > 0):
+            raise ValidationError("watershed.foreground", "must select positive labels")
+        if self.status == "applied" and self.reason is not None:
+            raise ValidationError("watershed.reason", "must be absent when applied")
+        if self.status != "applied" and (not isinstance(self.reason, str) or not self.reason.strip()):
+            raise ValidationError("watershed.reason", "is required when separation was not applied")
+        if self.analysis is not None and self.analysis.labels.shape != self.labels.shape:
+            raise ValidationError("watershed.analysis", "must match labels")
+        object.__setattr__(self, "labels", _immutable_copy(self.labels))
+        object.__setattr__(self, "boundaries", _immutable_copy(self.boundaries))
+        object.__setattr__(self, "foreground_mask", _immutable_copy(self.foreground_mask))
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class GroundTruth:
+    mask: BinaryMask = field(repr=False)
+    source_path: Path
+    source_sha256: str
+    pixel_sha256: str
+    threshold: int
+    alpha_ignored: bool
+    session_id: str
+    source_image_sha256: str
+    frame_index: int | None
+    truth_revision: int = 0
+
+    def __post_init__(self):
+        _validate_binary_mask(self.mask, "ground_truth.mask")
+        path = Path(self.source_path)
+        if not path.is_absolute():
+            raise ValidationError("ground_truth.path", "must be absolute")
+        object.__setattr__(self, "source_path", path)
+        for name in ("source_sha256", "pixel_sha256", "source_image_sha256"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None:
+                raise ValidationError(name, "must be 64 lowercase hexadecimal characters")
+        object.__setattr__(self, "threshold", _bounded_integer(self.threshold, "truth_threshold", 0, 254))
+        object.__setattr__(self, "alpha_ignored", _boolean(self.alpha_ignored, "alpha_ignored"))
+        _nonempty_text(self.session_id, "ground_truth.session_id")
+        if self.frame_index is not None:
+            object.__setattr__(self, "frame_index", _bounded_integer(self.frame_index, "frame_index", 0))
+        object.__setattr__(self, "truth_revision", _bounded_integer(self.truth_revision, "truth_revision", 0))
+        object.__setattr__(self, "mask", _immutable_copy(self.mask))
+
+
+@dataclass(frozen=True, slots=True)
+class EvaluationResult:
+    target: Literal["baseline", "components", "watershed"]
+    true_positive: int
+    false_positive: int
+    false_negative: int
+    true_negative: int
+    iou: float
+    dice: float
+    status: Literal["normal", "both_empty", "one_empty"] = "normal"
+
+    def __post_init__(self):
+        if self.target not in {"baseline", "components", "watershed"}:
+            raise ValidationError("target", "must be baseline, components, or watershed")
+        for name in ("true_positive", "false_positive", "false_negative", "true_negative"):
+            object.__setattr__(self, name, _bounded_integer(getattr(self, name), name, 0))
+        for name in ("iou", "dice"):
+            value = getattr(self, name)
+            if not isinstance(value, Real) or not np.isfinite(value) or not 0 <= value <= 1:
+                raise ValidationError(name, "must be finite and in 0..1")
+            object.__setattr__(self, name, float(value))
+        if self.status not in {"normal", "both_empty", "one_empty"}:
+            raise ValidationError("evaluation.status", "is invalid")
+
+    def as_dict(self) -> dict:
+        return {
+            "target": self.target, "true_positive": self.true_positive,
+            "false_positive": self.false_positive, "false_negative": self.false_negative,
+            "true_negative": self.true_negative, "iou": self.iou, "dice": self.dice,
+            "status": self.status,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -260,12 +520,31 @@ class ProcessingRequest(_SnapshotIdentity):
     thresholds: HSVThresholdSet
     request_revision: int = 0
     morphology: MorphologySettings = field(default_factory=MorphologySettings)
+    analysis_settings: AnalysisSettings = field(default_factory=AnalysisSettings)
+    watershed_settings: WatershedSettings = field(default_factory=WatershedSettings)
+    ground_truth: GroundTruth | None = field(default=None, repr=False)
+    evaluation_target: Literal["baseline", "components", "watershed"] = "baseline"
+    settings_revision: int = 0
 
     def __post_init__(self):
         revision = _validate_snapshot_identity(self.source, self.thresholds, self.request_revision)
         object.__setattr__(self, "request_revision", revision)
         if not isinstance(self.morphology, MorphologySettings):
             raise ValidationError("morphology", "must be MorphologySettings")
+        if not isinstance(self.analysis_settings, AnalysisSettings):
+            raise ValidationError("analysis_settings", "must be AnalysisSettings")
+        if not isinstance(self.watershed_settings, WatershedSettings):
+            raise ValidationError("watershed_settings", "must be WatershedSettings")
+        if self.ground_truth is not None:
+            if not isinstance(self.ground_truth, GroundTruth):
+                raise ValidationError("ground_truth", "must be GroundTruth or None")
+            if self.ground_truth.mask.shape != (self.source.height, self.source.width):
+                raise ValidationError("ground_truth", "must match source dimensions")
+        if self.evaluation_target not in {"baseline", "components", "watershed"}:
+            raise ValidationError("evaluation_target", "is invalid")
+        object.__setattr__(self, "settings_revision", _bounded_integer(
+            self.settings_revision, "settings_revision", 0
+        ))
 
     @property
     def rgb(self) -> RGBImage:
@@ -288,6 +567,14 @@ class SegmentationResult(_SnapshotIdentity):
     histogram: HSVHistogram | None = field(default=None, repr=False)
     morphology: MorphologySettings = field(default_factory=MorphologySettings)
     original_mask: BinaryMask | None = field(default=None, repr=False)
+    analysis_settings: AnalysisSettings = field(default_factory=AnalysisSettings)
+    watershed_settings: WatershedSettings = field(default_factory=WatershedSettings)
+    analysis: RegionAnalysis | None = field(default=None, repr=False)
+    watershed: WatershedResult | None = field(default=None, repr=False)
+    ground_truth: GroundTruth | None = field(default=None, repr=False)
+    evaluation_target: Literal["baseline", "components", "watershed"] = "baseline"
+    evaluation: EvaluationResult | None = None
+    settings_revision: int = 0
 
     def __post_init__(self):
         revision = _validate_snapshot_identity(self.source, self.thresholds, self.request_revision)
@@ -323,6 +610,23 @@ class SegmentationResult(_SnapshotIdentity):
                 "original_mask", "must equal mask when morphology is disabled"
             )
         object.__setattr__(self, "original_mask", _immutable_copy(original_mask))
+        if not isinstance(self.analysis_settings, AnalysisSettings):
+            raise ValidationError("analysis_settings", "must be AnalysisSettings")
+        if not isinstance(self.watershed_settings, WatershedSettings):
+            raise ValidationError("watershed_settings", "must be WatershedSettings")
+        if self.analysis is not None and self.analysis.labels.shape != shape:
+            raise ValidationError("analysis", "must match source dimensions")
+        if self.watershed is not None and self.watershed.labels.shape != shape:
+            raise ValidationError("watershed", "must match source dimensions")
+        if self.ground_truth is not None and self.ground_truth.mask.shape != shape:
+            raise ValidationError("ground_truth", "must match source dimensions")
+        if self.evaluation_target not in {"baseline", "components", "watershed"}:
+            raise ValidationError("evaluation_target", "is invalid")
+        if self.evaluation is not None and self.evaluation.target != self.evaluation_target:
+            raise ValidationError("evaluation", "target must match evaluation_target")
+        object.__setattr__(self, "settings_revision", _bounded_integer(
+            self.settings_revision, "settings_revision", 0
+        ))
 
     @property
     def original_rgb(self) -> RGBImage:

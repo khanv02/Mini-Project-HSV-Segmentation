@@ -117,3 +117,41 @@ not denoise, learn thresholds, track objects, estimate accuracy without ground t
 audio, or encode a complete output video. Preview images may be resized for display, while
 processing, masks, experiment artifacts, and exports remain at source resolution.
 
+## Object analysis and minimum-area filtering
+
+Object analysis is derived from the current binary HSV mask after optional morphology.
+Connected components use configurable 4- or 8-neighbor connectivity. Each retained region
+reports exact foreground-pixel area, centroid, and an axis-aligned bounding box. The filter is
+inclusive: a region is retained when `area_px >= minimum_area_px`. Region IDs are stable in
+row-major discovery order. Contours are display geometry only; their polygon area is not used
+as pixel area. A component is a connected mask region, not a guaranteed real-world object.
+
+## Optional distance transform and Watershed
+
+Watershed is a post-processing step, never a replacement for HSV thresholding. It starts from
+the HSV/morphology mask, computes an L2 distance transform, thresholds it by the configured
+fraction of the maximum distance, and uses connected seed regions plus known background as
+markers. OpenCV Watershed runs on a copy of the source image. Positive labels and boundary
+ridges are clipped back to the baseline mask; minimum-area filtering is applied after splitting.
+
+At least two foreground marker regions and some known background are required. Empty masks
+produce `empty`; insufficient markers produce `not_applied` with a reason, and the baseline
+HSV result remains available. Marker-controlled Watershed is image-dependent and does not
+guarantee separation of every touching or overlapping-looking object.
+
+## Ground truth, IoU, and Dice
+
+Ground truth is normalized to a binary mask using the strict rule `gray > threshold`. It must
+be a lossless PNG/BMP with the same source dimensions; alpha is ignored and RGB channels must
+be equal. The selected prediction can be baseline, area-filtered components, or an applied
+Watershed union.
+
+```text
+IoU  = TP / (TP + FP + FN)
+Dice = 2 TP / (2 TP + FP + FN)
+```
+
+Both-empty masks score 1.0 and receive an explicit `both_empty` status; exactly one empty mask
+scores 0.0. TP is green, FP red, and FN blue in the optional confusion view. The displayed
+percentage of selected pixels is coverage only and must never be interpreted as accuracy.
+

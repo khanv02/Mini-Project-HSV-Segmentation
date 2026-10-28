@@ -514,3 +514,38 @@ The focused GUI regression set reported **22 passed in 3.46 seconds**. The compl
 empty/image/video contextual states, shortcuts, the 960x640 layout, histogram visibility and all
 existing processing/export workflows. T049 and T050 remain open because their independent human
 acceptance evidence cannot be produced by automated implementation work.
+
+## Phase 11: Object analysis, separation, and evaluation
+
+Feature 002 began with the required locked command on 2026-10-28. Before implementation it
+reported **247 passed, 2 failed** under uv-selected CPython 3.14: one Tk test could not find its
+Tcl library, and one morphology edge expectation differed under OpenCV 4.14 default borders.
+Both conditions were recorded before changes. Morphology now states its zero-border behavior
+explicitly, and final verification uses the project's supported Windows CPython 3.11/Tk 8.6.
+
+Implemented checks cover exact connected-component statistics and inclusive area filtering;
+contour/box and colored Watershed displays; marker construction and inadequate-marker statuses;
+IoU/Dice and all empty cases; strict lossless truth decoding and frame binding; image/video
+revision races; schema-1 compatibility and schema-2 labels/truth/metrics; and minimum-size GUI
+layout. New algorithms are pure processing modules with no Tk or file I/O dependencies.
+
+Recorded commands:
+
+```powershell
+.\.tools\venv311-feature002\Scripts\python.exe -m pytest -q
+.\.tools\venv311-feature002\Scripts\python.exe -m compileall -q src tests scripts
+.\.tools\venv311-feature002\Scripts\python.exe scripts\benchmark_gui_performance.py --mode baseline --output experiments\feature-002\performance-baseline.json
+.\.tools\venv311-feature002\Scripts\python.exe scripts\benchmark_gui_performance.py --mode analysis --output experiments\feature-002\performance-analysis.json
+.\.tools\venv311-feature002\Scripts\python.exe scripts\benchmark_gui_performance.py --mode watershed --output experiments\feature-002\performance-watershed.json
+```
+
+The final automated suite reports **283 passed in 23.50 seconds** with the cache provider
+disabled. A standard run emits one non-test warning because the pre-existing `.pytest_cache`
+ACL on this machine is not writable; disabling the cache removes the warning and does not change
+test results. The three-mode Full-HD benchmark uses 100 complete
+edits per mode and Windows Peak Working Set measurement. Baseline achieved **99/100 <=1 s** and
+all modes achieved **100/100 UI heartbeats <=250 ms**. Analysis and Watershed have no real-time
+latency promise; their measured median/p95 values are retained in the feature report and JSON.
+
+Automated D1-D5 demonstrations and exact replay pass. No new independent human participant was
+used; feature-001 T049/T050 therefore remain pending and are not inferred complete from this work.

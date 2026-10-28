@@ -31,6 +31,9 @@ không phụ thuộc dịch vụ mạng và có đủ bằng chứng kiểm th�
 - Preset khởi đầu cho Red, Yellow, Green và Blue.
 - Lấy mẫu trực tiếp từ một pixel hoặc vùng ROI để đề xuất khoảng HSV.
 - Morphology tùy chọn với Opening, Closing hoặc Opening + Closing.
+- Phân tích connected components/contour với area, centroid, bounding box và bộ lọc diện tích tối thiểu.
+- Watershed tùy chọn để thử tách các vùng chạm nhau; HSV mask vẫn là đầu vào cốt lõi.
+- Nạp ground-truth PNG/BMP để tính IoU, Dice và xem TP/FP/FN.
 - Chế độ overlay, so sánh mask trước/sau morphology và thống kê tỷ lệ pixel được chọn.
 - Histogram H/S/V cho frame hiện tại với marker ngưỡng liên tục.
 - Zoom, Fit, cuộn và pan độc lập trên từng vùng preview.
@@ -101,6 +104,9 @@ uv run hsv-segmentation
 5. Bật Morphology khi cần loại nhiễu nhỏ hoặc lấp các lỗ nhỏ trong mask.
 6. Mở **Show Histogram** để đối chiếu phân bố màu với các ngưỡng đang dùng.
 7. Dùng **Save Mask…**, **Save Result…** hoặc **Record Experiment…** để lưu kết quả.
+8. Bật **Object Analysis** để xem thống kê; chỉnh **Minimum area** để loại vùng nhiễu.
+9. Bật **Watershed** khi cần thử tách vùng chạm nhau. Nếu marker không đủ, ứng dụng giữ mask HSV và hiển thị lý do.
+10. Dùng **Load Truth…** với mask PNG/BMP cùng kích thước để xem IoU/Dice. “Selected pixels” chỉ là coverage, không phải accuracy.
 
 Hue cho phép khoảng vòng qua gốc đỏ. Ví dụ `H = 350°..10°` chọn cả phần cuối và phần
 đầu của vòng màu. Các khoảng S và V luôn phải có lower không lớn hơn upper.
@@ -121,7 +127,8 @@ Hue cho phép khoảng vòng qua gốc đỏ. Ví dụ `H = 350°..10°` chọn 
 | Ảnh | PNG, JPEG, BMP | Ảnh xám được nhân thành RGB; alpha được bỏ qua |
 | Video | MP4, AVI | Codec thực tế phụ thuộc OpenCV backend trên máy chạy |
 | Xuất ảnh | PNG | Mask chỉ chứa 0/255; result giữ nguyên pixel RGB được chọn |
-| Experiment | JSON + PNG | Metadata, hash và đường dẫn artifact cục bộ |
+| Ground truth | PNG, BMP | 1/L/LA/palette hoặc RGB(A) grayscale; cùng kích thước nguồn |
+| Experiment | JSON + PNG/NPY | Schema 1 giữ nguyên cho baseline; schema 2 thêm nhãn, truth và metrics |
 
 Bộ acceptance hiện có fixture cho RGB PNG/JPEG/BMP, grayscale PNG, RGBA PNG, MJPG/AVI
 và mp4v/MP4.
@@ -217,7 +224,7 @@ nén ảnh và màu có saturation thấp có thể làm pixel dịch chuyển k
 Project hiện không bao gồm:
 
 - object detection hoặc machine learning;
-- object counting và tracking;
+- object tracking hoặc suy diễn danh tính vật thể;
 - camera trực tiếp, audio hoặc tìm kiếm frame;
 - tự động chọn threshold;
 - mã hóa toàn bộ video kết quả;

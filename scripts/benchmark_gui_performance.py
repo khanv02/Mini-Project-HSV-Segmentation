@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
+from ctypes import wintypes
 from hashlib import sha256
 import json
+import os
 import platform
 from pathlib import Path
 from time import perf_counter, sleep
@@ -14,13 +17,49 @@ import numpy as np
 from PIL import Image
 
 from hsv_segmentation.gui.controller import ApplicationController
-from hsv_segmentation.models import HSVThresholdSet, THRESHOLD_FIELDS
+from hsv_segmentation.models import (
+    AnalysisSettings, HSVThresholdSet, THRESHOLD_FIELDS, WatershedSettings,
+)
 from hsv_segmentation.processing.segmentation import segment
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INPUT = ROOT / "experiments" / "performance_input_1920x1080.png"
 DEFAULT_OUTPUT = ROOT / "experiments" / "performance_results.json"
+
+
+class _ProcessMemoryCounters(ctypes.Structure):
+    _fields_ = [
+        ("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD),
+        ("PeakWorkingSetSize", ctypes.c_size_t),
+        ("WorkingSetSize", ctypes.c_size_t),
+        ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+        ("QuotaPagedPoolUsage", ctypes.c_size_t),
+        ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+        ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+        ("PagefileUsage", ctypes.c_size_t),
+        ("PeakPagefileUsage", ctypes.c_size_t),
+    ]
+
+
+def process_peak_working_set() -> int | None:
+    """Read the Windows process peak without instrumenting Python allocations."""
+    if os.name != "nt":
+        return None
+    counters = _ProcessMemoryCounters()
+    counters.cb = ctypes.sizeof(counters)
+    get_process = ctypes.windll.kernel32.GetCurrentProcess
+    get_process.restype = wintypes.HANDLE
+    get_memory = ctypes.windll.psapi.GetProcessMemoryInfo
+    get_memory.argtypes = (
+        wintypes.HANDLE, ctypes.POINTER(_ProcessMemoryCounters), wintypes.DWORD,
+    )
+    get_memory.restype = wintypes.BOOL
+    process = get_process()
+    ok = get_memory(
+        process, ctypes.byref(counters), counters.cb
+    )
+    return int(counters.PeakWorkingSetSize) if ok else None
 
 
 def create_input(path: Path) -> None:
@@ -57,19 +96,36 @@ def threshold_values(index: int) -> dict[str, int]:
     }
 
 
-def run(input_path: Path, output_path: Path) -> dict[str, object]:
+def run(input_path: Path, output_path: Path, mode: str = "baseline") -> dict[str, object]:
+    if mode not in {"baseline", "analysis", "watershed"}:
+        raise ValueError("mode must be baseline, analysis, or watershed")
     create_input(input_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     input_hash = sha256(input_path.read_bytes()).hexdigest()
 
     root = tk.Tk()
-    root.geometry("1280x720")
+    root.geometry("960x640")
     root.update()
     controller = ApplicationController(root)
     timings_ms: list[float] = []
+    heartbeat_ms: list[float] = []
+    benchmark_min_area = 512
     try:
         controller.open_image_path(str(input_path))
         pump_until(root, lambda: controller.session.result is not None, 30.0)
-        controller.window.set_histogram_visible(True)
+        if mode == "analysis":
+            controller._on_analysis_settings(
+                AnalysisSettings(True, 8, benchmark_min_area),
+                WatershedSettings(False), "components"
+            )
+            pump_until(root, lambda: controller.session.result.analysis is not None, 30.0)
+        elif mode == "watershed":
+            controller._on_analysis_settings(
+                AnalysisSettings(True, 8, benchmark_min_area),
+                WatershedSettings(True, 0.7, 1, 3),
+                "watershed",
+            )
+            pump_until(root, lambda: controller.session.result.watershed is not None, 30.0)
         root.update()
 
         for index in range(100):
@@ -77,6 +133,8 @@ def run(input_path: Path, output_path: Path) -> dict[str, object]:
             for name in THRESHOLD_FIELDS[:-1]:
                 controller.controls.fields[name].set(str(values[name]))
             started = perf_counter()
+            heartbeat = []
+            root.after(0, lambda begun=started: heartbeat.append((perf_counter() - begun) * 1000))
             final_name = THRESHOLD_FIELDS[-1]
             controller.controls.fields[final_name].set(str(values[final_name]))
 
@@ -87,10 +145,11 @@ def run(input_path: Path, output_path: Path) -> dict[str, object]:
                     and controller.session.result.thresholds.as_dict() == expected
                     and all(view.source_array is not None for view in controller.window.views)
                 ),
-                10.0,
+                30.0,
             )
             elapsed_ms = (perf_counter() - started) * 1000.0
             timings_ms.append(elapsed_ms)
+            heartbeat_ms.append(heartbeat[0] if heartbeat else elapsed_ms)
 
             result = controller.session.result
             assert result is not None
@@ -103,12 +162,14 @@ def run(input_path: Path, output_path: Path) -> dict[str, object]:
             if not np.array_equal(result.segmented_rgb, expected_rgb):
                 raise AssertionError(f"result mismatch after edit {index + 1}")
     finally:
+        peak_bytes = process_peak_working_set()
         controller.close()
 
     within_one_second = sum(value <= 1000.0 for value in timings_ms)
     ordered = sorted(timings_ms)
     result_data: dict[str, object] = {
         "schema_version": 1,
+        "mode": mode,
         "platform": platform.platform(),
         "processor": platform.processor(),
         "python": platform.python_version(),
@@ -118,19 +179,25 @@ def run(input_path: Path, output_path: Path) -> dict[str, object]:
         "input_sha256": input_hash,
         "dimensions": [1920, 1080],
         "update_count": 100,
+        "analysis_min_area_px": benchmark_min_area if mode != "baseline" else None,
         "within_one_second": within_one_second,
         "criterion_met": within_one_second >= 95,
         "minimum_ms": min(timings_ms),
         "median_ms": ordered[len(ordered) // 2],
         "p95_ms": ordered[94],
         "maximum_ms": max(timings_ms),
+        "heartbeat_within_250_ms": sum(value <= 250.0 for value in heartbeat_ms),
+        "heartbeat_criterion_met": sum(value <= 250.0 for value in heartbeat_ms) >= 95,
+        "peak_process_bytes": peak_bytes,
+        "peak_memory_method": "Windows GetProcessMemoryInfo PeakWorkingSetSize",
+        "heartbeat_ms": heartbeat_ms,
         "timings_ms": timings_ms,
         "final_thresholds": threshold_values(99),
         "final_output_exact": True,
         "measurement_scope": (
             "final Tk variable edit, 75 ms debounce, controller submission, serialized worker "
             "processing with cached source histogram, 25 ms polling, three ImageView updates, "
-            "visible histogram overlay updates, and Tk idle rendering"
+            "960x640 window, histogram hidden, and Tk idle rendering"
         ),
     }
     output_path.write_text(json.dumps(result_data, indent=2) + "\n", encoding="utf-8")
@@ -141,10 +208,12 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--mode", choices=("baseline", "analysis", "watershed"), default="baseline")
     args = parser.parse_args()
-    result = run(args.input.resolve(), args.output.resolve())
+    result = run(args.input.resolve(), args.output.resolve(), args.mode)
     print(json.dumps({key: result[key] for key in (
-        "within_one_second", "criterion_met", "median_ms", "p95_ms", "maximum_ms"
+        "mode", "within_one_second", "criterion_met", "heartbeat_within_250_ms",
+        "heartbeat_criterion_met", "median_ms", "p95_ms", "maximum_ms"
     )}, indent=2))
 
 

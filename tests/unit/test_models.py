@@ -9,13 +9,27 @@ import pytest
 
 from hsv_segmentation.errors import ValidationError
 from hsv_segmentation.models import (
+    AnalysisSettings,
     HSVThresholdSet,
     InputMedia,
     MAX_IMAGE_PIXELS,
     ProcessingRequest,
     SegmentationResult,
+    WatershedSettings,
     validate_rgb,
 )
+
+
+@pytest.mark.parametrize("value", [True, -1, 1.5, "2"])
+def test_analysis_minimum_area_rejects_non_integer_or_negative(value) -> None:
+    with pytest.raises(ValidationError):
+        AnalysisSettings(min_area_px=value)
+
+
+@pytest.mark.parametrize("value", [0, 1, float("nan"), True])
+def test_watershed_seed_fraction_is_strict_finite_fraction(value) -> None:
+    with pytest.raises(ValidationError):
+        WatershedSettings(seed_fraction=value)
 
 
 def make_media(tmp_path, **changes):

@@ -66,17 +66,14 @@ class _CachedProcessor:
         histogram = self._histogram
         if histogram is None:
             raise RuntimeError("HSV histogram cache was not initialized")
-        original_mask = generate_mask(hsv, request.thresholds)
-        mask = apply_morphology(original_mask, request.morphology)
-        return SegmentationResult(
-            source=request.source,
-            thresholds=request.thresholds,
-            mask=mask,
-            segmented_rgb=apply_mask(request.rgb, mask),
-            request_revision=request.request_revision,
-            histogram=histogram,
-            morphology=request.morphology,
-            original_mask=original_mask,
+        return process_source(
+            request.source, request.thresholds, request.request_revision,
+            hsv=hsv, histogram=histogram, morphology=request.morphology,
+            analysis_settings=request.analysis_settings,
+            watershed_settings=request.watershed_settings,
+            ground_truth=request.ground_truth,
+            evaluation_target=request.evaluation_target,
+            settings_revision=request.settings_revision,
         )
 
 
@@ -109,11 +106,21 @@ class ProcessingWorker:
         thresholds: HSVThresholdSet,
         request_revision: int,
         morphology: MorphologySettings | None = None,
+        analysis_settings=None,
+        watershed_settings=None,
+        ground_truth=None,
+        evaluation_target="baseline",
+        settings_revision=0,
     ) -> None:
         def load_and_process() -> SegmentationResult:
             source = load_image(path)
             return process_source(
-                source, thresholds, request_revision, morphology=morphology
+                source, thresholds, request_revision, morphology=morphology,
+                analysis_settings=analysis_settings,
+                watershed_settings=watershed_settings,
+                ground_truth=ground_truth,
+                evaluation_target=evaluation_target,
+                settings_revision=settings_revision,
             )
 
         self._submit_item(_WorkItem("image", request_revision, load_and_process))

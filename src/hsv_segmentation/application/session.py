@@ -2,18 +2,25 @@
 
 from pathlib import Path
 
+from ..errors import ValidationError
 from ..io.images import load_image
 from ..models import (
+    AnalysisSettings,
+    GroundTruth,
     HSVHistogram,
     HSVThresholdSet,
     InputMedia,
     MorphologySettings,
     SegmentationResult,
+    WatershedSettings,
 )
 from ..processing.color import rgb_to_hsv
 from ..processing.histogram import compute_hsv_histogram
 from ..processing.morphology import apply_morphology
+from ..processing.object_analysis import analyze_components
+from ..processing.evaluation import evaluate_masks
 from ..processing.segmentation import apply_mask, generate_mask
+from ..processing.watershed import separate_watershed
 from ..processing.thresholds import validate_thresholds
 
 
@@ -25,14 +32,43 @@ def process_source(
     hsv=None,
     histogram: HSVHistogram | None = None,
     morphology: MorphologySettings | None = None,
+    analysis_settings: AnalysisSettings | None = None,
+    watershed_settings: WatershedSettings | None = None,
+    ground_truth: GroundTruth | None = None,
+    evaluation_target: str = "baseline",
+    settings_revision: int = 0,
 ) -> SegmentationResult:
     """Create one immutable result for an already decoded source snapshot."""
     hsv_array = rgb_to_hsv(source.rgb) if hsv is None else hsv
     histogram = histogram or compute_hsv_histogram(hsv_array)
     morphology = morphology or MorphologySettings()
+    analysis_settings = analysis_settings or AnalysisSettings()
+    watershed_settings = watershed_settings or WatershedSettings()
     original_mask = generate_mask(hsv_array, thresholds)
     mask = apply_morphology(original_mask, morphology)
     segmented_rgb = apply_mask(source.rgb, mask)
+    analysis = (
+        analyze_components(mask, analysis_settings)
+        if analysis_settings.enabled else None
+    )
+    watershed = (
+        separate_watershed(source.rgb, mask, watershed_settings, analysis_settings.min_area_px)
+        if watershed_settings.enabled else None
+    )
+    prediction = None
+    if evaluation_target == "baseline":
+        prediction = mask
+    elif evaluation_target == "components" and analysis is not None:
+        prediction = analysis.filtered_mask
+    elif (
+        evaluation_target == "watershed" and watershed is not None
+        and watershed.status in {"applied", "empty"}
+    ):
+        prediction = watershed.foreground_mask
+    evaluation = (
+        evaluate_masks(prediction, ground_truth.mask, target=evaluation_target)
+        if ground_truth is not None and prediction is not None else None
+    )
     return SegmentationResult(
         source=source,
         thresholds=thresholds,
@@ -42,6 +78,14 @@ def process_source(
         histogram=histogram,
         morphology=morphology,
         original_mask=original_mask,
+        analysis_settings=analysis_settings,
+        watershed_settings=watershed_settings,
+        analysis=analysis,
+        watershed=watershed,
+        ground_truth=ground_truth,
+        evaluation_target=evaluation_target,
+        evaluation=evaluation,
+        settings_revision=settings_revision,
     )
 
 
@@ -52,9 +96,16 @@ class ImageSession:
         self,
         thresholds: HSVThresholdSet | None = None,
         morphology: MorphologySettings | None = None,
+        analysis_settings: AnalysisSettings | None = None,
+        watershed_settings: WatershedSettings | None = None,
     ):
         self._thresholds = thresholds or HSVThresholdSet()
         self._morphology = morphology or MorphologySettings()
+        self._analysis_settings = analysis_settings or AnalysisSettings()
+        self._watershed_settings = watershed_settings or WatershedSettings()
+        self._ground_truth: GroundTruth | None = None
+        self._evaluation_target = "baseline"
+        self._settings_revision = 0
         self._source: InputMedia | None = None
         self._result: SegmentationResult | None = None
         self._request_revision = 0
@@ -70,6 +121,26 @@ class ImageSession:
     @property
     def morphology(self) -> MorphologySettings:
         return self._morphology
+
+    @property
+    def analysis_settings(self) -> AnalysisSettings:
+        return self._analysis_settings
+
+    @property
+    def watershed_settings(self) -> WatershedSettings:
+        return self._watershed_settings
+
+    @property
+    def ground_truth(self) -> GroundTruth | None:
+        return self._ground_truth
+
+    @property
+    def evaluation_target(self) -> str:
+        return self._evaluation_target
+
+    @property
+    def settings_revision(self) -> int:
+        return self._settings_revision
 
     @property
     def result(self) -> SegmentationResult | None:
@@ -98,7 +169,11 @@ class ImageSession:
         candidate = load_image(path)
         next_revision = self._request_revision + 1
         candidate_result = process_source(
-            candidate, self._thresholds, next_revision, morphology=self._morphology
+            candidate, self._thresholds, next_revision, morphology=self._morphology,
+            analysis_settings=self._analysis_settings,
+            watershed_settings=self._watershed_settings,
+            evaluation_target=self._evaluation_target,
+            settings_revision=self._settings_revision,
         )
         self._source = candidate
         self._result = candidate_result
@@ -111,7 +186,12 @@ class ImageSession:
         next_revision = self._request_revision + 1
         candidate_result = (
             process_source(
-                self._source, validated, next_revision, morphology=self._morphology
+                self._source, validated, next_revision, morphology=self._morphology,
+                analysis_settings=self._analysis_settings,
+                watershed_settings=self._watershed_settings,
+                ground_truth=self._ground_truth,
+                evaluation_target=self._evaluation_target,
+                settings_revision=self._settings_revision,
             )
             if self._source is not None else None
         )
@@ -129,11 +209,45 @@ class ImageSession:
             raise ValidationError("morphology", "must be MorphologySettings")
         self._morphology = morphology
 
+    def accept_analysis(self, settings: AnalysisSettings) -> None:
+        if not isinstance(settings, AnalysisSettings):
+            raise ValidationError("analysis", "must be AnalysisSettings")
+        self._analysis_settings = settings
+        self._settings_revision += 1
+
+    def accept_watershed(self, settings: WatershedSettings) -> None:
+        if not isinstance(settings, WatershedSettings):
+            raise ValidationError("watershed", "must be WatershedSettings")
+        self._watershed_settings = settings
+        self._settings_revision += 1
+
+    def bind_ground_truth(self, truth: GroundTruth | None) -> None:
+        if truth is not None:
+            if self._source is None:
+                raise ValidationError("ground_truth", "requires a current source")
+            identity = (truth.session_id, truth.source_image_sha256, truth.frame_index)
+            current = (self._source.session_id, self._source.source_sha256, self._source.frame_index)
+            if identity != current:
+                raise ValidationError("ground_truth", "must be bound to the current source/frame")
+        self._ground_truth = truth
+        self._settings_revision += 1
+
+    def set_evaluation_target(self, target: str) -> None:
+        if target not in {"baseline", "components", "watershed"}:
+            raise ValidationError("evaluation_target", "is invalid")
+        self._evaluation_target = target
+        self._settings_revision += 1
+
     def commit_candidate(self, result: SegmentationResult) -> None:
         """Commit a fully decoded and processed replacement image."""
         self._source = result.source
         self._thresholds = result.thresholds
         self._morphology = result.morphology
+        self._analysis_settings = result.analysis_settings
+        self._watershed_settings = result.watershed_settings
+        self._ground_truth = result.ground_truth
+        self._evaluation_target = result.evaluation_target
+        self._settings_revision = result.settings_revision
         self._result = result
         self._request_revision = max(self._request_revision, result.request_revision)
 
@@ -144,6 +258,10 @@ class ImageSession:
         if result.parameter_revision != self._thresholds.parameter_revision:
             return False
         if result.morphology != self._morphology:
+            return False
+        if result.analysis_settings != self._analysis_settings or result.watershed_settings != self._watershed_settings:
+            return False
+        if result.settings_revision != self._settings_revision:
             return False
         if result.request_revision < self._request_revision:
             return False
@@ -161,11 +279,16 @@ class ImageSession:
             return False
         if result.morphology != self._morphology:
             return False
+        if result.analysis_settings != self._analysis_settings or result.watershed_settings != self._watershed_settings:
+            return False
+        if result.settings_revision != self._settings_revision:
+            return False
         if result.request_revision < self._request_revision:
             return False
         if result.frame_index is None:
             return False
         self._source = result.source
+        self._ground_truth = None
         self._result = result
         self._request_revision = result.request_revision
         return True

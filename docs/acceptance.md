@@ -75,3 +75,24 @@ Run the integrity/decoder check with:
 For SC-001, open all seven cases through the GUI and verify the three synchronized views. Play
 at least one video through open, play, pause, threshold adjustment, end and restart. A missing
 file, hash mismatch, skipped codec or unavailable required decoder is an unmet result, not a pass.
+
+## Feature 002 demonstrations
+
+| ID | Scenario | Expected result |
+| --- | --- | --- |
+| D1 | Rectangles plus 1-pixel noise; analysis enabled; minimum area 4 | Raw count 3, retained count 2; areas 4/9, exact centroids/boxes; annotation toggles do not alter source pixels |
+| D2 | Two touching disks; Watershed enabled; seed fraction 0.7 | Two retained labels, red ridge inside the HSV mask, colored separated regions; disabling restores the exact baseline workflow |
+| D3 | Prediction/truth partial-overlap fixture | TP=2, FP=1, FN=1, IoU=0.5, Dice=2/3; both-empty=1 and one-empty=0 |
+| D4 | Pause video, load frame truth, edit threshold, then advance/restart | Truth remains for same-frame edits and clears when frame/source identity changes; no stale metric commits |
+| D5 | Record baseline and extended experiments | Baseline remains schema 1; derived evidence uses schema 2 with hashes and no-pickle int32 labels |
+
+Ground truth accepts lossless PNG/BMP in modes 1, L, LA, palette, RGB, or RGBA. RGB channels
+must be equal, alpha is ignored, dimensions must exactly match, and conversion is `value >
+threshold` for threshold 0..254. JPEG, unequal RGB channels, corruption, unsupported depth and
+dimension mismatch are recoverable errors that preserve the current result. Watershed may
+truthfully report `not applied`; that outcome is not silently evaluated as another target.
+
+At 960x640, verify all three previews remain at least 160x120 with the analysis panel and
+histogram shown/hidden. Pixel/ROI sampling must continue to use Original. Repeat D1-D5 for image
+mode and the supported video paths where applicable. Automated fixtures are authoritative for
+exact counts; manual inspection is supplementary and must not be recorded as passed if skipped.

@@ -21,6 +21,8 @@ human acceptance tasks T049-T050 remain open.
 | 7. Experiments | T037–T044 | Recording, at least 10 images and 20 runs, comparisons | Automatic replay succeeds; licensed real-lighting pair is documented |
 | 8. Verification baseline and final gate | T045–T050 | Performance and documentation baseline, then independent acceptance after Phase 9 | T045–T048 complete; T049–T050 require actual student evidence |
 | 9. HSV histogram aid | T051–T056 | Source/frame H/S/V counts, continuous threshold overlays and cache | Analytical/GUI tests pass and panel-visible Full-HD benchmark meets SC-003 |
+| 10. Clean analysis workspace | T057–T064 | Semantic theme and responsive scientific layout | Existing workflows and 960x640 preview geometry pass |
+| 11. Object separation and evaluation | feature-002 T001–T030 | Components/contours, optional Watershed, IoU/Dice and schema-2 evidence | Feature tests, full regression, replay and documented three-mode benchmark pass |
 
 Phase 1 does not deliver an executable desktop window or image processing code.
 Phase 2 adds data validation and independent reference fixtures, with 60 passing
@@ -33,3 +35,9 @@ the existing NumPy/Tk stack; source/frame counts are cached while overlays follo
 thresholds. The 210 automated checks pass and the panel-visible benchmark meets SC-003 at
 99/100 updates within one second. Independent human acceptance in Phase 8 must be performed by
 actual participants; unavailable evidence stays open.
+
+Phase 11 preserves HSV thresholding as the core algorithm. New NumPy/OpenCV processing modules
+remain independent of Tk and filesystem adapters; the controller only coordinates immutable
+settings/results. Advanced settings are disabled by default, so legacy image/video masks,
+exports and schema-1 records remain unchanged. The implementation order is components and area
+filtering, Watershed, evaluation, GUI, experiment publication, then integrated verification.

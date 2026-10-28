@@ -4,7 +4,10 @@ import tkinter as tk
 from tkinter import ttk
 
 from ..models import SegmentationResult
-from ..processing.visualization import compose_segmentation_overlay
+from ..processing.visualization import (
+    compose_confusion_overlay, compose_region_annotations, compose_segmentation_overlay,
+    compose_watershed_overlay,
+)
 from .experiment_panel import ExperimentPanel
 from .hsv_histogram import HSVHistogramPanel
 from .image_view import ImageView
@@ -19,6 +22,7 @@ class MainWindow:
         self.root = root or tk.Tk()
         self._displayed_source_identity: tuple[str, int | None] | None = None
         self._current_result: SegmentationResult | None = None
+        self._analysis_display = (True, True, False)
         self.media_context = "empty"
         self.root.title("HSV Color Segmentation")
         self.style = configure_theme(self.root)
@@ -244,7 +248,34 @@ class MainWindow:
     def _refresh_result_view(self) -> None:
         if self._current_result is None:
             return
-        if self.overlay_visible:
+        contours, boxes, confusion = self._analysis_display
+        if confusion and self._current_result.evaluation is not None and self._current_result.ground_truth is not None:
+            target = self._evaluation_mask(self._current_result)
+            self.result_view.configure(text="TP / FP / FN")
+            self.result_view.show_array(compose_confusion_overlay(
+                self._current_result.original_rgb, target, self._current_result.ground_truth.mask
+            ))
+        elif (
+            self._current_result.watershed is not None
+            and self._current_result.watershed.status == "applied"
+        ):
+            self.result_view.configure(text="Watershed Regions")
+            separated = compose_watershed_overlay(
+                self._current_result.original_rgb, self._current_result.watershed
+            )
+            if self._current_result.watershed.analysis is not None and (contours or boxes):
+                separated = compose_region_annotations(
+                    separated, self._current_result.watershed.analysis,
+                    contours=contours, boxes=boxes,
+                )
+            self.result_view.show_array(separated)
+        elif self._current_result.analysis is not None and (contours or boxes):
+            self.result_view.configure(text="Object Analysis")
+            self.result_view.show_array(compose_region_annotations(
+                self._current_result.original_rgb, self._current_result.analysis,
+                contours=contours, boxes=boxes,
+            ))
+        elif self.overlay_visible:
             self.result_view.configure(text="Segmentation Overlay")
             self.result_view.show_array(compose_segmentation_overlay(
                 self._current_result.original_rgb, self._current_result.mask
@@ -252,6 +283,18 @@ class MainWindow:
         else:
             self.result_view.configure(text="Segmented Result")
             self.result_view.show_array(self._current_result.segmented_rgb)
+
+    @staticmethod
+    def _evaluation_mask(result: SegmentationResult):
+        if result.evaluation_target == "components" and result.analysis is not None:
+            return result.analysis.filtered_mask
+        if result.evaluation_target == "watershed" and result.watershed is not None:
+            return result.watershed.foreground_mask
+        return result.mask
+
+    def set_analysis_display(self, contours: bool, boxes: bool, confusion: bool) -> None:
+        self._analysis_display = (bool(contours), bool(boxes), bool(confusion))
+        self._refresh_result_view()
 
     def _refresh_mask_view(self) -> None:
         if self._current_result is None:

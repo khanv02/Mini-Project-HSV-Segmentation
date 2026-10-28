@@ -6,7 +6,10 @@ from pathlib import Path
 from typing import Protocol
 
 from ..io.video import VideoEnd, VideoReader
-from ..models import HSVThresholdSet, InputMedia, MorphologySettings, SegmentationResult
+from ..models import (
+    AnalysisSettings, GroundTruth, HSVThresholdSet, InputMedia, MorphologySettings,
+    SegmentationResult, WatershedSettings,
+)
 from .session import ImageSession, process_source
 
 
@@ -64,11 +67,19 @@ class PlaybackSession:
         thresholds: HSVThresholdSet,
         request_revision: int,
         morphology: MorphologySettings | None = None,
+        analysis_settings: AnalysisSettings | None = None,
+        watershed_settings: WatershedSettings | None = None,
+        ground_truth: GroundTruth | None = None,
+        evaluation_target: str = "baseline",
+        settings_revision: int = 0,
     ) -> VideoCandidate:
         reader = self._reader_factory(path)
         try:
             result = process_source(
-                reader.first_frame, thresholds, request_revision, morphology=morphology
+                reader.first_frame, thresholds, request_revision, morphology=morphology,
+                analysis_settings=analysis_settings, watershed_settings=watershed_settings,
+                ground_truth=ground_truth, evaluation_target=evaluation_target,
+                settings_revision=settings_revision,
             )
         except BaseException:
             reader.release()
@@ -92,7 +103,7 @@ class PlaybackSession:
         return True
 
     def pause(self) -> bool:
-        if self.state is not PlaybackState.PLAYING:
+        if self.state not in {PlaybackState.PLAYING, PlaybackState.ENDED}:
             return False
         self.state = PlaybackState.PAUSED
         frame = self.media_session.source.frame_index if self.media_session.source else 0
@@ -104,6 +115,10 @@ class PlaybackSession:
         thresholds: HSVThresholdSet,
         request_revision: int,
         morphology: MorphologySettings | None = None,
+        analysis_settings: AnalysisSettings | None = None,
+        watershed_settings: WatershedSettings | None = None,
+        evaluation_target: str = "baseline",
+        settings_revision: int = 0,
     ) -> PlaybackAdvance:
         if self._reader is None:
             raise RuntimeError("no video reader is active")
@@ -115,7 +130,9 @@ class PlaybackSession:
         return PlaybackAdvance(
             session_id,
             result=process_source(
-                frame, thresholds, request_revision, morphology=morphology
+                frame, thresholds, request_revision, morphology=morphology,
+                analysis_settings=analysis_settings, watershed_settings=watershed_settings,
+                evaluation_target=evaluation_target, settings_revision=settings_revision,
             ),
         )
 
@@ -148,12 +165,20 @@ class PlaybackSession:
         thresholds: HSVThresholdSet,
         request_revision: int,
         morphology: MorphologySettings | None = None,
+        analysis_settings: AnalysisSettings | None = None,
+        watershed_settings: WatershedSettings | None = None,
+        ground_truth: GroundTruth | None = None,
+        evaluation_target: str = "baseline",
+        settings_revision: int = 0,
     ) -> SegmentationResult:
         source = self.media_session.source
         if source is None or source.media_kind != "video":
             raise RuntimeError("no video frame is available")
         return process_source(
-            source, thresholds, request_revision, morphology=morphology
+            source, thresholds, request_revision, morphology=morphology,
+            analysis_settings=analysis_settings, watershed_settings=watershed_settings,
+            ground_truth=ground_truth, evaluation_target=evaluation_target,
+            settings_revision=settings_revision,
         )
 
     def prepare_restart(
@@ -161,11 +186,17 @@ class PlaybackSession:
         thresholds: HSVThresholdSet,
         request_revision: int,
         morphology: MorphologySettings | None = None,
+        analysis_settings: AnalysisSettings | None = None,
+        watershed_settings: WatershedSettings | None = None,
+        evaluation_target: str = "baseline",
+        settings_revision: int = 0,
     ) -> SegmentationResult:
         if self._reader is None:
             raise RuntimeError("no video reader is active")
         return process_source(
-            self._reader.restart(), thresholds, request_revision, morphology=morphology
+            self._reader.restart(), thresholds, request_revision, morphology=morphology,
+            analysis_settings=analysis_settings, watershed_settings=watershed_settings,
+            evaluation_target=evaluation_target, settings_revision=settings_revision,
         )
 
     def commit_restart(self, result: SegmentationResult) -> bool:

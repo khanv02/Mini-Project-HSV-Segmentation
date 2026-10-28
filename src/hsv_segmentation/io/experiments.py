@@ -58,6 +58,15 @@ def pixel_sha256(array: np.ndarray) -> str:
     return digest.hexdigest()
 
 
+def label_sha256(labels: np.ndarray) -> str:
+    """Hash normalized int32 labels with explicit little-endian shape metadata."""
+    if not isinstance(labels, np.ndarray) or labels.dtype != np.int32 or labels.ndim != 2:
+        raise ValidationError("labels", "must be a two-dimensional int32 array")
+    stable = np.ascontiguousarray(labels.astype("<i4", copy=False))
+    prefix = f"int32-le|{stable.shape[0]}|{stable.shape[1]}\n".encode()
+    return hashlib.sha256(prefix + stable.tobytes()).hexdigest()
+
+
 def _nonempty(value: str, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValidationError(field, "must be nonempty text")
@@ -136,8 +145,13 @@ def publish_experiment(
     try:
         save_mask_png(snapshot.mask, mask_path)
         save_result_png(snapshot.segmented_rgb, result_path)
+        extended = (
+            snapshot.analysis_settings.enabled
+            or snapshot.watershed_settings.enabled
+            or snapshot.evaluation is not None
+        )
         record = {
-            "schema_version": 1,
+            "schema_version": 2 if extended else 1,
             "run_id": str(run_id),
             "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "source": {
@@ -170,6 +184,85 @@ def publish_experiment(
                 "sha256": _file_sha256(environment),
             },
         }
+        if extended:
+            if snapshot.analysis is not None:
+                components_path = run_dir / "components_mask.png"
+                save_mask_png(snapshot.analysis.filtered_mask, components_path)
+                record["analysis"] = {
+                    "settings": snapshot.analysis_settings.as_dict(),
+                    "raw_count": snapshot.analysis.raw_count,
+                    "retained_count": snapshot.analysis.retained_count,
+                    "regions": [region.as_dict() for region in snapshot.analysis.regions],
+                    "artifact": {
+                        "path": components_path.name,
+                        "sha256": _file_sha256(components_path),
+                        "pixel_sha256": pixel_sha256(snapshot.analysis.filtered_mask),
+                    },
+                }
+            if snapshot.watershed is not None:
+                separation = snapshot.watershed
+                water_record = {
+                    "settings": snapshot.watershed_settings.as_dict(),
+                    "status": separation.status,
+                    "reason": separation.reason,
+                    "ridge_pixels_excluded": True,
+                }
+                if separation.status in {"applied", "empty"}:
+                    labels_path = run_dir / "watershed_labels.npy"
+                    boundaries_path = run_dir / "watershed_boundaries.png"
+                    water_mask_path = run_dir / "watershed_mask.png"
+                    np.save(labels_path, separation.labels, allow_pickle=False)
+                    save_mask_png(separation.boundaries, boundaries_path)
+                    save_mask_png(separation.foreground_mask, water_mask_path)
+                    water_record["artifacts"] = {
+                        "labels": {
+                            "path": labels_path.name, "sha256": _file_sha256(labels_path),
+                            "label_sha256": label_sha256(separation.labels),
+                            "dtype": "int32", "shape": list(separation.labels.shape),
+                        },
+                        "boundaries": {
+                            "path": boundaries_path.name, "sha256": _file_sha256(boundaries_path),
+                            "pixel_sha256": pixel_sha256(separation.boundaries),
+                        },
+                        "mask": {
+                            "path": water_mask_path.name, "sha256": _file_sha256(water_mask_path),
+                            "pixel_sha256": pixel_sha256(separation.foreground_mask),
+                        },
+                    }
+                record["watershed"] = water_record
+            if snapshot.evaluation is not None and snapshot.ground_truth is not None:
+                if snapshot.evaluation_target == "components":
+                    prediction = snapshot.analysis.filtered_mask
+                elif snapshot.evaluation_target == "watershed":
+                    prediction = snapshot.watershed.foreground_mask
+                else:
+                    prediction = snapshot.mask
+                prediction_path = run_dir / "prediction.png"
+                truth_path = run_dir / "ground_truth.png"
+                save_mask_png(prediction, prediction_path)
+                save_mask_png(snapshot.ground_truth.mask, truth_path)
+                record["evaluation"] = {
+                    **snapshot.evaluation.as_dict(),
+                    "truth": {
+                        "source_path": _relative_path(snapshot.ground_truth.source_path, run_dir),
+                        "source_sha256": snapshot.ground_truth.source_sha256,
+                        "normalized_pixel_sha256": snapshot.ground_truth.pixel_sha256,
+                        "threshold": snapshot.ground_truth.threshold,
+                        "alpha_ignored": snapshot.ground_truth.alpha_ignored,
+                        "session_id": snapshot.ground_truth.session_id,
+                        "frame_index": snapshot.ground_truth.frame_index,
+                    },
+                    "artifacts": {
+                        "prediction": {
+                            "path": prediction_path.name, "sha256": _file_sha256(prediction_path),
+                            "pixel_sha256": pixel_sha256(prediction),
+                        },
+                        "ground_truth": {
+                            "path": truth_path.name, "sha256": _file_sha256(truth_path),
+                            "pixel_sha256": pixel_sha256(snapshot.ground_truth.mask),
+                        },
+                    },
+                }
         _write_record(record, record_path)
     except BaseException as error:
         if isinstance(error, (ValidationError, WriteError)):

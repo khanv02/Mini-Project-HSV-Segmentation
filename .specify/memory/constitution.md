@@ -1,20 +1,14 @@
-﻿<!--
+<!--
 Sync Impact Report (temporary review material; remove before committing)
-Version change: unversioned scaffold -> 1.0.0 (initial ratification)
-Modified principles: placeholder principles replaced by the nine project principles below.
-  I. Algorithm Correctness and Clarity
-  II. Modular Architecture
-  III. Separation of GUI, Processing, and File I/O
-  IV. Student-Friendly Simplicity and Maintainability
-  V. Consistent Naming and Clean Code
-  VI. Independently Testable Core Functions
-  VII. Automated Tests and Reproducible Experiments
-  VIII. Strict Academic Scope
-  IX. Presentation-Ready Code and Documentation
-Added sections: Academic and Technical Constraints; Development Workflow and Review.
-Removed sections: none; unused template examples and placeholders replaced.
+Version change: 1.0.0 -> 1.1.0 (additive engineering obligations)
+Modified principles: I-IX retained unchanged; X-XIV added.
+Added principles: HSV Segmentation Remains Core; Backward Compatibility;
+  Explicit Configuration; Preserve the Existing Python Architecture;
+  Acceptance Criteria for Every Feature.
+Added sections: principle subsections X-XIV only.
+Removed sections: none.
 Follow-up TODOs: none.
-Dependent templates and commands: unchanged; they read this constitution at runtime.
+Dependent templates and application files: unchanged.
 -->
 # Mini-Project-HSV-Segmentation Constitution
 
@@ -95,6 +89,40 @@ parameter meanings, execution steps, results, and known limitations. Terminology
 consistent with the code, and technical terms MUST be defined when first introduced.
 Claims about correctness or quality MUST be supported by tests or reproducible experiments.
 
+### X. HSV Segmentation Remains Core
+
+HSV threshold segmentation MUST remain the primary selection algorithm. New algorithms MUST
+consume or evaluate its outputs as optional stages; they MUST NOT silently replace HSV selection.
+Existing numerical conventions and hue wraparound MUST remain unchanged.
+
+### XI. Backward Compatibility
+
+Existing image/video workflows, public call signatures, default results, exports, and saved
+experiment formats MUST remain usable. New behavior MUST be opt-in with compatible defaults.
+Changes MUST include regression evidence; format evolution MUST document version handling and
+preserve existing records without rewriting them.
+
+### XII. Explicit Configuration
+
+Parameters affecting selection, filtering, markers, or evaluation MUST be explicit validated
+settings with documented units, defaults, and ranges. User-adjustable values MUST be exposed
+through appropriate controls and recorded when necessary to reproduce results. Unexplained
+hardcoded tuning constants MUST NOT determine new algorithm behavior.
+
+### XIII. Preserve the Existing Python Architecture
+
+Contributors MUST retain the existing processing, application, GUI, and I/O responsibilities
+and reuse suitable components. Architectural changes MUST document the concrete requirement,
+alternatives, compatibility impact, and justification before implementation. Python code MUST
+remain readable, maintainable, and consistent with existing conventions.
+
+### XIV. Acceptance Criteria for Every Feature
+
+Every new feature MUST define observable acceptance criteria before implementation and include
+automated tests covering normal behavior, relevant boundaries, invalid input, and integration
+with affected workflows. New algorithms MUST be testable independently of GUI and persistence.
+A feature MUST NOT be marked complete solely on visual inspection or task completion.
+
 ## Academic and Technical Constraints
 
 - The project MUST remain focused on academic image processing and HSV segmentation.
@@ -139,4 +167,4 @@ Compliance MUST be checked during specification and planning, during change revi
 an academic demonstration or submission. Governance changes MUST NOT silently modify dependent
 templates or application artifacts.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-24 | **Last Amended**: 2026-10-24
+**Version**: 1.1.0 | **Ratified**: 2026-10-24 | **Last Amended**: 2026-10-28

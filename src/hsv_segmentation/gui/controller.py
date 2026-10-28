@@ -16,11 +16,15 @@ from ..application.session import ImageSession
 from ..errors import ValidationError, format_recovery_message
 from ..io.export import ExportReceipt, export_snapshot
 from ..io.experiments import ExperimentReceipt, publish_experiment
+from ..io.ground_truth import load_ground_truth
 from ..models import (
+    AnalysisSettings,
+    GroundTruth,
     HSVThresholdSet,
     MorphologySettings,
     ProcessingRequest,
     SegmentationResult,
+    WatershedSettings,
 )
 from ..processing.threshold_suggestions import (
     sample_color,
@@ -28,6 +32,7 @@ from ..processing.threshold_suggestions import (
     suggest_thresholds,
 )
 from .main_window import MainWindow
+from .analysis_panel import AnalysisPanel
 from .morphology_controls import MorphologyControls
 from .threshold_controls import ThresholdControls
 
@@ -63,6 +68,15 @@ class ApplicationController:
             initial=self.session.morphology,
             on_change=self._on_morphology,
         )
+        self.analysis_panel = AnalysisPanel(
+            self.window.parameter_section,
+            on_settings=self._on_analysis_settings,
+            on_display=self.window.set_analysis_display,
+            on_load_truth=self.choose_ground_truth,
+            on_clear_truth=self.clear_ground_truth,
+        )
+        self.analysis_panel.pack(fill="x", pady=(8, 0))
+        self._truth_revision = 0
         self.window.original_view.set_sample_callback(self._on_color_sample)
         self.window.original_view.set_roi_sample_callback(self._on_roi_sample)
         self._latest_request_revision = 0
@@ -112,7 +126,9 @@ class ApplicationController:
         self.window.show_status("Loading and processing image…")
         self.morphology_controls.set_enabled(False)
         self.worker.submit_image(
-            path, self.session.thresholds, revision, self.session.morphology
+            path, self.session.thresholds, revision, self.session.morphology,
+            self.session.analysis_settings, self.session.watershed_settings,
+            None, self.session.evaluation_target, self.session.settings_revision,
         )
 
     def choose_video(self) -> None:
@@ -142,7 +158,9 @@ class ApplicationController:
         self.worker.submit_operation(
             "video_open", revision,
             lambda: self.playback.prepare_open(
-                path, thresholds, revision, morphology
+                path, thresholds, revision, morphology,
+                self.session.analysis_settings, self.session.watershed_settings,
+                None, self.session.evaluation_target, self.session.settings_revision,
             ),
             cleanup=lambda candidate: candidate.reader.release(),
         )
@@ -183,7 +201,11 @@ class ApplicationController:
         self.window.show_status("Restarting video…")
         self.worker.submit_operation(
             "video_restart", revision,
-            lambda: self.playback.prepare_restart(thresholds, revision, morphology),
+            lambda: self.playback.prepare_restart(
+                thresholds, revision, morphology, self.session.analysis_settings,
+                self.session.watershed_settings, self.session.evaluation_target,
+                self.session.settings_revision,
+            ),
         )
 
     def _schedule_video_frame(self) -> None:
@@ -199,7 +221,11 @@ class ApplicationController:
         morphology = self.session.morphology
         self.worker.submit_operation(
             "video_frame", revision,
-            lambda: self.playback.prepare_next(thresholds, revision, morphology),
+            lambda: self.playback.prepare_next(
+                thresholds, revision, morphology, self.session.analysis_settings,
+                self.session.watershed_settings, self.session.evaluation_target,
+                self.session.settings_revision,
+            ),
         )
 
     def _on_thresholds(self, thresholds: HSVThresholdSet) -> None:
@@ -212,9 +238,7 @@ class ApplicationController:
             self.window.show_status("Thresholds ready — open an image or video.")
             return
         revision = self._next_revision(invalidate_video=True)
-        request = ProcessingRequest(
-            source, thresholds, revision, self.session.morphology
-        )
+        request = self._request(source, thresholds, revision)
         self._export_snapshot_valid = False
         self._refresh_export_controls()
         self.window.show_status("Parameters changed — result pending…")
@@ -231,14 +255,72 @@ class ApplicationController:
             )
             return
         revision = self._next_revision(invalidate_video=True)
-        request = ProcessingRequest(
-            source, self.session.thresholds, revision, morphology
-        )
+        request = self._request(source, self.session.thresholds, revision, morphology)
         self._export_snapshot_valid = False
         self._refresh_export_controls()
         self.window.mark_selection_pending()
         self.window.show_status("Morphology changed — result pending…")
         self.worker.submit(request)
+
+    def _request(self, source, thresholds, revision, morphology=None) -> ProcessingRequest:
+        return ProcessingRequest(
+            source, thresholds, revision, morphology or self.session.morphology,
+            self.session.analysis_settings, self.session.watershed_settings,
+            self.session.ground_truth, self.session.evaluation_target,
+            self.session.settings_revision,
+        )
+
+    def _on_analysis_settings(
+        self, analysis: AnalysisSettings, watershed: WatershedSettings, target: str
+    ) -> None:
+        self.session.accept_analysis(analysis)
+        self.session.accept_watershed(watershed)
+        self.session.set_evaluation_target(target)
+        source = self.session.source
+        if source is None:
+            self.window.show_status("Analysis settings ready — open an image or video.")
+            return
+        revision = self._next_revision(invalidate_video=True)
+        self._export_snapshot_valid = False
+        self._refresh_export_controls()
+        self.window.mark_selection_pending()
+        self.window.show_status("Analysis settings changed — result pending…")
+        self.worker.submit(self._request(source, self.session.thresholds, revision))
+
+    def choose_ground_truth(self, threshold: int = 0) -> None:
+        source = self.session.source
+        if source is None:
+            self.window.show_status("Open an image or pause a video frame before loading ground truth.")
+            return
+        if self.playback.state is PlaybackState.PLAYING:
+            self.pause_video()
+        path = filedialog.askopenfilename(
+            title="Open Ground-Truth Mask",
+            filetypes=[("Lossless masks", "*.png *.bmp"), ("PNG", "*.png"), ("BMP", "*.bmp")],
+        )
+        if not path:
+            return
+        self._truth_revision += 1
+        truth_revision = self._truth_revision
+        revision = self._next_revision(invalidate_video=True)
+        self._export_snapshot_valid = False
+        self._refresh_export_controls()
+        self.window.show_status("Loading ground truth…")
+        self.worker.submit_operation(
+            "ground_truth", revision,
+            lambda: load_ground_truth(path, source, threshold=threshold, truth_revision=truth_revision),
+        )
+
+    def clear_ground_truth(self) -> None:
+        self._truth_revision += 1
+        self.session.bind_ground_truth(None)
+        source = self.session.source
+        if source is None:
+            return
+        revision = self._next_revision(invalidate_video=True)
+        self._export_snapshot_valid = False
+        self._refresh_export_controls()
+        self.worker.submit(self._request(source, self.session.thresholds, revision))
 
     def toggle_color_picker(self) -> None:
         if self.window.original_view.source_array is None:
@@ -355,6 +437,9 @@ class ApplicationController:
             or snapshot is None
             or snapshot.thresholds != self.session.thresholds
             or snapshot.morphology != self.session.morphology
+            or snapshot.analysis_settings != self.session.analysis_settings
+            or snapshot.watershed_settings != self.session.watershed_settings
+            or snapshot.settings_revision != self.session.settings_revision
         ):
             self.window.show_status(
                 "Recording is unavailable until a complete current result is ready."
@@ -389,6 +474,9 @@ class ApplicationController:
             or snapshot is None
             or snapshot.thresholds != self.session.thresholds
             or snapshot.morphology != self.session.morphology
+            or snapshot.analysis_settings != self.session.analysis_settings
+            or snapshot.watershed_settings != self.session.watershed_settings
+            or snapshot.settings_revision != self.session.settings_revision
         ):
             self.window.show_status(
                 "Saving is unavailable until a complete current result is ready."
@@ -428,6 +516,9 @@ class ApplicationController:
             and result is not None
             and result.thresholds == self.session.thresholds
             and result.morphology == self.session.morphology
+            and result.analysis_settings == self.session.analysis_settings
+            and result.watershed_settings == self.session.watershed_settings
+            and result.settings_revision == self.session.settings_revision
         )
         self.window.set_export_available(available)
         self.window.set_experiment_available(available)
@@ -454,12 +545,25 @@ class ApplicationController:
         if completion.error is not None:
             self._handle_error(completion)
             return
+        if completion.kind == "ground_truth":
+            if not isinstance(completion.result, GroundTruth):
+                return
+            try:
+                self.session.bind_ground_truth(completion.result)
+            except ValidationError:
+                return
+            source = self.session.source
+            if source is not None:
+                revision = self._next_revision(invalidate_video=True)
+                self.worker.submit(self._request(source, self.session.thresholds, revision))
+            return
         result = self._accept_completion(completion)
         if result is None:
             return
         self._resume_video_on_failure = False
         self._export_snapshot_valid = True
         self.window.show_result(result)
+        self.analysis_panel.show_result(result)
         self.window.set_loading(False)
         self.controls.set_enabled(True)
         self.morphology_controls.set_enabled(True)

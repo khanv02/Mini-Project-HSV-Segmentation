@@ -40,8 +40,11 @@ def apply_morphology(mask: np.ndarray, settings: MorphologySettings) -> np.ndarr
     }[settings.operation]
     result = mask
     for operation in operations:
-        # OpenCV's morphologyDefaultBorderValue is operation-aware: it avoids
-        # treating pixels outside the image as background during erosion.
-        result = cv2.morphologyEx(result, operation, kernel)
+        # Padding makes outside-image background explicit and avoids version-
+        # dependent default border behavior while preserving edge objects.
+        radius = settings.kernel_size // 2
+        padded = np.pad(result, radius, mode="constant")
+        processed = cv2.morphologyEx(padded, operation, kernel)
+        result = processed[radius:-radius, radius:-radius]
     return result.copy()
 

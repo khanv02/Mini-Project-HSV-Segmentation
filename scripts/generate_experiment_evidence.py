@@ -42,6 +42,20 @@ CASES = [
     ("mit_main_experiment120_dir24.jpg", "fixed hair-and-spheres scene", "blond hair", (18, 78, 8, 100, 12, 100), (28, 62, 18, 82, 22, 95)),
 ]
 
+
+def load_versioned_record(path: str | Path) -> dict:
+    """Load schema 1/2 evidence without rewriting retained records."""
+    record_path = Path(path)
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    version_number = record.get("schema_version")
+    if version_number not in {1, 2}:
+        raise ValueError(f"unsupported experiment schema_version {version_number!r}")
+    required = {"source", "thresholds", "morphology", "artifacts", "environment"}
+    missing = sorted(required - record.keys())
+    if missing:
+        raise ValueError(f"experiment record is missing: {', '.join(missing)}")
+    return record
+
 SIMPLECUBE_SOURCE = {
     "simplecube_train_00_0002_natural.jpg": "train_00_0002.jpg",
     "simplecube_train_00_0024_natural_shadow.jpg": "train_00_0024.jpg",
