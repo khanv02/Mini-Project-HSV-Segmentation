@@ -43,29 +43,47 @@ không phụ thuộc dịch vụ mạng và có đủ bằng chứng kiểm th�
 - Xử lý nền có revision để loại bỏ kết quả cũ khi người dùng chỉnh nhanh.
 - Giao diện dark scientific workspace có độ tương phản cao, hỗ trợ bàn phím và hoạt động offline.
 
-## Kiến trúc
+## Pipeline xử lý
 
-```text
-Local image / video
-        │
-        ▼
-┌────────────────┐     ┌──────────────────────┐
-│ I/O adapters   │ ──▶ │ Session + playback   │
-│ Pillow/OpenCV  │     │ Revision coordination│
-└────────────────┘     └──────────┬───────────┘
-                                  │
-                                  ▼
-                       ┌──────────────────────┐
-                       │ Pure processing      │
-                       │ RGB→HSV, mask,       │
-                       │ morphology, analysis,│
-                       │ Watershed, evaluation│
-                       └──────────┬───────────┘
-                                  │
-                    ┌─────────────┴─────────────┐
-                    ▼                           ▼
-             Tkinter workspace          PNG / experiment export
+GitHub render sơ đồ này trực tiếp bằng Mermaid:
+
+```mermaid
+flowchart LR
+    media["Ảnh / video cục bộ"] --> decode["Giải mã<br/>Pillow / OpenCV"]
+    decode --> session["Session & playback<br/>Revision coordination"]
+
+    subgraph processing["Pure processing · NumPy / OpenCV"]
+        direction LR
+        rgb["RGB frame"] --> hsv["RGB → HSV"]
+        hsv --> threshold["Ngưỡng H / S / V"]
+        threshold --> raw["Raw binary mask"]
+        raw --> morphology["Morphology<br/>tùy chọn"]
+        morphology --> baseline["Baseline mask"]
+        baseline --> components["Connected components<br/>lọc diện tích"]
+        baseline --> watershed["Watershed<br/>tách vùng chạm nhau"]
+        baseline --> target{"Evaluation target"}
+        components -. tùy chọn .-> target
+        watershed -. tùy chọn .-> target
+    end
+
+    session --> rgb
+    truth["Ground-truth mask<br/>PNG / BMP"] --> evaluation["IoU · Dice<br/>TP / FP / FN"]
+    target --> evaluation
+
+    baseline --> workspace["Tkinter workspace<br/>Original · Mask · Result"]
+    components --> workspace
+    watershed --> workspace
+    evaluation --> workspace
+
+    workspace --> export["PNG export"]
+    workspace --> experiment["Experiment record<br/>JSON · PNG · NPY · SHA-256"]
+
 ```
+
+Các nhánh analysis, Watershed và ground-truth evaluation là tùy chọn. `baseline` luôn là
+mask HSV sau morphology; target không khả dụng sẽ không âm thầm rơi về baseline.
+
+## Kiến trúc mã nguồn
 
 | Layer | Trách nhiệm |
 |---|---|
