@@ -40,13 +40,13 @@ class ColorRegionSample:
 
 @dataclass(frozen=True, slots=True)
 class ColorMultiSample:
-    """Summary and suggested thresholds for two to four sparse source pixels."""
+    """Summary and independent HSV ranges for two to four sparse pixels."""
 
     samples: tuple[ColorSample, ...]
     hue_deg: float
     saturation_pct: float
     value_pct: float
-    thresholds: HSVThresholdSet
+    threshold_ranges: tuple[HSVThresholdSet, ...]
 
     @property
     def pixel_count(self) -> int:
@@ -157,7 +157,7 @@ def sample_colors(
     saturation_padding_pct: int = 5,
     value_padding_pct: int = 5,
 ) -> ColorMultiSample:
-    """Summarize two to four explicitly selected pixels and include their HSV spread."""
+    """Create one independent HSV range per explicitly selected pixel."""
     validate_rgb(rgb)
     try:
         points = tuple(coordinates)
@@ -180,7 +180,6 @@ def sample_colors(
     )
     value = np.array([sample.value_pct for sample in samples], dtype=np.float64)
     chromatic_hue = hue[saturation >= 5.0]
-    lower_hue, upper_hue = _circular_hue_range(chromatic_hue, hue_padding_deg)
     if chromatic_hue.size:
         angles = np.deg2rad(chromatic_hue)
         representative_hue = math.degrees(
@@ -188,24 +187,21 @@ def sample_colors(
         ) % 360.0
     else:
         representative_hue = 0.0
-    thresholds = HSVThresholdSet(
-        lower_h_deg=lower_hue,
-        upper_h_deg=upper_hue,
-        lower_s_pct=max(
-            0, math.floor(float(saturation.min()) - saturation_padding_pct)
-        ),
-        upper_s_pct=min(
-            100, math.ceil(float(saturation.max()) + saturation_padding_pct)
-        ),
-        lower_v_pct=max(0, math.floor(float(value.min()) - value_padding_pct)),
-        upper_v_pct=min(100, math.ceil(float(value.max()) + value_padding_pct)),
+    threshold_ranges = tuple(
+        suggest_thresholds(
+            sample,
+            hue_tolerance_deg=hue_padding_deg,
+            saturation_tolerance_pct=saturation_padding_pct,
+            value_tolerance_pct=value_padding_pct,
+        )
+        for sample in samples
     )
     return ColorMultiSample(
         samples=tuple(samples),
         hue_deg=representative_hue,
         saturation_pct=float(np.median(saturation)),
         value_pct=float(np.median(value)),
-        thresholds=thresholds,
+        threshold_ranges=threshold_ranges,
     )
 
 

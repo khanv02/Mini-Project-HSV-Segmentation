@@ -31,6 +31,7 @@ class ImageView(ttk.LabelFrame):
         self._placeholder_text = placeholder_text
         self._sample_callback = on_sample
         self._roi_sample_callback = on_roi_sample
+        self._multi_sample_move_callback: Callable[[int, int, int], None] | None = None
         self._sampling_mode = "pixel"
         self._sampling_enabled = False
         self._sampled_pixel: tuple[int, int] | None = None
@@ -38,6 +39,8 @@ class ImageView(ttk.LabelFrame):
         self._sample_marker: int | None = None
         self._multi_sampled_pixels: list[tuple[int, int]] = []
         self._multi_sample_markers: list[tuple[int, int]] = []
+        self._dragged_multi_index: int | None = None
+        self._dragged_multi_origin: tuple[int, int] | None = None
         self._drag_start: tuple[float, float] | None = None
         self._display_bounds: tuple[float, float, int, int] | None = None
         self._source: np.ndarray | None = None
@@ -140,6 +143,11 @@ class ImageView(ttk.LabelFrame):
     ) -> None:
         self._roi_sample_callback = callback
 
+    def set_multi_sample_move_callback(
+        self, callback: Callable[[int, int, int], None] | None
+    ) -> None:
+        self._multi_sample_move_callback = callback
+
     def set_sampling_mode(self, mode: str) -> None:
         if mode not in {"pixel", "multi", "roi"}:
             raise ValueError("sampling mode must be pixel, multi, or roi")
@@ -154,6 +162,8 @@ class ImageView(ttk.LabelFrame):
             self.canvas.delete(self._sample_marker)
             self._sample_marker = None
         self._multi_sampled_pixels.clear()
+        self._dragged_multi_index = None
+        self._dragged_multi_origin = None
         for marker, label in self._multi_sample_markers:
             self.canvas.delete(marker)
             self.canvas.delete(label)
@@ -162,6 +172,16 @@ class ImageView(ttk.LabelFrame):
     def set_sampling_enabled(self, enabled: bool) -> None:
         self._sampling_enabled = bool(enabled and self._source is not None)
         self._drag_start = None
+        if (
+            self._dragged_multi_index is not None
+            and self._dragged_multi_origin is not None
+        ):
+            self._multi_sampled_pixels[
+                self._dragged_multi_index
+            ] = self._dragged_multi_origin
+            self._draw_multi_sample_markers()
+        self._dragged_multi_index = None
+        self._dragged_multi_origin = None
         self.canvas.configure(cursor="crosshair" if self._sampling_enabled else "")
 
     def source_pixel_at_canvas(self, canvas_x: float, canvas_y: float) -> tuple[int, int] | None:
@@ -214,6 +234,13 @@ class ImageView(ttk.LabelFrame):
         if pixel is None:
             return
         self._drag_start = point
+        if self._sampling_mode == "multi":
+            index = self._multi_marker_index_at(*point)
+            if index is not None:
+                self._dragged_multi_index = index
+                self._dragged_multi_origin = self._multi_sampled_pixels[index]
+                self.canvas.configure(cursor="fleur")
+                return
         if self._sampling_mode == "roi":
             self._sampled_pixel = None
             self._sampled_roi = None
@@ -224,7 +251,20 @@ class ImageView(ttk.LabelFrame):
                 )
 
     def _on_sample_drag(self, event) -> None:
-        if not self._sampling_enabled or self._sampling_mode != "roi" or self._drag_start is None:
+        if not self._sampling_enabled or self._drag_start is None:
+            return
+        if self._sampling_mode == "multi" and self._dragged_multi_index is not None:
+            pixel = self.source_pixel_at_canvas(*self._event_canvas_point(event))
+            if pixel is None:
+                return
+            occupied = set(self._multi_sampled_pixels)
+            occupied.discard(self._multi_sampled_pixels[self._dragged_multi_index])
+            if pixel in occupied:
+                return
+            self._multi_sampled_pixels[self._dragged_multi_index] = pixel
+            self._draw_multi_sample_markers()
+            return
+        if self._sampling_mode != "roi":
             return
         current = self._event_canvas_point(event)
         if self._sample_marker is not None:
@@ -236,6 +276,16 @@ class ImageView(ttk.LabelFrame):
         start = self._drag_start
         self._drag_start = None
         current = self._event_canvas_point(event)
+        if self._sampling_mode == "multi" and self._dragged_multi_index is not None:
+            index = self._dragged_multi_index
+            origin = self._dragged_multi_origin
+            destination = self._multi_sampled_pixels[index]
+            self._dragged_multi_index = None
+            self._dragged_multi_origin = None
+            self.canvas.configure(cursor="crosshair")
+            if destination != origin and self._multi_sample_move_callback is not None:
+                self._multi_sample_move_callback(index, *destination)
+            return
         if self._sampling_mode in {"pixel", "multi"}:
             pixel = self.source_pixel_at_canvas(*current) or self.source_pixel_at_canvas(*start)
             if pixel is None or self._sample_callback is None:
@@ -271,6 +321,19 @@ class ImageView(ttk.LabelFrame):
         self._replace_sample_marker("rectangle")
         self._draw_sample_marker()
         self._roi_sample_callback(*roi)
+
+    def _multi_marker_index_at(self, canvas_x: float, canvas_y: float) -> int | None:
+        """Return the topmost numbered marker hit by a canvas point."""
+        for index in range(len(self._multi_sample_markers) - 1, -1, -1):
+            marker, _label = self._multi_sample_markers[index]
+            bounds = self.canvas.coords(marker)
+            if (
+                len(bounds) == 4
+                and bounds[0] - 3 <= canvas_x <= bounds[2] + 3
+                and bounds[1] - 3 <= canvas_y <= bounds[3] + 3
+            ):
+                return index
+        return None
 
     def _set_zoom_text(self, text: str) -> None:
         self._zoom_text = text

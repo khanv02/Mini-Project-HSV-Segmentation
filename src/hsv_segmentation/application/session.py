@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import numpy as np
+
 from ..errors import ValidationError
 from ..io.images import load_image
 from ..models import (
@@ -45,6 +47,7 @@ def process_source(
     settings_revision: int = 0,
     segmentation_mode: SegmentationMode | str = SegmentationMode.HSV,
     grayscale_settings: GrayscaleSettings | None = None,
+    threshold_ranges: tuple[HSVThresholdSet, ...] = (),
 ) -> SegmentationResult:
     """Create one immutable result for an already decoded source snapshot."""
     hsv_array = rgb_to_hsv(source.rgb) if hsv is None else hsv
@@ -79,7 +82,12 @@ def process_source(
             intensity, threshold, grayscale_settings.polarity
         )
     else:
-        original_mask = generate_mask(hsv_array, thresholds)
+        ranges = threshold_ranges or (thresholds,)
+        original_mask = generate_mask(hsv_array, ranges[0])
+        for color_range in ranges[1:]:
+            original_mask = np.maximum(
+                original_mask, generate_mask(hsv_array, color_range)
+            )
     mask = apply_morphology(original_mask, morphology)
     segmented_rgb = apply_mask(source.rgb, mask)
     analysis = (
@@ -125,6 +133,7 @@ def process_source(
         grayscale_settings=grayscale_settings,
         grayscale_eligibility=eligibility,
         otsu_outcome=otsu_outcome,
+        threshold_ranges=threshold_ranges,
     )
 
 
@@ -139,6 +148,7 @@ class ImageSession:
         watershed_settings: WatershedSettings | None = None,
     ):
         self._thresholds = thresholds or HSVThresholdSet()
+        self._threshold_ranges: tuple[HSVThresholdSet, ...] = ()
         self._morphology = morphology or MorphologySettings()
         self._analysis_settings = analysis_settings or AnalysisSettings()
         self._watershed_settings = watershed_settings or WatershedSettings()
@@ -154,6 +164,10 @@ class ImageSession:
     @property
     def thresholds(self) -> HSVThresholdSet:
         return self._thresholds
+
+    @property
+    def threshold_ranges(self) -> tuple[HSVThresholdSet, ...]:
+        return self._threshold_ranges
 
     @property
     def source(self) -> InputMedia | None:
@@ -255,6 +269,7 @@ class ImageSession:
             settings_revision=self._settings_revision,
             segmentation_mode=SegmentationMode.HSV,
             grayscale_settings=self._grayscale_settings,
+            threshold_ranges=self._threshold_ranges,
         )
         self._source = candidate
         self._segmentation_mode = SegmentationMode.HSV
@@ -276,10 +291,12 @@ class ImageSession:
                 settings_revision=self._settings_revision,
                 segmentation_mode=self._segmentation_mode,
                 grayscale_settings=self._grayscale_settings,
+                threshold_ranges=(),
             )
             if self._source is not None else None
         )
         self._thresholds = validated
+        self._threshold_ranges = ()
         self._result = candidate_result
         self._request_revision = next_revision
         return candidate_result
@@ -287,6 +304,17 @@ class ImageSession:
     def accept_thresholds(self, thresholds: HSVThresholdSet) -> None:
         """Accept controls immediately while leaving the old result pending."""
         self._thresholds = validate_thresholds(thresholds)
+        self._threshold_ranges = ()
+
+    def accept_threshold_ranges(
+        self, ranges: tuple[HSVThresholdSet, ...]
+    ) -> None:
+        """Accept two to four independent color ranges for OR segmentation."""
+        if not isinstance(ranges, tuple) or not 2 <= len(ranges) <= 4:
+            raise ValidationError("threshold_ranges", "must contain 2..4 HSV ranges")
+        validated = tuple(validate_thresholds(item) for item in ranges)
+        self._thresholds = validated[0]
+        self._threshold_ranges = validated
 
     def accept_morphology(self, morphology: MorphologySettings) -> None:
         if not isinstance(morphology, MorphologySettings):
@@ -326,6 +354,7 @@ class ImageSession:
         """Commit a fully decoded and processed replacement image."""
         self._source = result.source
         self._thresholds = result.thresholds
+        self._threshold_ranges = result.threshold_ranges
         self._morphology = result.morphology
         self._analysis_settings = result.analysis_settings
         self._watershed_settings = result.watershed_settings
@@ -371,6 +400,7 @@ class ImageSession:
         """Return whether a completion belongs to the active processing configuration."""
         return (
             result.parameter_revision == self._thresholds.parameter_revision
+            and result.threshold_ranges == self._threshold_ranges
             and result.morphology == self._morphology
             and result.analysis_settings == self._analysis_settings
             and result.watershed_settings == self._watershed_settings

@@ -191,7 +191,7 @@ class MainWindow:
             ),
             ToolTip(
                 self.sampling_mode_box,
-                "Pixel samples one point; Multi combines 2–4 clicked points; ROI samples a rectangle.",
+                "Pixel samples one point; Multi ORs 2–4 independent colors; ROI samples a rectangle.",
             ),
             ToolTip(
                 self.clear_samples_button,
@@ -382,18 +382,23 @@ class MainWindow:
         )
 
     def show_multi_sample(self, sample, *, active: bool) -> None:
+        colors = ", ".join(
+            f"#{red:02X}{green:02X}{blue:02X}"
+            for red, green, blue in (item.rgb for item in sample.samples)
+        )
         self.sample_var.set(
-            f"Multi {sample.pixel_count}/4: H {sample.hue_deg:.1f}°, "
-            f"S {sample.saturation_pct:.1f}%, V {sample.value_pct:.1f}%"
+            f"Multi {sample.pixel_count}/4: {colors} (OR)"
         )
         self.clear_samples_button.configure(state="normal")
         if active:
             self.pick_color_button.configure(text=f"Finish Multi ({sample.pixel_count}/4)")
+        else:
+            self.pick_color_button.configure(text=f"Edit Multi ({sample.pixel_count}/4)")
 
     def show_multi_sample_waiting(self) -> None:
         self.sample_var.set("Multi 1/4: choose at least one more point")
         self.clear_samples_button.configure(state="normal")
-        self.pick_color_button.configure(text="Finish Multi (1/4)")
+        self.pick_color_button.configure(text="Cancel Multi (1/4)")
 
     def clear_sample_summary(self) -> None:
         self.sample_var.set("Sample: —")

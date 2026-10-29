@@ -676,6 +676,22 @@ def _validate_snapshot_identity(source, thresholds, request_revision) -> int:
     return _bounded_integer(request_revision, "request_revision", 0)
 
 
+def _validate_threshold_ranges(
+    ranges, primary: HSVThresholdSet
+) -> tuple[HSVThresholdSet, ...]:
+    if not isinstance(ranges, tuple):
+        raise ValidationError("threshold_ranges", "must be a tuple")
+    if ranges and not 2 <= len(ranges) <= 4:
+        raise ValidationError("threshold_ranges", "must contain 2..4 HSV ranges")
+    if any(not isinstance(item, HSVThresholdSet) for item in ranges):
+        raise ValidationError(
+            "threshold_ranges", "must contain HSVThresholdSet snapshots"
+        )
+    if ranges and ranges[0] != primary:
+        raise ValidationError("threshold_ranges", "first range must equal thresholds")
+    return ranges
+
+
 class _SnapshotIdentity:
     """Derived accessors avoid independently editable identity/revision copies."""
 
@@ -709,6 +725,7 @@ class ProcessingRequest(_SnapshotIdentity):
     settings_revision: int = 0
     segmentation_mode: SegmentationMode = SegmentationMode.HSV
     grayscale_settings: GrayscaleSettings = field(default_factory=GrayscaleSettings)
+    threshold_ranges: tuple[HSVThresholdSet, ...] = ()
 
     def __post_init__(self):
         revision = _validate_snapshot_identity(self.source, self.thresholds, self.request_revision)
@@ -735,6 +752,11 @@ class ProcessingRequest(_SnapshotIdentity):
             raise ValidationError("segmentation_mode", "must be hsv or grayscale") from error
         if not isinstance(self.grayscale_settings, GrayscaleSettings):
             raise ValidationError("grayscale_settings", "must be GrayscaleSettings")
+        object.__setattr__(
+            self,
+            "threshold_ranges",
+            _validate_threshold_ranges(self.threshold_ranges, self.thresholds),
+        )
 
     @property
     def rgb(self) -> RGBImage:
@@ -769,10 +791,16 @@ class SegmentationResult(_SnapshotIdentity):
     grayscale_settings: GrayscaleSettings = field(default_factory=GrayscaleSettings)
     grayscale_eligibility: GrayscaleEligibility | None = None
     otsu_outcome: OtsuOutcome = field(default_factory=OtsuOutcome)
+    threshold_ranges: tuple[HSVThresholdSet, ...] = ()
 
     def __post_init__(self):
         revision = _validate_snapshot_identity(self.source, self.thresholds, self.request_revision)
         object.__setattr__(self, "request_revision", revision)
+        object.__setattr__(
+            self,
+            "threshold_ranges",
+            _validate_threshold_ranges(self.threshold_ranges, self.thresholds),
+        )
         shape = (self.source.height, self.source.width)
         if (not isinstance(self.mask, np.ndarray) or self.mask.dtype != np.uint8
                 or self.mask.shape != shape or not np.all((self.mask == 0) | (self.mask == 255))):

@@ -1,6 +1,7 @@
 """Main-thread controller for still-image and sequential-video workflows."""
 
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -97,6 +98,9 @@ class ApplicationController:
         self._truth_revision = 0
         self.window.original_view.set_sample_callback(self._on_color_sample)
         self.window.original_view.set_roi_sample_callback(self._on_roi_sample)
+        self.window.original_view.set_multi_sample_move_callback(
+            self._on_multi_sample_move
+        )
         self._latest_request_revision = 0
         self._video_request_in_flight: int | None = None
         self._resume_video_on_failure = False
@@ -153,6 +157,7 @@ class ApplicationController:
             self.session.analysis_settings, self.session.watershed_settings,
             None, self.session.evaluation_target, self.session.settings_revision,
             SegmentationMode.HSV, self.session.grayscale_settings,
+            threshold_ranges=self.session.threshold_ranges,
         )
 
     def choose_video(self) -> None:
@@ -187,6 +192,7 @@ class ApplicationController:
                 self.session.analysis_settings, self.session.watershed_settings,
                 None, self.session.evaluation_target, self.session.settings_revision,
                 SegmentationMode.HSV, self.session.grayscale_settings,
+                threshold_ranges=self.session.threshold_ranges,
             ),
             cleanup=lambda candidate: candidate.reader.release(),
         )
@@ -232,6 +238,7 @@ class ApplicationController:
                 self.session.watershed_settings, self.session.evaluation_target,
                 self.session.settings_revision,
                 self.session.segmentation_mode, self.session.grayscale_settings,
+                threshold_ranges=self.session.threshold_ranges,
             ),
         )
 
@@ -253,11 +260,27 @@ class ApplicationController:
                 self.session.watershed_settings, self.session.evaluation_target,
                 self.session.settings_revision,
                 self.session.segmentation_mode, self.session.grayscale_settings,
+                threshold_ranges=self.session.threshold_ranges,
             ),
         )
 
     def _on_thresholds(self, thresholds: HSVThresholdSet) -> None:
-        self.session.accept_thresholds(thresholds)
+        if (
+            self.session.threshold_ranges
+            and self.window.original_view.sampling_mode == "multi"
+        ):
+            self.session.accept_threshold_ranges(
+                (thresholds, *self.session.threshold_ranges[1:])
+            )
+        else:
+            self.session.accept_thresholds(thresholds)
+        self._submit_threshold_change(
+            thresholds, "Parameters changed — result pending…"
+        )
+
+    def _submit_threshold_change(
+        self, thresholds: HSVThresholdSet, message: str
+    ) -> None:
         source = self.session.source
         self.window.update_histogram_thresholds(
             thresholds, pending=source is not None
@@ -269,7 +292,7 @@ class ApplicationController:
         request = self._request(source, thresholds, revision)
         self._export_snapshot_valid = False
         self._refresh_export_controls()
-        self.window.show_status("Parameters changed — result pending…")
+        self.window.show_status(message)
         self.window.mark_selection_pending()
         self.worker.submit(request)
 
@@ -340,6 +363,7 @@ class ApplicationController:
             settings_revision=self.session.settings_revision,
             segmentation_mode=self.session.segmentation_mode,
             grayscale_settings=self.session.grayscale_settings,
+            threshold_ranges=self.session.threshold_ranges,
         )
 
     def _on_analysis_settings(
@@ -411,15 +435,20 @@ class ApplicationController:
             self.pause_video()
         mode = self.window.sampling_mode_var.get().lower()
         activating = not self._color_picker_active
-        if activating and mode == "multi":
-            self.clear_multi_samples(show_status=False)
         self._set_color_picker_active(activating)
         if self._color_picker_active:
             if mode == "multi":
-                self.window.pick_color_button.configure(text="Finish Multi (0/4)")
-                self.window.show_status(
-                    "Multi picker active — choose 2–4 points in the Original view."
+                count = len(self._multi_sample_points)
+                action = "choose 2–4 points" if count == 0 else "add or drag points"
+                button_text = (
+                    f"Cancel Multi ({count}/4)"
+                    if count < 2
+                    else f"Finish Multi ({count}/4)"
                 )
+                self.window.pick_color_button.configure(
+                    text=button_text
+                )
+                self.window.show_status(f"Multi picker active — {action} in Original.")
             elif mode == "roi":
                 self.window.show_status(
                     "ROI picker active — drag a representative area in the Original view."
@@ -430,6 +459,12 @@ class ApplicationController:
                 )
         else:
             if mode == "multi" and len(self._multi_sample_points) >= 2:
+                displayed_rgb = self.window.original_view.source_array
+                if displayed_rgb is not None:
+                    self.window.show_multi_sample(
+                        sample_colors(displayed_rgb, self._multi_sample_points),
+                        active=False,
+                    )
                 self.window.show_status(
                     f"Multi sampling finished with {len(self._multi_sample_points)} points."
                 )
@@ -459,14 +494,15 @@ class ApplicationController:
                 )
                 return
             sample = sample_colors(displayed_rgb, self._multi_sample_points)
-            complete = len(self._multi_sample_points) == 4
-            if complete:
-                self._set_color_picker_active(False)
-            self.window.show_multi_sample(sample, active=not complete)
-            self.controls.apply_thresholds(sample.thresholds)
+            self.window.show_multi_sample(sample, active=True)
+            self._apply_multi_sample(sample)
             self.window.show_status(
-                f"Combined {sample.pixel_count} selected pixels; suggested HSV thresholds applied."
-                + (" Multi sampling complete." if complete else " Choose another point or finish.")
+                f"Applied {sample.pixel_count} independent color ranges with OR. "
+                + (
+                    "Drag a marker or finish."
+                    if sample.pixel_count == 4
+                    else "Add, drag, or finish."
+                )
             )
             return
 
@@ -479,13 +515,50 @@ class ApplicationController:
             f"Sampled RGB {sample.rgb} at ({x}, {y}); suggested HSV thresholds applied."
         )
 
+    def _apply_multi_sample(self, sample) -> None:
+        revision = self.session.thresholds.parameter_revision + 1
+        ranges = list(sample.threshold_ranges)
+        ranges[0] = replace(ranges[0], parameter_revision=revision)
+        accepted = tuple(ranges)
+        self.controls.set_thresholds(accepted[0])
+        self.session.accept_threshold_ranges(accepted)
+        self._submit_threshold_change(
+            accepted[0],
+            f"Multi selection ({len(accepted)} independent ranges) — result pending…",
+        )
+
+    def _on_multi_sample_move(self, index: int, x: int, y: int) -> None:
+        if not 0 <= index < len(self._multi_sample_points):
+            return
+        point = (x, y)
+        if point in self._multi_sample_points and self._multi_sample_points[index] != point:
+            self.window.show_status("That pixel is already selected; marker was not moved.")
+            return
+        self._multi_sample_points[index] = point
+        displayed_rgb = self.window.original_view.source_array
+        if displayed_rgb is None or len(self._multi_sample_points) < 2:
+            return
+        sample = sample_colors(displayed_rgb, self._multi_sample_points)
+        self.window.show_multi_sample(sample, active=True)
+        self._apply_multi_sample(sample)
+        self.window.show_status(
+            f"Moved color {index + 1}; {sample.pixel_count} independent ranges updated."
+        )
+
     def clear_multi_samples(self, *, show_status: bool = True) -> None:
+        had_ranges = bool(self.session.threshold_ranges)
+        primary = self.session.thresholds
         self._multi_sample_points.clear()
         self.window.original_view.clear_sample_markers()
         self.window.clear_sample_summary()
         if self._color_picker_active and self.window.original_view.sampling_mode == "multi":
-            self.window.pick_color_button.configure(text="Finish Multi (0/4)")
-        if show_status:
+            self.window.pick_color_button.configure(text="Cancel Multi (0/4)")
+        if had_ranges:
+            self.session.accept_thresholds(primary)
+            self._submit_threshold_change(
+                primary, "Multi points cleared — first HSV range retained."
+            )
+        elif show_status:
             self.window.show_status("Multi-pixel selection cleared.")
 
     def _on_sampling_mode_changed(self, mode: str) -> None:
@@ -664,6 +737,7 @@ class ApplicationController:
             and self._export_snapshot_valid
             and result is not None
             and result.thresholds == self.session.thresholds
+            and result.threshold_ranges == self.session.threshold_ranges
             and result.morphology == self.session.morphology
             and result.analysis_settings == self.session.analysis_settings
             and result.watershed_settings == self.session.watershed_settings
@@ -756,6 +830,11 @@ class ApplicationController:
             return (
                 f"Current grayscale result — {source} threshold {threshold}, "
                 f"{result.grayscale_settings.polarity} foreground. {morphology}."
+            )
+        if result.threshold_ranges:
+            return (
+                f"Current Multi result — {len(result.threshold_ranges)} independent "
+                f"HSV ranges combined with OR. {morphology}."
             )
         return (
             f"Current result — H {result.thresholds.lower_h_deg}.."

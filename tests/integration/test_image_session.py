@@ -3,6 +3,7 @@
 from pathlib import Path
 from threading import Event
 import time
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -224,6 +225,50 @@ def test_image_view_supports_zoom_fit_and_scrollable_canvas() -> None:
         root.destroy()
 
 
+def test_multi_marker_can_be_dragged_to_replace_its_pixel() -> None:
+    tkinter = pytest.importorskip("tkinter")
+    root = _create_tk_root(tkinter)
+    root.geometry("300x260")
+    added = []
+    moved = []
+    try:
+        view = ImageView(root, title="Drag multi")
+        view.pack(fill="both", expand=True)
+        view.show_array(np.zeros((20, 20, 3), dtype=np.uint8))
+        view.set_sample_callback(lambda x, y: added.append((x, y)))
+        view.set_multi_sample_move_callback(
+            lambda index, x, y: moved.append((index, x, y))
+        )
+        view.set_sampling_mode("multi")
+        view.set_sampling_enabled(True)
+        root.update()
+
+        left, top, width, height = view._display_bounds
+
+        def event_for(x, y):
+            return SimpleNamespace(
+                x=left + (x + 0.5) * width / 20,
+                y=top + (y + 0.5) * height / 20,
+            )
+
+        for pixel in ((3, 4), (12, 13)):
+            event = event_for(*pixel)
+            view._on_sample_press(event)
+            view._on_sample_release(event)
+
+        start = event_for(3, 4)
+        destination = event_for(16, 7)
+        view._on_sample_press(start)
+        view._on_sample_drag(destination)
+        view._on_sample_release(destination)
+
+        assert added == [(3, 4), (12, 13)]
+        assert moved == [(0, 16, 7)]
+        assert view._multi_sampled_pixels == [(16, 7), (12, 13)]
+    finally:
+        root.destroy()
+
+
 def test_threshold_controls_report_invalid_edit_without_callback() -> None:
     tkinter = pytest.importorskip("tkinter")
     root = _create_tk_root(tkinter)
@@ -423,7 +468,7 @@ def test_controller_roi_picker_applies_region_thresholds(tmp_path) -> None:
         controller.close()
 
 
-def test_controller_multi_picker_combines_up_to_four_points_and_preserves_pixel_mode(
+def test_controller_multi_picker_ors_two_to_four_colors_and_preserves_pixel_mode(
     tmp_path,
 ) -> None:
     tkinter = pytest.importorskip("tkinter")
@@ -453,24 +498,51 @@ def test_controller_multi_picker_combines_up_to_four_points_and_preserves_pixel_
         assert "Multi 1/4" in controller.window.sample_var.get()
 
         controller._on_color_sample(1, 0)
+        assert len(controller.session.threshold_ranges) == 2
+        controller.toggle_color_picker()
+        assert not controller._color_picker_active
+        assert "Edit Multi (2/4)" in controller.window.pick_color_button.cget("text")
+
+        controller.toggle_color_picker()
         controller._on_color_sample(2, 0)
         assert controller._color_picker_active
         assert "Multi 3/4" in controller.window.sample_var.get()
-        assert controller.session.thresholds.wraps_hue
+        assert len(controller.session.threshold_ranges) == 3
 
         controller._on_color_sample(3, 0)
-        assert not controller._color_picker_active
+        assert controller._color_picker_active
         assert "Multi 4/4" in controller.window.sample_var.get()
-        assert "4 selected pixels" in controller.window.status_var.get()
+        assert "4 independent color ranges" in controller.window.status_var.get()
+        controller.toggle_color_picker()
+        assert not controller._color_picker_active
 
         controller.window.sampling_mode_var.set("Pixel")
         controller.window._apply_sampling_mode()
         controller.toggle_color_picker()
         controller._on_color_sample(1, 0)
         assert not controller._color_picker_active
+        assert controller.session.threshold_ranges == ()
         assert "H 0.0°" in controller.window.sample_var.get()
     finally:
         controller.close()
+
+
+def test_multi_black_and_yellow_masks_are_combined_with_or(tmp_path) -> None:
+    from hsv_segmentation.processing.threshold_suggestions import sample_colors
+
+    rgb = np.array([[[0, 0, 0], [255, 255, 0], [0, 255, 0]]], dtype=np.uint8)
+    source = InputMedia(
+        source_path=(tmp_path / "colors.png").resolve(),
+        source_sha256="c" * 64,
+        source_format="PNG",
+        rgb=rgb,
+    )
+    ranges = sample_colors(rgb, ((0, 0), (1, 0))).threshold_ranges
+
+    result = process_source(source, ranges[0], 1, threshold_ranges=ranges)
+
+    np.testing.assert_array_equal(result.mask, np.array([[255, 255, 0]], np.uint8))
+    assert result.threshold_ranges == ranges
 
 
 def test_morphology_pipeline_comparison_and_exports_use_processed_mask(tmp_path) -> None:

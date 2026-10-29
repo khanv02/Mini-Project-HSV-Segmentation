@@ -95,7 +95,7 @@ def test_achromatic_region_uses_full_hue_range() -> None:
     assert sample.pixel_count == 2
 
 
-def test_multi_sample_combines_sparse_pixels_and_short_hue_arc() -> None:
+def test_multi_sample_keeps_independent_ranges_for_each_pixel() -> None:
     rgb = np.array(
         [[[255, 0, 43], [255, 0, 0], [255, 43, 0], [128, 0, 0]]],
         dtype=np.uint8,
@@ -104,13 +104,22 @@ def test_multi_sample_combines_sparse_pixels_and_short_hue_arc() -> None:
     sample = sample_colors(rgb, ((0, 0), (1, 0), (2, 0), (3, 0)))
 
     assert sample.pixel_count == 4
-    assert sample.thresholds.wraps_hue
-    assert sample.thresholds.lower_h_deg >= 340
-    assert sample.thresholds.upper_h_deg <= 20
-    assert sample.thresholds.lower_s_pct == 95
-    assert sample.thresholds.upper_s_pct == 100
-    assert sample.thresholds.lower_v_pct <= 46
-    assert sample.thresholds.upper_v_pct == 100
+    assert len(sample.threshold_ranges) == 4
+    assert sample.threshold_ranges[1].wraps_hue
+    assert sample.threshold_ranges[0].lower_v_pct == 95
+    assert sample.threshold_ranges[3].upper_v_pct <= 56
+
+
+def test_multi_sample_does_not_force_black_and_yellow_into_one_hsv_box() -> None:
+    rgb = np.array([[[0, 0, 0], [255, 255, 0]]], dtype=np.uint8)
+
+    sample = sample_colors(rgb, ((0, 0), (1, 0)))
+
+    black, yellow = sample.threshold_ranges
+    assert (black.lower_h_deg, black.upper_h_deg) == (0, 360)
+    assert black.upper_s_pct == 5 and black.upper_v_pct == 5
+    assert 50 <= yellow.lower_h_deg <= yellow.upper_h_deg <= 70
+    assert yellow.lower_s_pct == 95 and yellow.lower_v_pct == 95
 
 
 @pytest.mark.parametrize("coordinates", [(), ((0, 0),), ((0, 0),) * 5, ((0, 0, 1), (1, 0))])

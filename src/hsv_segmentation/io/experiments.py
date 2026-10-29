@@ -158,7 +158,11 @@ def publish_experiment(
             or snapshot.watershed_settings.enabled
             or snapshot.evaluation is not None
         )
-        schema_three = snapshot.segmentation_mode == "grayscale" or overlay is not None
+        schema_three = (
+            snapshot.segmentation_mode == "grayscale"
+            or overlay is not None
+            or bool(snapshot.threshold_ranges)
+        )
         record = {
             "schema_version": 3 if schema_three else (2 if extended else 1),
             "run_id": str(run_id),
@@ -193,6 +197,10 @@ def publish_experiment(
                 "sha256": _file_sha256(environment),
             },
         }
+        if snapshot.threshold_ranges:
+            record["threshold_ranges"] = [
+                bounds.as_dict() for bounds in snapshot.threshold_ranges
+            ]
         if schema_three:
             segmentation = {"mode": str(snapshot.segmentation_mode)}
             if snapshot.segmentation_mode == "grayscale":

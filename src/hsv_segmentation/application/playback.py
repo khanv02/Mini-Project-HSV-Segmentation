@@ -74,6 +74,7 @@ class PlaybackSession:
         settings_revision: int = 0,
         segmentation_mode: SegmentationMode | str = SegmentationMode.HSV,
         grayscale_settings: GrayscaleSettings | None = None,
+        threshold_ranges: tuple[HSVThresholdSet, ...] = (),
     ) -> VideoCandidate:
         reader = self._reader_factory(path)
         try:
@@ -83,6 +84,7 @@ class PlaybackSession:
                 ground_truth=ground_truth, evaluation_target=evaluation_target,
                 settings_revision=settings_revision,
                 segmentation_mode=segmentation_mode, grayscale_settings=grayscale_settings,
+                threshold_ranges=threshold_ranges,
             )
         except BaseException:
             reader.release()
@@ -124,6 +126,7 @@ class PlaybackSession:
         settings_revision: int = 0,
         segmentation_mode: SegmentationMode | str = SegmentationMode.HSV,
         grayscale_settings: GrayscaleSettings | None = None,
+        threshold_ranges: tuple[HSVThresholdSet, ...] = (),
     ) -> PlaybackAdvance:
         if self._reader is None:
             raise RuntimeError("no video reader is active")
@@ -139,6 +142,7 @@ class PlaybackSession:
                 analysis_settings=analysis_settings, watershed_settings=watershed_settings,
                 evaluation_target=evaluation_target, settings_revision=settings_revision,
                 segmentation_mode=segmentation_mode, grayscale_settings=grayscale_settings,
+                threshold_ranges=threshold_ranges,
             ),
         )
 
@@ -178,6 +182,7 @@ class PlaybackSession:
         settings_revision: int = 0,
         segmentation_mode: SegmentationMode | str = SegmentationMode.HSV,
         grayscale_settings: GrayscaleSettings | None = None,
+        threshold_ranges: tuple[HSVThresholdSet, ...] = (),
     ) -> SegmentationResult:
         source = self.media_session.source
         if source is None or source.media_kind != "video":
@@ -188,6 +193,7 @@ class PlaybackSession:
             ground_truth=ground_truth, evaluation_target=evaluation_target,
             settings_revision=settings_revision,
             segmentation_mode=segmentation_mode, grayscale_settings=grayscale_settings,
+            threshold_ranges=threshold_ranges,
         )
 
     def prepare_restart(
@@ -201,6 +207,7 @@ class PlaybackSession:
         settings_revision: int = 0,
         segmentation_mode: SegmentationMode | str = SegmentationMode.HSV,
         grayscale_settings: GrayscaleSettings | None = None,
+        threshold_ranges: tuple[HSVThresholdSet, ...] = (),
     ) -> SegmentationResult:
         if self._reader is None:
             raise RuntimeError("no video reader is active")
@@ -209,6 +216,7 @@ class PlaybackSession:
             analysis_settings=analysis_settings, watershed_settings=watershed_settings,
             evaluation_target=evaluation_target, settings_revision=settings_revision,
             segmentation_mode=segmentation_mode, grayscale_settings=grayscale_settings,
+            threshold_ranges=threshold_ranges,
         )
 
     def commit_restart(self, result: SegmentationResult) -> bool:

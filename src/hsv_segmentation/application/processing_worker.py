@@ -76,6 +76,7 @@ class _CachedProcessor:
             settings_revision=request.settings_revision,
             segmentation_mode=request.segmentation_mode,
             grayscale_settings=request.grayscale_settings,
+            threshold_ranges=request.threshold_ranges,
         )
 
 
@@ -125,6 +126,7 @@ class ProcessingWorker:
         settings_revision=0,
         segmentation_mode="hsv",
         grayscale_settings=None,
+        threshold_ranges=(),
     ) -> None:
         def load_and_process() -> SegmentationResult:
             source = load_image(path)
@@ -137,6 +139,7 @@ class ProcessingWorker:
                 settings_revision=settings_revision,
                 segmentation_mode=segmentation_mode,
                 grayscale_settings=grayscale_settings,
+                threshold_ranges=threshold_ranges,
             )
 
         self._submit_item(_WorkItem("image", request_revision, load_and_process))

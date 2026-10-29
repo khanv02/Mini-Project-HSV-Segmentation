@@ -24,8 +24,9 @@ Nếu muốn tách vật thể đỏ, chọn preset **Red**. Với màu khác, c
 - **Value:** điều chỉnh khi vùng quá tối hoặc quá sáng bị chọn sai.
 
 Mục tiêu ban đầu là để vật thể cần tìm màu trắng trên Mask và phần lớn nền màu đen.
-Nếu một điểm không đại diện đủ các sắc độ, chọn **Multi** và bấm 2–4 vị trí khác nhau trên
-vật thể; chế độ **Pixel** một điểm vẫn hoạt động như cũ.
+Nếu cần lấy nhiều màu ở nhiều vị trí, chọn **Multi** và bấm 2–4 điểm. Mỗi điểm tạo một khoảng
+HSV riêng; ứng dụng hợp các mask bằng OR. Có thể kết thúc ngay sau điểm thứ hai hoặc thứ ba,
+và có thể kéo marker sang pixel khác để đổi mẫu. Chế độ **Pixel** một điểm vẫn hoạt động như cũ.
 
 ## 3. Làm sạch nếu cần
 

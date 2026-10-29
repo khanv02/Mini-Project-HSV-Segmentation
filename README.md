@@ -50,7 +50,7 @@ Nếu đây là lần đầu sử dụng, xem [hướng dẫn bắt đầu](docs
 |---|---|---|
 | Ngưỡng HSV | Chọn pixel theo màu sắc, độ bão hòa và độ sáng | [Chi tiết](docs/features/hsv-thresholding/README.md) |
 | Grayscale và Otsu | Chọn vùng sáng/tối của ảnh xám bằng ngưỡng thủ công hoặc Otsu toàn cục | [Ảnh xám](docs/features/grayscale-segmentation.md) · [Otsu](docs/features/otsu-threshold.md) |
-| Lấy mẫu và histogram | Lấy 1 pixel, kết hợp 2–4 pixel hoặc một ROI để tìm khoảng HSV khởi đầu | [Chi tiết](docs/features/sampling-histogram/README.md) |
+| Lấy mẫu và histogram | Lấy 1 pixel, OR 2–4 màu độc lập hoặc dùng một ROI để tìm ngưỡng HSV | [Chi tiết](docs/features/sampling-histogram/README.md) |
 | Morphology | Loại đốm nhiễu nhỏ hoặc lấp lỗ trong mask | [Chi tiết](docs/features/morphology/README.md) |
 | Phân tích vật thể | Đếm, lọc và đo các vùng liên thông | [Chi tiết](docs/features/object-analysis/README.md) |
 | Watershed | Thử tách các vật thể đang chạm nhau | [Chi tiết](docs/features/watershed/README.md) |
