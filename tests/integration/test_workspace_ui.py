@@ -105,6 +105,11 @@ def test_workspace_shortcuts_and_minimum_preview_area() -> None:
             controller.morphology_controls.winfo_height()
             >= controller.morphology_controls.winfo_reqheight()
         )
+        assert (
+            controller.watershed_controls.winfo_height()
+            >= controller.watershed_controls.winfo_reqheight()
+        )
+        assert controller.watershed_controls.master is window.refine_controls_tab
 
         window.control_notebook.select(window.analysis_controls_tab)
         root.update()

@@ -5,7 +5,7 @@ import pytest
 from PIL import Image
 
 from hsv_segmentation.gui.controller import ApplicationController
-from hsv_segmentation.models import AnalysisSettings, WatershedSettings
+from hsv_segmentation.models import AnalysisSettings
 
 
 def _root():
@@ -32,9 +32,7 @@ def test_analysis_controls_update_statistics_without_changing_baseline(tmp_path)
         controller.open_image_path(str(path))
         _wait(root, lambda: controller.session.result is not None)
         baseline = controller.session.result.mask.copy()
-        controller._on_analysis_settings(
-            AnalysisSettings(True, 8, 4), WatershedSettings(False), "baseline"
-        )
+        controller._on_analysis_settings(AnalysisSettings(True, 8, 4), "baseline")
         _wait(root, lambda: controller.session.result.analysis is not None)
         result = controller.session.result
         np.testing.assert_array_equal(result.mask, baseline)
@@ -71,8 +69,10 @@ def test_analysis_panel_disables_advanced_fields_until_enabled() -> None:
         panel = controller.analysis_panel
         assert str(panel.connectivity_box.cget("state")) == "disabled"
         assert str(panel.min_area_entry.cget("state")) == "disabled"
-        assert str(panel.seed_entry.cget("state")) == "disabled"
         assert str(panel.contours_button.cget("state")) == "disabled"
+        assert not hasattr(panel, "seed_entry")
+        assert not hasattr(panel, "watershed_var")
+        assert str(controller.watershed_controls.seed_entry.cget("state")) == "disabled"
 
         panel.enabled_var.set(True)
         panel._emit()
@@ -80,8 +80,9 @@ def test_analysis_panel_disables_advanced_fields_until_enabled() -> None:
         assert str(panel.min_area_entry.cget("state")) == "normal"
         assert str(panel.contours_button.cget("state")) == "normal"
 
-        panel.watershed_var.set(True)
-        panel._emit()
-        assert str(panel.seed_entry.cget("state")) == "normal"
+        controller.watershed_controls.enabled_var.set(True)
+        controller.watershed_controls._changed()
+        assert str(controller.watershed_controls.seed_entry.cget("state")) == "normal"
+        assert str(panel.contours_button.cget("state")) == "normal"
     finally:
         controller.close()

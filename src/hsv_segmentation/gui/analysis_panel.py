@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from ..errors import ValidationError
-from ..models import AnalysisSettings, SegmentationResult, WatershedSettings
+from ..models import AnalysisSettings, SegmentationResult
 
 
 class AnalysisPanel(ttk.Frame):
@@ -14,11 +14,11 @@ class AnalysisPanel(ttk.Frame):
         self._on_display = on_display
         self._on_load_truth = on_load_truth
         self._on_clear_truth = on_clear_truth
+        self._separation_active = False
+        self._truth_available = False
         self.enabled_var = tk.BooleanVar(value=False)
         self.connectivity_var = tk.StringVar(value="8")
         self.min_area_var = tk.StringVar(value="0")
-        self.watershed_var = tk.BooleanVar(value=False)
-        self.seed_var = tk.StringVar(value="0.5")
         self.target_var = tk.StringVar(value="baseline")
         self.contours_var = tk.BooleanVar(value=True)
         self.boxes_var = tk.BooleanVar(value=True)
@@ -28,7 +28,7 @@ class AnalysisPanel(ttk.Frame):
         self.metrics_var = tk.StringVar(value="IoU: —   Dice: —")
         self.truth_var = tk.StringVar(value="Ground truth: —")
 
-        for column in range(4):
+        for column in range(3):
             self.columnconfigure(column, weight=1)
         self.rowconfigure(0, weight=1)
 
@@ -65,44 +65,18 @@ class AnalysisPanel(ttk.Frame):
         regions.columnconfigure(0, weight=1)
         regions.columnconfigure(1, weight=1)
 
-        separation = ttk.Frame(self, padding=(8, 0))
-        separation.grid(row=0, column=1, sticky="nsew")
-        ttk.Label(
-            separation, text="SEPARATION & OVERLAY", style="Eyebrow.TLabel"
-        ).grid(
-            row=0, column=0, columnspan=3, sticky="w", pady=(0, 4)
-        )
-        ttk.Checkbutton(
-            separation,
-            text="Enable Watershed",
-            variable=self.watershed_var,
-            command=self._emit,
-        ).grid(row=1, column=0, columnspan=2, sticky="w")
-        ttk.Label(separation, text="Seed", style="Muted.TLabel").grid(
-            row=1, column=2, sticky="e", padx=(8, 2)
-        )
-        self.seed_entry = ttk.Entry(separation, textvariable=self.seed_var, width=6)
-        self.seed_entry.grid(row=2, column=2, sticky="e", pady=(4, 0))
-        self.seed_entry.bind("<Return>", lambda _event: self._emit())
-        self.seed_entry.bind("<FocusOut>", lambda _event: self._emit())
+        display = ttk.Frame(regions)
+        display.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(6, 0))
         self.contours_button = ttk.Checkbutton(
-            separation, text="Contours", variable=self.contours_var, command=self._display
+            display, text="Contours", variable=self.contours_var, command=self._display
         )
-        self.contours_button.grid(row=2, column=0, sticky="w", pady=(4, 0))
+        self.contours_button.pack(side="left")
         self.boxes_button = ttk.Checkbutton(
-            separation, text="Boxes", variable=self.boxes_var, command=self._display
+            display, text="Boxes", variable=self.boxes_var, command=self._display
         )
-        self.boxes_button.grid(row=2, column=1, sticky="w", pady=(4, 0))
-        self.confusion_button = ttk.Checkbutton(
-            separation, text="TP/FP/FN", variable=self.confusion_var, command=self._display
-        )
-        self.confusion_button.grid(
-            row=3, column=0, columnspan=2, sticky="w", pady=(4, 0)
-        )
-        separation.columnconfigure(0, weight=1)
-
+        self.boxes_button.pack(side="left", padx=(8, 0))
         evaluation = ttk.Frame(self, padding=(8, 0))
-        evaluation.grid(row=0, column=2, sticky="nsew")
+        evaluation.grid(row=0, column=1, sticky="nsew")
         ttk.Label(
             evaluation, text="GROUND-TRUTH EVALUATION", style="Eyebrow.TLabel"
         ).grid(
@@ -133,10 +107,19 @@ class AnalysisPanel(ttk.Frame):
         ttk.Button(evaluation, text="Clear", width=4, command=self._on_clear_truth).grid(
             row=2, column=3, padx=(4, 0)
         )
+        self.confusion_button = ttk.Checkbutton(
+            evaluation,
+            text="Show TP/FP/FN overlay",
+            variable=self.confusion_var,
+            command=self._display,
+        )
+        self.confusion_button.grid(
+            row=3, column=0, columnspan=4, sticky="w", pady=(6, 0)
+        )
         evaluation.columnconfigure(0, weight=1)
         evaluation.columnconfigure(1, weight=1)
         metrics_row = ttk.Frame(evaluation)
-        metrics_row.grid(row=3, column=0, columnspan=4, sticky="ew", pady=(6, 0))
+        metrics_row.grid(row=4, column=0, columnspan=4, sticky="ew", pady=(4, 0))
         ttk.Label(
             metrics_row, textvariable=self.truth_var, style="Muted.TLabel"
         ).pack(side="left")
@@ -145,7 +128,7 @@ class AnalysisPanel(ttk.Frame):
         ).pack(side="right")
 
         statistics = ttk.Frame(self, padding=(8, 0, 0, 0))
-        statistics.grid(row=0, column=3, sticky="nsew")
+        statistics.grid(row=0, column=2, sticky="nsew")
         statistics.columnconfigure(0, weight=1)
         statistics.rowconfigure(1, weight=1)
         results_header = ttk.Frame(statistics)
@@ -176,13 +159,10 @@ class AnalysisPanel(ttk.Frame):
                 int(self.connectivity_var.get()),
                 int(self.min_area_var.get()),
             )
-            watershed = WatershedSettings(
-                self.watershed_var.get(), float(self.seed_var.get()), 1, 3
-            )
         except (ValueError, ValidationError) as error:
             self.summary_var.set(f"Invalid analysis setting: {error}")
             return None
-        return analysis, watershed, self.target_var.get()
+        return analysis, self.target_var.get()
 
     def _emit(self):
         self._refresh_states()
@@ -195,14 +175,20 @@ class AnalysisPanel(ttk.Frame):
         entry_state = "normal" if self.enabled_var.get() else "disabled"
         overlay_state = (
             "normal"
-            if self.enabled_var.get() or self.watershed_var.get()
+            if self.enabled_var.get() or self._separation_active
             else "disabled"
         )
         self.connectivity_box.configure(state=analysis_state)
         self.min_area_entry.configure(state=entry_state)
-        self.seed_entry.configure(state="normal" if self.watershed_var.get() else "disabled")
         self.contours_button.configure(state=overlay_state)
         self.boxes_button.configure(state=overlay_state)
+        self.confusion_button.configure(
+            state="normal" if self._truth_available else "disabled"
+        )
+
+    def set_separation_active(self, active: bool) -> None:
+        self._separation_active = bool(active)
+        self._refresh_states()
 
     def _display(self):
         self._on_display(self.contours_var.get(), self.boxes_var.get(), self.confusion_var.get())
@@ -237,12 +223,8 @@ class AnalysisPanel(ttk.Frame):
                         ", ".join(str(value) for value in region.box),
                     ),
                 )
-        if result.watershed is not None:
-            suffix = result.watershed.status.replace("_", " ")
-            if result.watershed.reason:
-                suffix += f": {result.watershed.reason}"
-            self.summary_var.set(self.summary_var.get() + f" | Watershed {suffix}")
         truth = result.ground_truth
+        self._truth_available = truth is not None
         self.truth_var.set(
             "Ground truth: —"
             if truth is None
@@ -254,3 +236,4 @@ class AnalysisPanel(ttk.Frame):
             if metric is None
             else f"IoU: {metric.iou:.4f}   Dice: {metric.dice:.4f} ({metric.status})"
         )
+        self._refresh_states()

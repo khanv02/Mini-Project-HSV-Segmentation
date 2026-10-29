@@ -40,7 +40,7 @@ Nếu đây là lần đầu sử dụng, xem [hướng dẫn bắt đầu](docs
 - Histogram H/S/V hiển thị mặc định bên dưới preview và có thể thu gọn.
 - Chế độ phân đoạn, ngưỡng Grayscale/Otsu và polarity nằm trên thanh trên cùng; Hue được đánh dấu
   không có ý nghĩa khi Grayscale đang hoạt động.
-- Các chức năng được gom vào ba tab phía trên: **HSV Thresholds**, **Refine Mask** và
+- Các chức năng được gom vào ba tab phía trên: **HSV Thresholds**, **Refine & Separate** và
   **Analyze**, giúp dành toàn bộ chiều rộng cho vùng ảnh.
 - Mỗi preview có Fit, zoom và pan độc lập.
 

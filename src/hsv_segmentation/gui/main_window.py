@@ -111,7 +111,7 @@ class MainWindow:
             self.control_notebook, padding=SPACING["sm"]
         )
         self.control_notebook.add(self.hsv_controls_tab, text="  HSV Thresholds  ")
-        self.control_notebook.add(self.refine_controls_tab, text="  Refine Mask  ")
+        self.control_notebook.add(self.refine_controls_tab, text="  Refine & Separate  ")
         self.control_notebook.add(self.analysis_controls_tab, text="  Analyze  ")
         self.control_sections = {
             "hsv": self.hsv_controls_tab,
@@ -174,7 +174,7 @@ class MainWindow:
         self.original_mask_var = tk.BooleanVar(value=False)
         self.original_mask_button = ttk.Checkbutton(
             visualization_info,
-            text="Compare HSV mask",
+            text="Compare original mask",
             variable=self.original_mask_var,
             command=self._refresh_mask_view,
             state="disabled",
@@ -203,7 +203,7 @@ class MainWindow:
             ),
             ToolTip(
                 self.original_mask_button,
-                "Switch the Binary Mask panel between the original HSV mask and morphology result. Saving uses the processed result.",
+                "Switch Binary Mask between the original selection mask and the refined mask. Saving uses the refined result.",
             ),
         )
 

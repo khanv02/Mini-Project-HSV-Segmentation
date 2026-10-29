@@ -48,6 +48,22 @@ def test_closing_preserves_foreground_touching_image_border() -> None:
     np.testing.assert_array_equal(result, expected)
 
 
+def test_opening_then_closing_matches_two_explicit_operations() -> None:
+    mask = np.zeros((11, 11), dtype=np.uint8)
+    mask[2:9, 2:9] = 255
+    mask[5, 5] = 0
+    mask[0, 0] = 255
+    settings = MorphologySettings(True, "opening_closing", 3)
+
+    combined = apply_morphology(mask, settings)
+    opened = apply_morphology(mask, MorphologySettings(True, "opening", 3))
+    expected = apply_morphology(
+        opened, MorphologySettings(True, "closing", 3)
+    )
+
+    np.testing.assert_array_equal(combined, expected)
+
+
 def test_disabled_morphology_preserves_pixels_and_returns_owned_mask() -> None:
     mask = np.array([[0, 255], [255, 0]], dtype=np.uint8)
 

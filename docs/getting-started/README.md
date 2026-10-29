@@ -29,7 +29,7 @@ vật thể; chế độ **Pixel** một điểm vẫn hoạt động như cũ.
 
 ## 3. Làm sạch nếu cần
 
-Mở tab **Refine Mask** và chỉ bật morphology khi mask đã tương đối đúng:
+Mở tab **Refine & Separate** và chỉ bật morphology khi mask đã tương đối đúng:
 
 - có nhiều chấm trắng nhỏ → thử **Opening**;
 - có lỗ đen nhỏ bên trong vật thể → thử **Closing**.

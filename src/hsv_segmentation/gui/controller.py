@@ -39,6 +39,7 @@ from .grayscale_controls import GrayscaleControls
 from .analysis_panel import AnalysisPanel
 from .morphology_controls import MorphologyControls
 from .threshold_controls import ThresholdControls
+from .watershed_controls import WatershedControls
 
 
 class ApplicationController:
@@ -79,6 +80,11 @@ class ApplicationController:
             self.window.refine_controls_tab,
             initial=self.session.morphology,
             on_change=self._on_morphology,
+        )
+        self.watershed_controls = WatershedControls(
+            self.window.refine_controls_tab,
+            initial=self.session.watershed_settings,
+            on_change=self._on_watershed,
         )
         self.analysis_panel = AnalysisPanel(
             self.window.analysis_controls_tab,
@@ -141,6 +147,7 @@ class ApplicationController:
         self._refresh_export_controls()
         self.window.show_status("Loading and processing image…")
         self.morphology_controls.set_enabled(False)
+        self.watershed_controls.set_enabled(False)
         self.worker.submit_image(
             path, self.session.thresholds, revision, self.session.morphology,
             self.session.analysis_settings, self.session.watershed_settings,
@@ -169,6 +176,7 @@ class ApplicationController:
         self.window.set_loading(True)
         self.controls.set_enabled(False)
         self.morphology_controls.set_enabled(False)
+        self.watershed_controls.set_enabled(False)
         self._export_snapshot_valid = False
         self._refresh_export_controls()
         self.window.show_status("Opening video and decoding its first frame…")
@@ -279,7 +287,15 @@ class ApplicationController:
         self._export_snapshot_valid = False
         self._refresh_export_controls()
         self.window.mark_selection_pending()
-        self.window.show_status("Morphology changed — result pending…")
+        if morphology.enabled:
+            operation = morphology.operation.replace("_", " → ").title()
+            message = (
+                f"Morphology {operation}, {morphology.kernel_size}×"
+                f"{morphology.kernel_size} — result pending…"
+            )
+        else:
+            message = "Morphology disabled — result pending…"
+        self.window.show_status(message)
         self.worker.submit(request)
 
     def _on_segmentation_mode(self, mode: SegmentationMode) -> None:
@@ -327,20 +343,29 @@ class ApplicationController:
         )
 
     def _on_analysis_settings(
-        self, analysis: AnalysisSettings, watershed: WatershedSettings, target: str
+        self,
+        analysis: AnalysisSettings,
+        target: str,
     ) -> None:
         self.session.accept_analysis(analysis)
-        self.session.accept_watershed(watershed)
         self.session.set_evaluation_target(target)
+        self._submit_analysis_change("Analysis settings changed — result pending…")
+
+    def _on_watershed(self, watershed: WatershedSettings) -> None:
+        self.session.accept_watershed(watershed)
+        self.analysis_panel.set_separation_active(watershed.enabled)
+        self._submit_analysis_change("Watershed settings changed — result pending…")
+
+    def _submit_analysis_change(self, message: str) -> None:
         source = self.session.source
         if source is None:
-            self.window.show_status("Analysis settings ready — open an image or video.")
+            self.window.show_status("Settings ready — open an image or video.")
             return
         revision = self._next_revision(invalidate_video=True)
         self._export_snapshot_valid = False
         self._refresh_export_controls()
         self.window.mark_selection_pending()
-        self.window.show_status("Analysis settings changed — result pending…")
+        self.window.show_status(message)
         self.worker.submit(self._request(source, self.session.thresholds, revision))
 
     def choose_ground_truth(self, threshold: int = 0) -> None:
@@ -698,9 +723,11 @@ class ApplicationController:
         self.window.show_result(result)
         self.grayscale_controls.show_result(result)
         self.analysis_panel.show_result(result)
+        self.watershed_controls.show_result(result)
         self.window.set_loading(False)
         self.controls.set_enabled(True)
         self.morphology_controls.set_enabled(True)
+        self.watershed_controls.set_enabled(True)
         self.window.set_sampling_available(True)
         self.window.update_video_controls(self.playback.state.value)
         self._refresh_export_controls()
@@ -712,7 +739,9 @@ class ApplicationController:
     def _current_result_message(result: SegmentationResult) -> str:
         morphology = "Morphology off"
         if result.morphology.enabled:
-            operation = result.morphology.operation.replace("_", " + ").title()
+            operation = result.morphology.operation.replace("_", " ").title()
+            if result.morphology.operation == "opening_closing":
+                operation = "Opening → Closing"
             morphology = (
                 f"{operation}, {result.morphology.kernel_size}×"
                 f"{result.morphology.kernel_size} kernel"
@@ -783,6 +812,7 @@ class ApplicationController:
         self.window.set_loading(False)
         self.controls.set_enabled(True)
         self.morphology_controls.set_enabled(True)
+        self.watershed_controls.set_enabled(True)
         self.window.set_sampling_available(self.session.result is not None)
         if completion.kind in {"image", "video_open"} and self.session.result is not None:
             self._export_snapshot_valid = True
@@ -807,6 +837,8 @@ class ApplicationController:
             self.session.commit_candidate(payload)
             self.controls.set_thresholds(payload.thresholds)
             self.morphology_controls.set_settings(payload.morphology)
+            self.watershed_controls.set_settings(payload.watershed_settings)
+            self.analysis_panel.set_separation_active(payload.watershed_settings.enabled)
             return payload
         if completion.kind == "video_open":
             if not isinstance(payload, VideoCandidate):
@@ -814,6 +846,10 @@ class ApplicationController:
             self.playback.commit_open(payload)
             self.controls.set_thresholds(payload.result.thresholds)
             self.morphology_controls.set_settings(payload.result.morphology)
+            self.watershed_controls.set_settings(payload.result.watershed_settings)
+            self.analysis_panel.set_separation_active(
+                payload.result.watershed_settings.enabled
+            )
             return payload.result
         if completion.kind == "video_frame":
             if not isinstance(payload, PlaybackAdvance):

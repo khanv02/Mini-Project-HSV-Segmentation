@@ -10,7 +10,7 @@ from .tooltips import ToolTip
 OPERATION_LABELS = {
     "Opening": "opening",
     "Closing": "closing",
-    "Opening + Closing": "opening_closing",
+    "Opening → Closing": "opening_closing",
 }
 OPERATION_NAMES = {value: label for label, value in OPERATION_LABELS.items()}
 
@@ -20,7 +20,7 @@ class MorphologyControls(ttk.Frame):
 
     def __init__(self, master, *, initial=None, on_change=None):
         super().__init__(master)
-        self.pack(fill="x", expand=True)
+        self.pack(side="left", fill="both", expand=True, padx=(0, 8))
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
         self._on_change = on_change
@@ -51,21 +51,27 @@ class MorphologyControls(ttk.Frame):
         self.operation_box.grid(row=2, column=0, sticky="ew", padx=(0, 4))
         self.operation_box.bind("<<ComboboxSelected>>", self._changed)
 
-        ttk.Label(self, text="Kernel", style="Muted.TLabel").grid(
+        ttk.Label(self, text="Square kernel", style="Muted.TLabel").grid(
             row=1, column=1, sticky="w", pady=(6, 2), padx=(4, 0)
         )
         self.kernel_var = tk.StringVar(value=f"{settings.kernel_size}×{settings.kernel_size}")
-        self.kernel_box = ttk.Combobox(
-            self,
-            textvariable=self.kernel_var,
-            values=("3×3", "5×5", "7×7", "9×9"),
-            state="readonly",
-            width=6,
-        )
-        self.kernel_box.grid(row=2, column=1, sticky="ew", padx=(4, 0))
+        kernel_group = ttk.Frame(self)
+        kernel_group.grid(row=2, column=1, sticky="ew", padx=(4, 0))
+        self.kernel_buttons = {}
+        for size in (3, 5, 7, 9):
+            label = f"{size}×{size}"
+            button = ttk.Radiobutton(
+                kernel_group,
+                text=label,
+                value=label,
+                variable=self.kernel_var,
+                command=self._changed,
+            )
+            button.pack(side="left", padx=(0, 5))
+            self.kernel_buttons[size] = button
         self.explanation = ttk.Label(
             self,
-            text="Opening removes small specks; Closing fills small holes.",
+            text="Opening removes specks; Closing fills holes; the combined mode runs in that order.",
         )
         self.explanation.configure(wraplength=270, style="Muted.TLabel")
         self.explanation.grid(
@@ -74,16 +80,16 @@ class MorphologyControls(ttk.Frame):
         self._tooltips = (
             ToolTip(
                 self.enable_button,
-                "Apply optional morphology after HSV thresholding and before segmentation output.",
+                "Refine the current HSV or Grayscale selection mask before analysis and export.",
             ),
             ToolTip(
                 self.operation_box,
                 "Opening removes isolated foreground noise; Closing fills small background gaps.",
             ),
-            ToolTip(
-                self.kernel_box,
-                "Larger kernels clean larger regions but can remove fine object details.",
-            ),
+            *(ToolTip(
+                button,
+                "Apply this square neighborhood once; larger sizes affect larger features.",
+            ) for button in self.kernel_buttons.values()),
         )
         self._refresh_states()
 
@@ -110,7 +116,9 @@ class MorphologyControls(ttk.Frame):
         )
         state = "readonly" if feature_controls_enabled else "disabled"
         self.operation_box.configure(state=state)
-        self.kernel_box.configure(state=state)
+        button_state = "normal" if feature_controls_enabled else "disabled"
+        for button in self.kernel_buttons.values():
+            button.configure(state=button_state)
 
     def set_settings(self, settings: MorphologySettings) -> None:
         self._updating = True
