@@ -60,8 +60,10 @@ def test_worker_keeps_one_active_and_only_latest_pending_request(tmp_path) -> No
         for value in (1, 2, 3)
     ]
     try:
+        assert worker.is_busy is False
         worker.submit(requests[0])
         assert first_started.wait(2)
+        assert worker.is_busy is True
         worker.submit(requests[1])
         worker.submit(requests[2])
         release_first.set()
@@ -75,6 +77,7 @@ def test_worker_keeps_one_active_and_only_latest_pending_request(tmp_path) -> No
         assert [item.request_revision for item in completions] == [1, 3]
         assert completions[-1].result is not None
         assert completions[-1].result.parameter_revision == 3
+        assert worker.is_busy is False
     finally:
         worker.shutdown()
 

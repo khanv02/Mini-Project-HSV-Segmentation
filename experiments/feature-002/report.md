@@ -1,12 +1,12 @@
 # Feature 002 Verification Report
 
-Date: 2026-10-28  
+Completed: 2026-10-29
 Environment: Windows, CPython 3.11.16, Tcl/Tk 8.6, NumPy 2.4.6, OpenCV 4.14.0.94,
 Pillow 12.3.0. All work is offline and uses the existing locked dependency families.
 
 ## Automated outcomes
 
-- Full suite: 283 passed in 23.50 seconds; no skipped tests. One `.pytest_cache` ACL warning is unrelated to
+- Full suite: 283 passed in 24.52 seconds; no skipped tests. One `.pytest_cache` ACL warning is unrelated to
   application behavior.
 - D1: areas 1/4/9 produce raw count 3 and retained areas 4/9 at minimum 4. Connectivity,
   centroids, boxes, contours, empty/holed masks, immutability and stable IDs pass.
@@ -27,20 +27,25 @@ Pillow 12.3.0. All work is offline and uses the existing locked dependency famil
 Each file contains all 100 timings, all heartbeat timings, the input hash, final threshold
 identity, platform, environment, and memory method. `minimum_area_px=512` is recorded for the
 advanced Full-HD stress modes. The HSV output after every edit is compared exactly with fresh
-pure segmentation. The histogram is hidden for this feature-002 responsiveness run; its visible
-layout and prior visible-histogram performance remain covered by feature-001 evidence/tests.
+pure segmentation. For each edit, the benchmark first waits for the 75 ms debounce to submit
+work and for the worker to report busy. It then schedules the heartbeat; the callback records
+whether the worker is still pending, and only confirmed-pending callbacks count toward the
+responsiveness criterion. The histogram is hidden for this feature-002 responsiveness run; its
+visible layout and prior visible-histogram performance remain covered by feature-001 evidence/tests.
 The benchmark window uses the supported 960x640 minimum workspace while processing the complete
 1920x1080 source arrays.
 
 | Mode | <=1 second | Median | p95 | UI heartbeat <=250 ms | Acceptance |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Baseline | 99/100 | 574.32 ms | 698.45 ms | 100/100 | PASS (requires >=95/100) |
-| Analysis | 61/100 | 807.07 ms | 2909.04 ms | 100/100 | PASS responsiveness; no real-time latency guarantee |
-| Watershed | 0/100 | 2957.78 ms | 9821.66 ms | 100/100 | PASS responsiveness; no real-time latency guarantee |
+| Baseline | 99/100 | 757.88 ms | 865.35 ms | 100/100 pending | PASS (requires >=95/100) |
+| Analysis | 13/100 | 1215.96 ms | 1818.21 ms | 100/100 pending | PASS responsiveness; no real-time latency guarantee |
+| Watershed | 0/100 | 3053.43 ms | 4621.72 ms | 100/100 pending | PASS responsiveness; no real-time latency guarantee |
 
 Peak process memory is measured using Windows `GetProcessMemoryInfo` / `PeakWorkingSetSize`,
 which avoids instrumenting Python allocations inside the timed region. See
 `performance-baseline.json`, `performance-analysis.json`, and `performance-watershed.json`.
+Recorded peaks were 395,108,352 bytes (baseline), 411,197,440 bytes (analysis), and
+437,309,440 bytes (Watershed).
 
 ## Requirement matrix
 

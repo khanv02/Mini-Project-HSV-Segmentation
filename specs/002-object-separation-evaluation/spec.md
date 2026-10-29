@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-28
 
-**Status**: Implemented and verified on 2026-10-28; see `docs/verification.md` and
+**Status**: Implemented and verified on 2026-10-29; see `docs/verification.md` and
 `experiments/feature-002/report.md`.
 
 **Input**: Extend the existing desktop application with connected components and contours,

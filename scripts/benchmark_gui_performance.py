@@ -109,6 +109,7 @@ def run(input_path: Path, output_path: Path, mode: str = "baseline") -> dict[str
     controller = ApplicationController(root)
     timings_ms: list[float] = []
     heartbeat_ms: list[float] = []
+    heartbeat_during_pending: list[bool] = []
     benchmark_min_area = 512
     try:
         controller.open_image_path(str(input_path))
@@ -133,23 +134,43 @@ def run(input_path: Path, output_path: Path, mode: str = "baseline") -> dict[str
             for name in THRESHOLD_FIELDS[:-1]:
                 controller.controls.fields[name].set(str(values[name]))
             started = perf_counter()
-            heartbeat = []
-            root.after(0, lambda begun=started: heartbeat.append((perf_counter() - begun) * 1000))
             final_name = THRESHOLD_FIELDS[-1]
             controller.controls.fields[final_name].set(str(values[final_name]))
 
-            pump_until(
-                root,
-                lambda expected=values: (
-                    controller.session.result is not None
-                    and controller.session.result.thresholds.as_dict() == expected
-                    and all(view.source_array is not None for view in controller.window.views)
-                ),
-                30.0,
-            )
+            # The 75 ms control debounce must submit real worker work before the
+            # responsiveness sample begins. A callback that runs after the worker
+            # has finished is retained for transparency but is not a pending sample.
+            pump_until(root, lambda: controller.worker.is_busy, 5.0)
+            heartbeat_started = perf_counter()
+            heartbeat: dict[str, float | bool] = {}
+
+            def record_heartbeat(begun=heartbeat_started) -> None:
+                heartbeat["delay_ms"] = (perf_counter() - begun) * 1000.0
+                heartbeat["during_pending"] = controller.worker.is_busy
+
+            root.after(0, record_heartbeat)
+
+            try:
+                pump_until(
+                    root,
+                    lambda expected=values: (
+                        controller.session.result is not None
+                        and controller.session.result.thresholds.as_dict() == expected
+                        and all(view.has_source for view in controller.window.views)
+                    ),
+                    30.0,
+                )
+            except TimeoutError as error:
+                current = controller.session.result
+                current_values = None if current is None else current.thresholds.as_dict()
+                raise TimeoutError(
+                    f"{error}; edit={index + 1}; current={current_values}; "
+                    f"status={controller.window.status_var.get()}"
+                ) from error
             elapsed_ms = (perf_counter() - started) * 1000.0
             timings_ms.append(elapsed_ms)
-            heartbeat_ms.append(heartbeat[0] if heartbeat else elapsed_ms)
+            heartbeat_ms.append(float(heartbeat.get("delay_ms", elapsed_ms)))
+            heartbeat_during_pending.append(bool(heartbeat.get("during_pending", False)))
 
             result = controller.session.result
             assert result is not None
@@ -166,6 +187,15 @@ def run(input_path: Path, output_path: Path, mode: str = "baseline") -> dict[str
         controller.close()
 
     within_one_second = sum(value <= 1000.0 for value in timings_ms)
+    pending_heartbeat_ms = [
+        value for value, pending in zip(heartbeat_ms, heartbeat_during_pending) if pending
+    ]
+    heartbeat_pending_samples = len(pending_heartbeat_ms)
+    heartbeat_within_limit = sum(value <= 250.0 for value in pending_heartbeat_ms)
+    heartbeat_criterion_met = (
+        heartbeat_pending_samples >= 95 and heartbeat_within_limit >= 95
+    )
+    latency_criterion_met = within_one_second >= 95 if mode == "baseline" else None
     ordered = sorted(timings_ms)
     result_data: dict[str, object] = {
         "schema_version": 1,
@@ -181,23 +211,30 @@ def run(input_path: Path, output_path: Path, mode: str = "baseline") -> dict[str
         "update_count": 100,
         "analysis_min_area_px": benchmark_min_area if mode != "baseline" else None,
         "within_one_second": within_one_second,
-        "criterion_met": within_one_second >= 95,
+        "latency_criterion_met": latency_criterion_met,
+        "criterion_met": (
+            bool(latency_criterion_met) if mode == "baseline" else heartbeat_criterion_met
+        ),
         "minimum_ms": min(timings_ms),
         "median_ms": ordered[len(ordered) // 2],
         "p95_ms": ordered[94],
         "maximum_ms": max(timings_ms),
-        "heartbeat_within_250_ms": sum(value <= 250.0 for value in heartbeat_ms),
-        "heartbeat_criterion_met": sum(value <= 250.0 for value in heartbeat_ms) >= 95,
+        "heartbeat_scheduled_after_worker_start": True,
+        "heartbeat_pending_samples": heartbeat_pending_samples,
+        "heartbeat_within_250_ms": heartbeat_within_limit,
+        "heartbeat_criterion_met": heartbeat_criterion_met,
         "peak_process_bytes": peak_bytes,
         "peak_memory_method": "Windows GetProcessMemoryInfo PeakWorkingSetSize",
         "heartbeat_ms": heartbeat_ms,
+        "heartbeat_during_pending": heartbeat_during_pending,
         "timings_ms": timings_ms,
         "final_thresholds": threshold_values(99),
         "final_output_exact": True,
         "measurement_scope": (
             "final Tk variable edit, 75 ms debounce, controller submission, serialized worker "
             "processing with cached source histogram, 25 ms polling, three ImageView updates, "
-            "960x640 window, histogram hidden, and Tk idle rendering"
+            "heartbeat scheduled only after worker busy state, 960x640 window, histogram hidden, "
+            "and Tk idle rendering"
         ),
     }
     output_path.write_text(json.dumps(result_data, indent=2) + "\n", encoding="utf-8")

@@ -4,8 +4,8 @@
 [![Tkinter](https://img.shields.io/badge/GUI-Tkinter%20%2F%20ttk-2563EB)](https://docs.python.org/3/library/tkinter.html)
 [![NumPy](https://img.shields.io/badge/NumPy-2.x-013243?logo=numpy&logoColor=white)](https://numpy.org/)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.x-5C3EE8?logo=opencv&logoColor=white)](https://opencv.org/)
-[![Tests](https://img.shields.io/badge/tests-248%20passed-16A34A)](docs/verification.md)
-[![Status](https://img.shields.io/badge/status-62%2F64%20tasks-F59E0B)](specs/001-hsv-color-segmentation/tasks.md)
+[![Tests](https://img.shields.io/badge/tests-283%20passed-16A34A)](docs/verification.md)
+[![Feature 002](https://img.shields.io/badge/feature%20002-30%2F30%20tasks-16A34A)](specs/002-object-separation-evaluation/tasks.md)
 
 Ứng dụng desktop độc lập dùng để học tập, trình diễn và đánh giá phân đoạn màu bằng
 ngưỡng HSV. Toàn bộ workflow hoạt động offline: mở ảnh hoặc video, điều chỉnh sáu ngưỡng,
@@ -150,10 +150,10 @@ uv run --locked --extra test pytest tests/integration -q
 
 Checkpoint gần nhất:
 
-- **248/248** test tự động đạt;
-- GUI Full HD với histogram đạt **99/100** cập nhật trong một giây;
-- **62/64** task hoàn tất;
-- T049 và T050 vẫn mở vì cần nghiệm thu độc lập với người tham gia thật.
+- **283/283** test tự động đạt trên Python 3.11/Tk 8.6;
+- baseline GUI Full HD feature 002 đạt **99/100** cập nhật trong một giây;
+- **30/30** task của feature 002 hoàn tất;
+- T049 và T050 của feature 001 vẫn mở vì cần nghiệm thu độc lập với người tham gia thật.
 
 Chi tiết lệnh, môi trường và kết quả nằm trong
 [docs/verification.md](docs/verification.md).

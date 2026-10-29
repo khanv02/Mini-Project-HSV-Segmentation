@@ -2,7 +2,9 @@
 
 **Input**: Design artifacts in `specs/002-object-separation-evaluation/`.
 **Prerequisites**: spec.md, plan.md, research.md, data-model.md and contracts/.
-**Tests**: Mandatory per user request and constitution. Tasks remain unimplemented.
+**Tests**: Mandatory per user request and constitution. All tasks were implemented and verified
+on 2026-10-29; evidence is recorded in `docs/verification.md` and
+`experiments/feature-002/report.md`.
 **Organization**: Story slices with tests first, then algorithms, application and GUI integration.
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -13,11 +15,11 @@ New files are proposals identified in plan.md. Keep all original feature-001 tas
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Capture the baseline environment and regression outcome in `docs/verification.md`.
+- [X] T001 Capture the baseline environment and regression outcome in `docs/verification.md`.
   **Depends**: none. **Acceptance**: actual interpreter/dependency versions, full-suite outcome
   and unchanged baseline outputs recorded; old evidence preserved. **Verify**: run
   `uv run --locked --extra test pytest -q`; record failures/skips honestly before implementation.
-- [ ] T002 Create analytical fixture builders in `tests/fixtures/analysis_cases.py`.
+- [X] T002 Create analytical fixture builders in `tests/fixtures/analysis_cases.py`.
   **Depends**: T001. **Acceptance**: rectangles/noise, diagonal pixels, holes, border/thin/full/
   empty masks, touching disks and partial-overlap truth have hand-derived counts/geometry;
   deterministic inputs and two-seed reference settings documented. **Verify**: inspect generated
@@ -25,7 +27,7 @@ New files are proposals identified in plan.md. Keep all original feature-001 tas
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T003 Add settings/result/truth models to `src/hsv_segmentation/models.py` and validation
+- [X] T003 Add settings/result/truth models to `src/hsv_segmentation/models.py` and validation
   cases to `tests/unit/test_models.py`.
   **Depends**: T002. **Acceptance**: data-model.md constraints enforced: connectivity integer
   in {4,8}; min_area_px nonnegative integer; seed_fraction finite real strictly between 0 and 1;
@@ -33,7 +35,7 @@ New files are proposals identified in plan.md. Keep all original feature-001 tas
   0..254; reject boolean numeric settings. Preserve positional field order/default behavior;
   new arrays immutable, count/shape invariants checked. **Verify**: model tests plus old constructor
   and mutation cases; new model tests fail before implementation then pass.
-- [ ] T004 Consolidate orchestration without adding algorithms in
+- [X] T004 Consolidate orchestration without adding algorithms in
   `src/hsv_segmentation/application/processing_worker.py` and `application/session.py`.
   **Depends**: T003. **Acceptance**: cached processor delegates to process_source with cached
   HSV/histogram; current baseline exact pixels/cache reuse preserved; no circular imports.
@@ -45,29 +47,29 @@ New files are proposals identified in plan.md. Keep all original feature-001 tas
 **Goal**: Complete component analysis and filtering as an independently useful GUI slice.
 **Independent Test**: D1 has exact region statistics/overlays, including empty and noise cases.
 
-- [ ] T005 [P] [US1] Write analytical component/contour tests in `tests/unit/test_object_analysis.py`.
+- [X] T005 [P] [US1] Write analytical component/contour tests in `tests/unit/test_object_analysis.py`.
   **Depends**: T004. **Acceptance**: 4/8 connectivity, area equality, holes, thin/single pixels,
   bounds, centroids, external contours, stable IDs, immutability and invalid input covered.
   **Verify**: targeted pytest initially fails because proposed algorithm is absent.
-- [ ] T006 [US1] Implement components/contours in `src/hsv_segmentation/processing/object_analysis.py`.
+- [X] T006 [US1] Implement components/contours in `src/hsv_segmentation/processing/object_analysis.py`.
   **Depends**: T005. **Acceptance**: analyze_components/analyze_labels meet processing contract;
   background excluded; exact pixel statistics; contours associated with labels; no Tk/I/O.
   **Verify**: T005 tests pass; include holed region whose polygon area differs from pixel area.
-- [ ] T007 [US1] Implement minimum-area filtering in `src/hsv_segmentation/processing/object_analysis.py`.
+- [X] T007 [US1] Implement minimum-area filtering in `src/hsv_segmentation/processing/object_analysis.py`.
   **Depends**: T006. **Acceptance**: area >= minimum retained; raw/retained counts distinct;
   stable filtered labels/prediction; baseline unchanged; high minimum produces empty result.
   **Verify**: 1/4/9-pixel fixture with minimum 4 retains exactly 4 and 9; minimum 0 retains all.
-- [ ] T008 [P] [US1] Add pure contour/box composition to `src/hsv_segmentation/processing/visualization.py`
+- [X] T008 [P] [US1] Add pure contour/box composition to `src/hsv_segmentation/processing/visualization.py`
   and tests to `tests/unit/test_visualization.py`.
   **Depends**: T007. **Acceptance**: independently toggled annotations on source copy; correct
   source coordinates; original arrays unchanged. **Verify**: exact known box pixels and
   immutability tests with single-pixel/border cases.
-- [ ] T009 [US1] Integrate analysis settings/revisions into `src/hsv_segmentation/application/session.py`,
+- [X] T009 [US1] Integrate analysis settings/revisions into `src/hsv_segmentation/application/session.py`,
   `application/processing_worker.py`, `application/playback.py` and `gui/controller.py`.
   **Depends**: T007. **Acceptance**: new settings reach image open, threshold edits, video open,
   next, paused reprocess and restart; synchronous/cached equality; stale settings results rejected.
   **Verify**: add/run delayed-worker and image/video cases in `tests/integration/test_analysis_session.py`.
-- [ ] T010 [US1] Add basic analysis controls/table in `src/hsv_segmentation/gui/analysis_panel.py`
+- [X] T010 [US1] Add basic analysis controls/table in `src/hsv_segmentation/gui/analysis_panel.py`
   and integrate `gui/main_window.py`/`gui/controller.py`.
   **Depends**: T008,T009. **Acceptance**: enabled state, connectivity, minimum area, raw/retained
   counts, region statistics, contour/box toggles and semantic disclaimer; default-disabled;
@@ -81,26 +83,26 @@ New files are proposals identified in plan.md. Keep all original feature-001 tas
 **Goal**: Optional separation with explicit status and baseline comparison.
 **Independent Test**: D2 yields two reference labels and graceful inadequate-marker behavior.
 
-- [ ] T011 [P] [US2] Write marker/separation tests in `tests/unit/test_watershed.py`.
+- [X] T011 [P] [US2] Write marker/separation tests in `tests/unit/test_watershed.py`.
   **Depends**: T004. **Acceptance**: known two seeds, empty/full/tiny/no-background/one-seed,
   parameter validation, domain clipping, ridge exclusion and source immutability covered.
   **Verify**: tests fail before implementing separation; reference fixture demonstrably has two seeds.
-- [ ] T012 [US2] Implement distance transform/markers in `src/hsv_segmentation/processing/watershed.py`.
+- [X] T012 [US2] Implement distance transform/markers in `src/hsv_segmentation/processing/watershed.py`.
   **Depends**: T011. **Acceptance**: explicit L2/5 distance, zero-padding/cropping, strict seed
   fraction, configured expansion; marker values 0/1/2+ and >=2 foreground-seed guard.
   **Verify**: marker tests inspect shapes, positive seed count and expected not-applied reasons.
-- [ ] T013 [US2] Complete constrained separation and label statistics in
+- [X] T013 [US2] Complete constrained separation and label statistics in
   `src/hsv_segmentation/processing/watershed.py`.
   **Depends**: T012,T007. **Acceptance**: BGR/markers copied; watershed ridges separated; results
   constrained to baseline; analyze_labels filters after splitting without reconnecting regions;
   applied/empty/not_applied contract honored. **Verify**: full T011 tests, two distinct labels,
   binary union/ridge invariants and deterministic repeated runs in same environment.
-- [ ] T014 [US2] Wire Watershed through `src/hsv_segmentation/application/session.py`,
+- [X] T014 [US2] Wire Watershed through `src/hsv_segmentation/application/session.py`,
   `application/processing_worker.py`, `application/playback.py` and `gui/controller.py`.
   **Depends**: T013,T009. **Acceptance**: every image/video path has matching separation settings;
   invalid/late settings do not commit; disabling restores exact baseline output.
   **Verify**: extend `tests/integration/test_analysis_session.py` with delayed toggles/frame changes.
-- [ ] T015 [US2] Add Watershed controls/comparison to `src/hsv_segmentation/gui/analysis_panel.py`,
+- [X] T015 [US2] Add Watershed controls/comparison to `src/hsv_segmentation/gui/analysis_panel.py`,
   `gui/main_window.py` and `gui/controller.py`.
   **Depends**: T014,T010. **Acceptance**: switch, valid marker settings, status/reason, labeled
   boundaries/regions and baseline comparison; unavailable target never silently falls back.
@@ -111,31 +113,31 @@ New files are proposals identified in plan.md. Keep all original feature-001 tas
 **Goal**: Evaluate named binary predictions against explicitly bound ground truth.
 **Independent Test**: D3 exact partial/empty cases work using baseline without Watershed.
 
-- [ ] T016 [P] [US3] Write overlap/empty-case tests in `tests/unit/test_evaluation.py`.
+- [X] T016 [P] [US3] Write overlap/empty-case tests in `tests/unit/test_evaluation.py`.
   **Depends**: T004. **Acceptance**: identical/disjoint/partial/both-empty/one-empty, TP/FP/FN/TN,
   shape/dtype/binary validation, large denominator safety and immutability covered.
   **Verify**: fail first, including IoU=0.5 and Dice=2/3 with tolerance 1e-12.
-- [ ] T017 [US3] Implement pure scores in `src/hsv_segmentation/processing/evaluation.py`.
+- [X] T017 [US3] Implement pure scores in `src/hsv_segmentation/processing/evaluation.py`.
   **Depends**: T016. **Acceptance**: processing contract, finite [0,1] scores, explicit empty
   statuses and Python-integer denominator counts; no GUI/I/O. **Verify**: all T016 tests pass.
-- [ ] T018 [P] [US3] Implement truth adapter and decoding tests in
+- [X] T018 [P] [US3] Implement truth adapter and decoding tests in
   `src/hsv_segmentation/io/ground_truth.py` and `tests/integration/test_ground_truth.py`.
   **Depends**: T003. **Acceptance**: PNG/BMP 1/L/LA/palette/equal-RGB/RGBA rules; strict > threshold;
   original/pixel hashes; no rotation/resize; reject JPEG, unequal channels, unsupported depths,
   mismatches and corruption. **Verify**: generated file matrix at threshold 0 and 254, boundary
   values, alpha disclosure and typed errors; no changes to generic source-image loader behavior.
-- [ ] T019 [P] [US3] Add TP/FP/FN visualization in `src/hsv_segmentation/processing/visualization.py`
+- [X] T019 [P] [US3] Add TP/FP/FN visualization in `src/hsv_segmentation/processing/visualization.py`
   with `tests/unit/test_visualization.py` coverage.
   **Depends**: T017,T008. **Acceptance**: distinct legend mapping, exact region classification,
   source preserved; composition skipped when hidden. **Verify**: known confusion fixture counts/colors.
-- [ ] T020 [US3] Add truth/target state and revision handling in
+- [X] T020 [US3] Add truth/target state and revision handling in
   `src/hsv_segmentation/application/session.py`, `application/processing_worker.py`,
   `application/playback.py` and `gui/controller.py`.
   **Depends**: T017,T018,T014. **Acceptance**: pause/load binding, clear/load revision, target
   selection; retain truth for same-frame edits; clear on advance/restart/source replacement;
   unavailable/not-applied targets yield no metric. **Verify**: delayed-load/clear/frame/threshold
   races in `tests/integration/test_analysis_session.py`; cached/uncached evaluation agreement.
-- [ ] T021 [US3] Integrate evaluation UI in `src/hsv_segmentation/gui/analysis_panel.py`,
+- [X] T021 [US3] Integrate evaluation UI in `src/hsv_segmentation/gui/analysis_panel.py`,
   `gui/main_window.py` and `gui/controller.py`.
   **Depends**: T019,T020,T015. **Acceptance**: Load/Clear Truth, conversion threshold, target,
   provenance, pending/empty states, IoU/Dice and confusion legend; coverage never called accuracy.
@@ -146,22 +148,22 @@ New files are proposals identified in plan.md. Keep all original feature-001 tas
 **Goal**: Publish/replay derived evidence without changing legacy records.
 **Independent Test**: Baseline schema 1 and extended schema 2 reconstruct exact saved predictions.
 
-- [ ] T022 [P] [US4] Write schema/publication tests in `tests/integration/test_extended_experiments.py`.
+- [X] T022 [P] [US4] Write schema/publication tests in `tests/integration/test_extended_experiments.py`.
   **Depends**: T003. **Acceptance**: schema-1 compatibility; schema-2 optional status/evaluation,
   label and normalized-truth artifacts/hashes; write-failure and captured-frame checks.
   **Verify**: tests fail before extending publisher, using injected failures and delayed writes.
-- [ ] T023 [US4] Extend publisher in `src/hsv_segmentation/io/experiments.py`.
+- [X] T023 [US4] Extend publisher in `src/hsv_segmentation/io/experiments.py`.
   **Depends**: T022,T020. **Acceptance**: exact experiment-record contract; baseline keys/artifacts
   unchanged; optional schema 2, int32 label hash, no-pickle label file; artifacts before atomic
   record publication; partial failure never reports complete run. **Verify**: T022 tests and
   existing `tests/integration/test_experiment_records.py`.
-- [ ] T024 [US4] Integrate immutable recording snapshot and controls in
+- [X] T024 [US4] Integrate immutable recording snapshot and controls in
   `src/hsv_segmentation/gui/controller.py` and `gui/experiment_panel.py`.
   **Depends**: T023,T021. **Acceptance**: pending/invalid target blocked; captured source/frame/
   settings/truth cannot drift; duplicate writes disabled; success/failure path actionable.
   **Verify**: delayed publication, source replacement and failed-artifact UI cases in
   `tests/integration/test_extended_experiments.py` and existing export-session tests.
-- [ ] T025 [US4] Add versioned replay support to `scripts/generate_experiment_evidence.py` and
+- [X] T025 [US4] Add versioned replay support to `scripts/generate_experiment_evidence.py` and
   `tests/integration/test_experiment_reproduction.py`.
   **Depends**: T023. **Acceptance**: versions 1/2 dispatched, unknown version rejected; verify
   source/frame/environment/artifact hashes; exact derived counts/labels and score tolerance
@@ -170,30 +172,30 @@ New files are proposals identified in plan.md. Keep all original feature-001 tas
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T026 Harden integrated failure/layout behavior in `tests/integration/test_analysis_ui.py`,
+- [X] T026 Harden integrated failure/layout behavior in `tests/integration/test_analysis_ui.py`,
   `test_analysis_session.py` and `test_error_recovery.py`, fixing affected existing modules.
   **Depends**: T024,T025. **Acceptance**: all four stories' image/video/stale/close/resource
   cases pass; at 960x640 and large desktop three previews >=160x120, histogram shown/hidden;
   keyboard/sampling/presets remain usable. **Verify**: focused integration suite plus walkthrough;
   no skipped GUI check is recorded as passed.
-- [ ] T027 [P] Extend performance measurement in `scripts/benchmark_gui_performance.py`.
+- [X] T027 [P] Extend performance measurement in `scripts/benchmark_gui_performance.py`.
   **Depends**: T026. **Acceptance**: separate baseline/analysis/Watershed modes over 100 edits;
   baseline >=95/100 <=1s; >=95/100 UI heartbeats <=250ms while pending; report median/p95,
   process peak-memory measurement method/environment and exact current-result identity.
   **Verify**: execute on documented computer, store new files under `experiments/feature-002/`;
   never overwrite baseline evidence; investigate unmet acceptance before completion.
-- [ ] T028 [P] Update feature explanations and demo procedure in `README.md`, `docs/algorithm.md`,
+- [X] T028 [P] Update feature explanations and demo procedure in `README.md`, `docs/algorithm.md`,
   `docs/acceptance.md` and `docs/implementation-stages.md`.
   **Depends**: T026. **Acceptance**: D1-D5, all settings/units/defaults, truth format/empty rules,
   schema compatibility, pixel-area vs contour-area, Watershed limitations and coverage wording
   documented; examples match delivered GUI. **Verify**: execute quickstart.md walkthrough against docs.
-- [ ] T029 Record final requirement/evidence matrix in `docs/verification.md` and
+- [X] T029 Record final requirement/evidence matrix in `docs/verification.md` and
   `experiments/feature-002/report.md`.
   **Depends**: T027,T028. **Acceptance**: every FR/NFR/SC has actual automated/manual outcome,
   command, environment and evidence; D1-D5 evidence and one extended run per story retained;
   legacy pending human acceptance remains explicit. **Verify**: full pytest suite, artifact/replay
   checks, performance results and matrix audit; no inference of feature completion from checklist.
-- [ ] T030 Review completion against constitution and design in
+- [X] T030 Review completion against constitution and design in
   `specs/002-object-separation-evaluation/tasks.md`.
   **Depends**: T029. **Acceptance**: all required checks pass, no unrecorded exceptions/new
   dependencies; application architecture preserved; check boxes only with linked evidence.

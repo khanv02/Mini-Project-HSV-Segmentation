@@ -101,6 +101,11 @@ class ImageView(ttk.LabelFrame):
         return None if self._source is None else self._source.copy()
 
     @property
+    def has_source(self) -> bool:
+        """Report preview availability without copying source-resolution pixels."""
+        return self._source is not None
+
+    @property
     def zoom_factor(self) -> float:
         """Zoom relative to the current fit-to-window scale."""
         return self._zoom_factor

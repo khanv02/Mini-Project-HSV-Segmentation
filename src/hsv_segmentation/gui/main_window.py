@@ -428,7 +428,12 @@ class MainWindow:
                 self.frame_label.pack(side="right", padx=(SPACING["sm"], 0))
             return
 
-        focus = self.root.focus_get()
+        try:
+            focus = self.root.focus_get()
+        except (KeyError, tk.TclError):
+            # ttk combobox popdown windows can disappear between Tcl lookup and
+            # Tkinter's widget-name resolution during rapid background updates.
+            focus = None
         if focus is not None and str(focus).startswith(str(self.video_controls)):
             self.open_image_button.focus_set()
         self.video_controls.pack_forget()

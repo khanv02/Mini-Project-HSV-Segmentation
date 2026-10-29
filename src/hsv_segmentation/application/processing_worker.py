@@ -93,6 +93,16 @@ class ProcessingWorker:
         self._completions: SimpleQueue[WorkerCompletion] = SimpleQueue()
         self._closing = False
 
+    @property
+    def is_busy(self) -> bool:
+        """Return whether active or queued work is still pending completion."""
+        with self._lock:
+            return (
+                self._active is not None
+                or self._pending_required is not None
+                or self._pending is not None
+            )
+
     def submit(self, request: ProcessingRequest) -> None:
         item = _WorkItem(
             "processing", request.request_revision,

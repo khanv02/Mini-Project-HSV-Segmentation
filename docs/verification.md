@@ -539,13 +539,15 @@ Recorded commands:
 .\.tools\venv311-feature002\Scripts\python.exe scripts\benchmark_gui_performance.py --mode watershed --output experiments\feature-002\performance-watershed.json
 ```
 
-The final automated suite reports **283 passed in 23.50 seconds** with the cache provider
+The final automated rerun reports **283 passed in 24.52 seconds** with the cache provider
 disabled. A standard run emits one non-test warning because the pre-existing `.pytest_cache`
 ACL on this machine is not writable; disabling the cache removes the warning and does not change
 test results. The three-mode Full-HD benchmark uses 100 complete
-edits per mode and Windows Peak Working Set measurement. Baseline achieved **99/100 <=1 s** and
-all modes achieved **100/100 UI heartbeats <=250 ms**. Analysis and Watershed have no real-time
-latency promise; their measured median/p95 values are retained in the feature report and JSON.
+edits per mode and Windows Peak Working Set measurement. Baseline achieved **99/100 <=1 s**.
+For every mode, the benchmark waited until the worker reported busy, then scheduled a heartbeat;
+all **100/100 callbacks executed within 250 ms while the worker was still pending**. Analysis and
+Watershed have no real-time latency promise; their measured median/p95 values are retained in the
+feature report and JSON.
 
 Automated D1-D5 demonstrations and exact replay pass. No new independent human participant was
 used; feature-001 T049/T050 therefore remain pending and are not inferred complete from this work.
