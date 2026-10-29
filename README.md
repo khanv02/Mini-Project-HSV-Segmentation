@@ -50,38 +50,82 @@ GitHub render sơ đồ này trực tiếp bằng Mermaid:
 ```mermaid
 flowchart LR
     media["Ảnh / video cục bộ"] --> decode["Giải mã<br/>Pillow / OpenCV"]
-    decode --> session["Session & playback<br/>Revision coordination"]
+    decode --> session["Phiên làm việc & phát video<br/>Kiểm soát phiên bản kết quả"]
 
-    subgraph processing["Pure processing · NumPy / OpenCV"]
+    subgraph processing["Khối xử lý ảnh · NumPy / OpenCV"]
         direction LR
-        rgb["RGB frame"] --> hsv["RGB → HSV"]
+        rgb["Khung hình RGB"] --> hsv["Đổi RGB → HSV"]
         hsv --> threshold["Ngưỡng H / S / V"]
-        threshold --> raw["Raw binary mask"]
+        threshold --> raw["Mask nhị phân ban đầu"]
         raw --> morphology["Morphology<br/>tùy chọn"]
-        morphology --> baseline["Baseline mask"]
-        baseline --> components["Connected components<br/>lọc diện tích"]
+        morphology --> baseline["Mask cơ sở"]
+        baseline --> components["Vùng liên thông<br/>lọc theo diện tích"]
         baseline --> watershed["Watershed<br/>tách vùng chạm nhau"]
-        baseline --> target{"Evaluation target"}
+        baseline --> target{"Chọn đầu ra<br/>để đánh giá"}
         components -. tùy chọn .-> target
         watershed -. tùy chọn .-> target
     end
 
     session --> rgb
-    truth["Ground-truth mask<br/>PNG / BMP"] --> evaluation["IoU · Dice<br/>TP / FP / FN"]
+    truth["Mask chuẩn (ground truth)<br/>PNG / BMP"] --> evaluation["Đo độ trùng khớp<br/>IoU · Dice · TP / FP / FN"]
     target --> evaluation
 
-    baseline --> workspace["Tkinter workspace<br/>Original · Mask · Result"]
+    baseline --> workspace["Giao diện Tkinter<br/>Ảnh gốc · Mask · Kết quả"]
     components --> workspace
     watershed --> workspace
     evaluation --> workspace
 
-    workspace --> export["PNG export"]
-    workspace --> experiment["Experiment record<br/>JSON · PNG · NPY · SHA-256"]
+    workspace --> export["Xuất ảnh PNG"]
+    workspace --> experiment["Lưu hồ sơ thí nghiệm<br/>JSON · PNG · NPY · SHA-256"]
 
 ```
 
-Các nhánh analysis, Watershed và ground-truth evaluation là tùy chọn. `baseline` luôn là
+Các nhánh phân tích vùng, Watershed và đánh giá ground truth là tùy chọn. `baseline` luôn là
 mask HSV sau morphology; target không khả dụng sẽ không âm thầm rơi về baseline.
+
+### Cách đọc pipeline
+
+Pipeline đi từ trái sang phải:
+
+1. **Nạp dữ liệu:** Pillow đọc ảnh; OpenCV đọc video và đưa từng frame về ảnh RGB.
+2. **Quản lý phiên:** ứng dụng nhớ nguồn, frame và lần chỉnh tham số hiện tại. Nếu một tác vụ
+   cũ hoàn thành sau khi bạn đã đổi ngưỡng, kết quả cũ bị loại bỏ thay vì ghi đè giao diện.
+3. **Tạo mask HSV:** frame RGB được đổi sang HSV. Mỗi pixel nằm trong cả ba khoảng H, S và V
+   sẽ thành màu trắng (`255`) trên mask; pixel còn lại thành màu đen (`0`).
+4. **Làm sạch mask:** morphology có thể loại đốm nhỏ hoặc lấp lỗ. Kết quả của bước này là
+   `baseline` — đầu ra chính luôn có, kể cả khi các tính năng nâng cao đang tắt.
+5. **Phân tích tùy chọn:** vùng liên thông dùng để đếm/lọc vùng theo diện tích; Watershed dùng
+   để thử tách các vật thể đang chạm nhau. Hai nhánh này cùng nhận `baseline`, không thay thế
+   thuật toán HSV ban đầu.
+6. **Đánh giá tùy chọn:** chọn một trong ba đầu ra `baseline`, `components` hoặc `watershed`,
+   rồi so sánh với mask chuẩn để tính IoU/Dice và xác định pixel đúng, chọn thừa, bỏ sót.
+7. **Xem và lưu:** giao diện hiển thị ảnh gốc, mask và kết quả; người dùng có thể xuất PNG
+   hoặc lưu toàn bộ cấu hình, metric và hash thành một experiment có thể tái lập.
+
+### Tutorial: tách một vật thể theo màu
+
+Ví dụ cần tách một vật thể màu đỏ khỏi ảnh nền:
+
+1. Nhấn **Open Image…** và chọn ảnh. Kiểm tra ba khung **Original**, **Mask** và **Result**.
+2. Chọn preset **Red** làm điểm bắt đầu. Màu đỏ nằm ở hai đầu vòng Hue nên ứng dụng có thể
+   dùng khoảng vòng qua `0°`, chẳng hạn `350°..10°`.
+3. Chỉnh H để giữ đúng tông đỏ; tăng S để loại vùng xám/trắng; chỉnh V nếu vùng tối hoặc vùng
+   chói đang bị chọn sai. Quan sát Mask cập nhật sau mỗi lần chỉnh.
+4. Nếu mask có nhiều chấm nhiễu, bật **Opening**. Nếu vật thể có lỗ nhỏ bên trong, dùng
+   **Closing**. So sánh trước/sau morphology để tránh làm mất chi tiết thật.
+5. Bật **Object Analysis**, đặt **Minimum area** để bỏ các vùng quá nhỏ. Bảng thống kê sẽ cho
+   biết diện tích, tâm và bounding box của từng vùng còn lại.
+6. Chỉ bật **Watershed** khi hai vật thể chạm nhau cần được tách. Nếu ứng dụng báo
+   `not applied`, mask HSV cơ sở vẫn được giữ nguyên và có thể tiếp tục sử dụng.
+7. Nếu có mask chuẩn, chọn target cần kiểm tra rồi nhấn **Load** trong phần
+   **Ground-truth evaluation**. Mask chuẩn phải là PNG/BMP cùng kích thước với ảnh nguồn.
+8. Đọc IoU/Dice: điểm càng gần `1` thì kết quả càng giống mask chuẩn. Bật **TP/FP/FN** để xem
+   màu xanh lá là vùng đúng, đỏ là vùng chọn thừa và xanh dương là vùng bị bỏ sót.
+9. Khi kết quả đạt yêu cầu, dùng **Save Mask…**, **Save Result…** hoặc
+   **Record Experiment…**. Experiment phù hợp khi cần đưa kết quả vào báo cáo hoặc chạy lại.
+
+Nếu không có ground truth, bạn vẫn có thể quan sát và xuất kết quả, nhưng tỷ lệ
+**Selected pixels** chỉ cho biết mask phủ bao nhiêu phần trăm ảnh — đó không phải độ chính xác.
 
 ## Kiến trúc mã nguồn
 
