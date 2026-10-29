@@ -169,8 +169,9 @@ and metrics, and replay a legacy record without modifying it.
   baseline Full-HD edits MUST retain >=95/100 updates within one second. For analysis/Watershed,
   record median/p95 latency and peak memory over 100 edits; >=95/100 scheduled UI heartbeats
   MUST execute within 250 ms while work is pending. No real-time separation guarantee applies.
-- **NFR-004**: At 960x640 with histogram visible/hidden, retain three previews of at least
-  160x120 drawable pixels and reachable HSV controls. Use collapsible/tabbed extra controls,
+- **NFR-004**: At 1100x720 with histogram visible/hidden, retain four previews—Original,
+  Binary Mask, Segmented Result and Overlay—of at least 160x120 drawable pixels and reachable
+  HSV controls. Use compact tabbed controls,
   visible keyboard focus, units, validation and explicit unavailable states.
 - **NFR-005**: Same source/settings/environment MUST reproduce normalized labels and integer
   counts exactly; metric comparisons use absolute tolerance 1e-12.

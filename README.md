@@ -27,10 +27,18 @@ Sau khi mở ứng dụng:
 
 1. Chọn **Open Image…** hoặc **Open Video…**.
 2. Chỉnh khoảng Hue, Saturation và Value.
-3. Quan sát đồng thời **Original**, **Mask** và **Result**.
+3. Quan sát đồng thời **Original**, **Binary Mask**, **Segmented Result** và **Overlay**.
 4. Dùng **Save Mask…** hoặc **Save Result…** để xuất kết quả.
 
 Nếu đây là lần đầu sử dụng, xem [hướng dẫn từng bước](docs/getting-started/README.md).
+
+## Giao diện
+
+- Bốn preview đồng bộ luôn tách riêng ảnh gốc, mask, kết quả và lớp overlay.
+- Histogram H/S/V hiển thị mặc định bên dưới preview và có thể thu gọn.
+- Các chức năng được gom vào ba tab phía trên: **HSV Thresholds**, **Refine Mask** và
+  **Analyze**, giúp dành toàn bộ chiều rộng cho vùng ảnh.
+- Mỗi preview có Fit, zoom và pan độc lập.
 
 ## Tính năng
 

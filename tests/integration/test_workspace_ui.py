@@ -29,9 +29,13 @@ def test_theme_exposes_semantic_roles_and_primary_style() -> None:
         assert {
             "background", "surface", "text", "muted_text", "border",
             "primary", "on_primary", "focus", "disabled", "error",
+            "success", "warning", "surface_raised",
         } <= COLORS.keys()
+        assert COLORS["background"] == "#090f1c"
+        assert style.lookup("TFrame", "background") == COLORS["surface"]
         assert style.lookup("Primary.TButton", "background") == COLORS["primary"]
         assert style.lookup("Status.TLabel", "foreground") == COLORS["muted_text"]
+        assert style.lookup("Metric.TLabel", "foreground") == COLORS["primary"]
     finally:
         root.destroy()
 
@@ -42,7 +46,7 @@ def test_threshold_controls_group_lower_and_upper_values_by_channel() -> None:
     root.withdraw()
     try:
         controls = ThresholdControls(root)
-        assert controls.layout_orientation == "vertical"
+        assert controls.layout_orientation == "horizontal"
         assert tuple(controls.channel_groups) == ("h", "s", "v")
         assert set(controls.fields) == {
             "lower_h_deg", "upper_h_deg", "lower_s_pct",
@@ -57,12 +61,12 @@ def test_workspace_context_hides_video_controls_until_video_is_active() -> None:
     root = _root(tkinter)
     try:
         window = MainWindow(root)
-        root.update_idletasks()
+        root.update()
         assert window.media_context == "empty"
         assert window.video_controls.winfo_manager() == ""
 
         window.update_video_controls("paused")
-        root.update_idletasks()
+        root.update()
         assert window.media_context == "video"
         assert window.video_controls.winfo_manager() == "pack"
         assert str(window.play_button.cget("state")) == "normal"
@@ -82,20 +86,33 @@ def test_workspace_shortcuts_and_minimum_preview_area() -> None:
     controller = ApplicationController(root)
     try:
         window = controller.window
-        root.geometry("960x640")
+        root.geometry("1100x720")
         window.update_video_controls("paused")
-        window.set_histogram_visible(True)
         root.update()
 
         assert root.bind("<Control-o>")
         assert root.bind("<Control-Shift-O>")
-        assert window.workspace.winfo_width() > window.parameter_section.winfo_width()
+        assert tuple(window.control_sections) == ("hsv", "refine", "analyze")
+        assert len(window.control_notebook.tabs()) == 3
+        assert window.parameter_section.winfo_width() == window.workspace.winfo_width()
         assert all(view.canvas.winfo_width() >= 160 for view in window.views)
         assert all(view.canvas.winfo_height() >= 120 for view in window.views)
         assert controller.controls.winfo_height() >= controller.controls.winfo_reqheight()
+
+        window.control_notebook.select(window.refine_controls_tab)
+        root.update()
         assert (
             controller.morphology_controls.winfo_height()
             >= controller.morphology_controls.winfo_reqheight()
         )
+
+        window.control_notebook.select(window.analysis_controls_tab)
+        root.update()
+        assert not hasattr(controller.analysis_panel, "detail_notebook")
+        assert (
+            controller.analysis_panel.winfo_height()
+            >= controller.analysis_panel.winfo_reqheight()
+        )
+        assert window.histogram_visible is True
     finally:
         controller.close()

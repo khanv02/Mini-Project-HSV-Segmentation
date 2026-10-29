@@ -16,7 +16,7 @@ from .tooltips import ToolTip
 
 
 class MainWindow:
-    """Compose named sections and three synchronized result views."""
+    """Compose compact controls and four synchronized result views."""
 
     def __init__(self, root: tk.Tk | None = None):
         self.root = root or tk.Tk()
@@ -26,23 +26,23 @@ class MainWindow:
         self.media_context = "empty"
         self.root.title("HSV Color Segmentation")
         self.style = configure_theme(self.root)
-        self.root.minsize(960, 640)
+        self.root.minsize(1100, 720)
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        initial_width = max(960, min(1400, screen_width - 80))
-        initial_height = max(640, min(900, screen_height - 100))
+        initial_width = max(1100, min(1440, screen_width - 80))
+        initial_height = max(720, min(900, screen_height - 100))
         self.root.geometry(f"{initial_width}x{initial_height}")
 
-        container = ttk.Frame(self.root, padding=10)
+        container = ttk.Frame(self.root, padding=SPACING["sm"], style="App.TFrame")
         container.pack(fill="both", expand=True)
         container.columnconfigure(0, weight=1)
         container.rowconfigure(1, weight=1)
 
-        self.input_section = ttk.LabelFrame(
-            container, text="File Input", padding=SPACING["sm"]
+        self.input_section = ttk.Frame(
+            container, padding=SPACING["sm"], style="Card.TFrame"
         )
-        self.input_section.grid(row=0, column=0, sticky="ew", pady=(0, SPACING["md"]))
-        self.command_row = ttk.Frame(self.input_section, style="Surface.TFrame")
+        self.input_section.grid(row=0, column=0, sticky="ew", pady=(0, SPACING["sm"]))
+        self.command_row = ttk.Frame(self.input_section, style="Toolbar.TFrame")
         self.command_row.pack(side="top", fill="x")
         self.open_image_button = ttk.Button(
             self.command_row, text="Open Image…", style="Primary.TButton"
@@ -50,26 +50,23 @@ class MainWindow:
         self.open_image_button.pack(side="left")
         self.open_video_button = ttk.Button(self.command_row, text="Open Video…")
         self.open_video_button.pack(side="left", padx=(SPACING["sm"], 0))
-        ttk.Separator(self.command_row, orient="vertical").pack(
-            side="left", fill="y", padx=SPACING["md"]
-        )
+        self.output_actions = ttk.Frame(self.command_row, style="Toolbar.TFrame")
+        self.output_actions.pack(side="right")
         self.save_mask_button = ttk.Button(
-            self.command_row, text="Save Mask…", state="disabled"
+            self.output_actions, text="Save Mask…", state="disabled"
         )
         self.save_mask_button.pack(side="left")
         self.save_result_button = ttk.Button(
-            self.command_row, text="Save Result…", state="disabled"
+            self.output_actions, text="Save Result…", state="disabled"
         )
-        self.save_result_button.pack(side="left", padx=(SPACING["sm"], 0))
+        self.save_result_button.pack(side="left", padx=(SPACING["xs"], 0))
         self.record_experiment_button = ttk.Button(
-            self.command_row, text="Record Experiment…", state="disabled"
+            self.output_actions, text="Record Experiment…", state="disabled"
         )
-        self.record_experiment_button.pack(side="left", padx=(SPACING["sm"], 0))
+        self.record_experiment_button.pack(side="left", padx=(SPACING["xs"], 0))
 
-        self.context_row = ttk.Frame(self.input_section, style="Surface.TFrame")
-        self.context_row.pack(side="bottom", fill="x", pady=(SPACING["sm"], 0))
-        self.source_summary = ttk.Frame(self.context_row, style="Surface.TFrame")
-        self.source_summary.pack(side="right")
+        self.source_summary = ttk.Frame(self.command_row, style="Toolbar.TFrame")
+        self.source_summary.pack(side="right", padx=(SPACING["sm"], 0))
         self.frame_var = tk.StringVar(value="Frame: —")
         self.frame_label = ttk.Label(
             self.source_summary, textvariable=self.frame_var, style="Muted.TLabel"
@@ -79,7 +76,7 @@ class MainWindow:
         )
         self.source_label.pack(side="right")
 
-        self.video_controls = ttk.Frame(self.context_row, style="Surface.TFrame")
+        self.video_controls = ttk.Frame(self.command_row, style="Toolbar.TFrame")
         self.play_button = ttk.Button(self.video_controls, text="Play", state="disabled")
         self.play_button.pack(side="left")
         self.pause_button = ttk.Button(self.video_controls, text="Pause", state="disabled")
@@ -87,33 +84,55 @@ class MainWindow:
         self.restart_button = ttk.Button(self.video_controls, text="Restart", state="disabled")
         self.restart_button.pack(side="left", padx=(SPACING["xs"], 0))
 
-        self.workspace = ttk.Frame(container)
+        self.workspace = ttk.Frame(container, style="App.TFrame")
         self.workspace.grid(row=1, column=0, sticky="nsew")
-        self.workspace.columnconfigure(0, minsize=300)
-        self.workspace.columnconfigure(1, weight=1)
-        self.workspace.rowconfigure(0, weight=1)
+        self.workspace.columnconfigure(0, weight=1)
+        self.workspace.rowconfigure(1, weight=1)
 
-        self.parameter_section = ttk.LabelFrame(
-            self.workspace, text="HSV Parameters", padding=SPACING["sm"]
+        self.parameter_section = ttk.Frame(
+            self.workspace, padding=(SPACING["sm"], 4), style="Card.TFrame"
         )
-        self.parameter_section.grid(
-            row=0, column=0, sticky="nsew", padx=(0, SPACING["md"])
+        self.parameter_section.grid(row=0, column=0, sticky="ew")
+        self.control_notebook = ttk.Notebook(self.parameter_section)
+        self.control_notebook.pack(fill="x")
+
+        self.hsv_controls_tab = ttk.Frame(
+            self.control_notebook, padding=SPACING["sm"]
         )
+        self.refine_controls_tab = ttk.Frame(
+            self.control_notebook, padding=SPACING["sm"]
+        )
+        self.analysis_controls_tab = ttk.Frame(
+            self.control_notebook, padding=SPACING["sm"]
+        )
+        self.control_notebook.add(self.hsv_controls_tab, text="  HSV Thresholds  ")
+        self.control_notebook.add(self.refine_controls_tab, text="  Refine Mask  ")
+        self.control_notebook.add(self.analysis_controls_tab, text="  Analyze  ")
+        self.control_sections = {
+            "hsv": self.hsv_controls_tab,
+            "refine": self.refine_controls_tab,
+            "analyze": self.analysis_controls_tab,
+        }
 
         self.experiment_panel = ExperimentPanel(self.root)
 
-        self.visualization_section = ttk.LabelFrame(
-            self.workspace, text="Result Visualization", padding=SPACING["sm"]
+        self.visualization_section = ttk.Frame(
+            self.workspace, padding=SPACING["sm"], style="Card.TFrame"
         )
-        self.visualization_section.grid(row=0, column=1, sticky="nsew")
-        for column in range(3):
+        self.visualization_section.grid(
+            row=1, column=0, sticky="nsew", pady=(SPACING["sm"], 0)
+        )
+        for column in range(4):
             self.visualization_section.columnconfigure(column, weight=1, uniform="view")
         self.visualization_section.rowconfigure(2, weight=1)
 
         visualization_toolbar = ttk.Frame(self.visualization_section)
         visualization_toolbar.grid(
-            row=0, column=0, columnspan=3, sticky="ew", padx=SPACING["xs"]
+            row=0, column=0, columnspan=4, sticky="ew", padx=SPACING["xs"]
         )
+        ttk.Label(
+            visualization_toolbar, text="Preview", style="Title.TLabel"
+        ).pack(side="left", padx=(0, SPACING["md"]))
         self.pick_color_button = ttk.Button(
             visualization_toolbar, text="Pick Color", state="disabled"
         )
@@ -135,22 +154,14 @@ class MainWindow:
             side="left", padx=(8, 0)
         )
         self.histogram_toggle_button = ttk.Button(
-            visualization_toolbar, text="Show Histogram", command=self.toggle_histogram
+            visualization_toolbar, text="Hide Histogram", command=self.toggle_histogram
         )
         self.histogram_toggle_button.pack(side="right")
         visualization_info = ttk.Frame(self.visualization_section)
         visualization_info.grid(
-            row=1, column=0, columnspan=3, sticky="ew", padx=SPACING["xs"],
+            row=1, column=0, columnspan=4, sticky="ew", padx=SPACING["xs"],
             pady=(SPACING["xs"], SPACING["xs"]),
         )
-        self.overlay_var = tk.BooleanVar(value=False)
-        self.overlay_button = ttk.Checkbutton(
-            visualization_info,
-            text="Overlay mode",
-            variable=self.overlay_var,
-            command=self._refresh_result_view,
-        )
-        self.overlay_button.pack(side="right", padx=(0, 10))
         self.original_mask_var = tk.BooleanVar(value=False)
         self.original_mask_button = ttk.Checkbutton(
             visualization_info,
@@ -178,10 +189,6 @@ class MainWindow:
                 "Show or hide source HSV distributions and the active threshold ranges.",
             ),
             ToolTip(
-                self.overlay_button,
-                "Tint selected pixels over the original image; saved results remain unchanged.",
-            ),
-            ToolTip(
                 self.original_mask_button,
                 "Switch the Binary Mask panel between the original HSV mask and morphology result. Saving uses the processed result.",
             ),
@@ -192,17 +199,22 @@ class MainWindow:
             self.visualization_section, title="Binary Mask", is_mask=True
         )
         self.result_view = ImageView(self.visualization_section, title="Segmented Result")
-        self.views = (self.original_view, self.mask_view, self.result_view)
+        self.overlay_view = ImageView(self.visualization_section, title="Overlay")
+        self.views = (
+            self.original_view,
+            self.mask_view,
+            self.result_view,
+            self.overlay_view,
+        )
         for column, view in enumerate(self.views):
             view.grid(row=2, column=column, sticky="nsew", padx=SPACING["xs"])
 
         self.histogram_panel = HSVHistogramPanel(self.visualization_section)
         self.histogram_panel.grid(
-            row=3, column=0, columnspan=3, sticky="ew", padx=SPACING["xs"],
+            row=3, column=0, columnspan=4, sticky="ew", padx=SPACING["xs"],
             pady=(SPACING["xs"], 0)
         )
-        self.histogram_panel.grid_remove()
-        self._histogram_visible = False
+        self._histogram_visible = True
 
         self.status_var = tk.StringVar(value="Ready — open a PNG, JPEG, or BMP image.")
         self.status_label = ttk.Label(
@@ -241,25 +253,23 @@ class MainWindow:
             f"({result.selected_pixel_count:,}/{result.mask.size:,})"
         )
 
-    @property
-    def overlay_visible(self) -> bool:
-        return bool(self.overlay_var.get())
-
     def _refresh_result_view(self) -> None:
         if self._current_result is None:
             return
+        self.result_view.configure(text="Segmented Result")
+        self.result_view.show_array(self._current_result.segmented_rgb)
         contours, boxes, confusion = self._analysis_display
         if confusion and self._current_result.evaluation is not None and self._current_result.ground_truth is not None:
             target = self._evaluation_mask(self._current_result)
-            self.result_view.configure(text="TP / FP / FN")
-            self.result_view.show_array(compose_confusion_overlay(
+            self.overlay_view.configure(text="Overlay · TP / FP / FN")
+            self.overlay_view.show_array(compose_confusion_overlay(
                 self._current_result.original_rgb, target, self._current_result.ground_truth.mask
             ))
         elif (
             self._current_result.watershed is not None
             and self._current_result.watershed.status == "applied"
         ):
-            self.result_view.configure(text="Watershed Regions")
+            self.overlay_view.configure(text="Overlay · Watershed")
             separated = compose_watershed_overlay(
                 self._current_result.original_rgb, self._current_result.watershed
             )
@@ -268,21 +278,18 @@ class MainWindow:
                     separated, self._current_result.watershed.analysis,
                     contours=contours, boxes=boxes,
                 )
-            self.result_view.show_array(separated)
+            self.overlay_view.show_array(separated)
         elif self._current_result.analysis is not None and (contours or boxes):
-            self.result_view.configure(text="Object Analysis")
-            self.result_view.show_array(compose_region_annotations(
+            self.overlay_view.configure(text="Overlay · Object Analysis")
+            self.overlay_view.show_array(compose_region_annotations(
                 self._current_result.original_rgb, self._current_result.analysis,
                 contours=contours, boxes=boxes,
             ))
-        elif self.overlay_visible:
-            self.result_view.configure(text="Segmentation Overlay")
-            self.result_view.show_array(compose_segmentation_overlay(
+        else:
+            self.overlay_view.configure(text="Overlay")
+            self.overlay_view.show_array(compose_segmentation_overlay(
                 self._current_result.original_rgb, self._current_result.mask
             ))
-        else:
-            self.result_view.configure(text="Segmented Result")
-            self.result_view.show_array(self._current_result.segmented_rgb)
 
     @staticmethod
     def _evaluation_mask(result: SegmentationResult):

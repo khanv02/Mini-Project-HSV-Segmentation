@@ -13,7 +13,8 @@ Nhóm công cụ này giúp tìm ngưỡng khởi đầu; nó không tự quyế
 1. Mở ảnh hoặc dừng video tại frame cần xem.
 2. Chọn **Pick Color**, sau đó chọn Pixel hoặc ROI.
 3. Nhấp vào vật thể hoặc kéo vùng chứa màu đại diện.
-4. Mở **Show Histogram** để xem ngưỡng đang giữ hoặc loại phần nào của phân bố.
+4. Histogram hiển thị mặc định; xem dải màu vàng để biết ngưỡng đang giữ phần nào của
+   phân bố. Dùng **Hide Histogram** nếu cần thu gọn tạm thời.
 5. Chỉnh lại H, S và V bằng mắt dựa trên Mask/Result.
 
 ## Lưu ý

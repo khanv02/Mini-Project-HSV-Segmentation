@@ -72,7 +72,7 @@ Run the integrity/decoder check with:
 .\.venv\Scripts\python.exe -m pytest tests\integration\test_format_inventory.py -q
 ```
 
-For SC-001, open all seven cases through the GUI and verify the three synchronized views. Play
+For SC-001, open all seven cases through the GUI and verify the four synchronized views. Play
 at least one video through open, play, pause, threshold adjustment, end and restart. A missing
 file, hash mismatch, skipped codec or unavailable required decoder is an unmet result, not a pass.
 
@@ -92,7 +92,7 @@ threshold` for threshold 0..254. JPEG, unequal RGB channels, corruption, unsuppo
 dimension mismatch are recoverable errors that preserve the current result. Watershed may
 truthfully report `not applied`; that outcome is not silently evaluated as another target.
 
-At 960x640, verify all three previews remain at least 160x120 with the analysis panel and
+At 1100x720, verify all four previews remain at least 160x120 with the tabbed control deck and
 histogram shown/hidden. Pixel/ROI sampling must continue to use Original. Repeat D1-D5 for image
 mode and the supported video paths where applicable. Automated fixtures are authoritative for
 exact counts; manual inspection is supplementary and must not be recorded as passed if skipped.

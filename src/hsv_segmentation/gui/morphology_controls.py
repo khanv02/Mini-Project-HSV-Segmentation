@@ -20,7 +20,7 @@ class MorphologyControls(ttk.Frame):
 
     def __init__(self, master, *, initial=None, on_change=None):
         super().__init__(master)
-        self.pack(fill="x", expand=True, pady=(8, 0))
+        self.pack(fill="x", expand=True)
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
         self._on_change = on_change
@@ -68,6 +68,9 @@ class MorphologyControls(ttk.Frame):
             text="Opening removes small specks; Closing fills small holes.",
         )
         self.explanation.configure(wraplength=270, style="Muted.TLabel")
+        self.explanation.grid(
+            row=3, column=0, columnspan=2, sticky="w", pady=(6, 0)
+        )
         self._tooltips = (
             ToolTip(
                 self.enable_button,

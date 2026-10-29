@@ -59,18 +59,24 @@ class ThresholdControls(ttk.Frame):
         self._slider_vars: dict[str, tk.DoubleVar] = {}
         self._spinboxes = []
         self._tooltips: list[ToolTip] = []
-        self.layout_orientation = "vertical"
+        self.layout_orientation = "horizontal"
         self.channel_groups: dict[str, ttk.LabelFrame] = {}
-        self.columnconfigure(0, weight=1)
+        for column in range(3):
+            self.columnconfigure(column, weight=1, uniform="hsv-channel")
 
         channel_specs = (
             ("h", "Hue", "°", FIELD_SPECS[0:2]),
             ("s", "Saturation", "%", FIELD_SPECS[2:4]),
             ("v", "Value", "%", FIELD_SPECS[4:6]),
         )
-        for row, (channel, title, unit, specs) in enumerate(channel_specs):
+        for column, (channel, title, unit, specs) in enumerate(channel_specs):
             channel_group = ttk.LabelFrame(self, text=f"{title} ({unit})", padding=4)
-            channel_group.grid(row=row, column=0, sticky="ew", pady=(0, 4))
+            channel_group.grid(
+                row=0,
+                column=column,
+                sticky="nsew",
+                padx=(0, 6) if column < 2 else 0,
+            )
             channel_group.columnconfigure(0, weight=1)
             channel_group.columnconfigure(1, weight=1)
             self.channel_groups[channel] = channel_group
@@ -115,7 +121,7 @@ class ThresholdControls(ttk.Frame):
                 ))
 
         actions = ttk.Frame(self)
-        actions.grid(row=3, column=0, sticky="ew")
+        actions.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(6, 0))
         ttk.Label(actions, text="Preset", style="Muted.TLabel").pack(side="left")
         self._preset_var = tk.StringVar(value="Custom")
         self._preset_box = ttk.Combobox(
@@ -140,14 +146,13 @@ class ThresholdControls(ttk.Frame):
             "Value controls brightness. Lower Hue above Upper Hue selects across 0°."
         )
         self._selected_var = tk.StringVar(value=_format_selected_hsv(self._last_valid))
-        ttk.Label(self, textvariable=self._selected_var, wraplength=270).grid(
-            row=4, column=0, sticky="w", pady=(6, 0)
-        )
         self._error_var = tk.StringVar(value="")
         self._error_label = ttk.Label(
-            self, textvariable=self._error_var, style="Error.TLabel", wraplength=270
+            self, textvariable=self._error_var, style="Error.TLabel", wraplength=900
         )
-        self._error_label.grid(row=5, column=0, sticky="w", pady=(4, 0))
+        self._error_label.grid(
+            row=2, column=0, columnspan=3, sticky="w", pady=(4, 0)
+        )
         self._error_label.grid_remove()
 
     @property

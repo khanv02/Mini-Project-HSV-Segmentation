@@ -158,18 +158,18 @@ def test_worker_recomputes_histogram_for_source_and_frame_identity_changes(tmp_p
         worker.shutdown()
 
 
-def test_main_window_toggle_preserves_three_usable_views_at_minimum_size() -> None:
+def test_main_window_starts_with_histogram_and_four_usable_views() -> None:
     tkinter = pytest.importorskip("tkinter")
     root = _root(tkinter)
     try:
         window = MainWindow(root)
-        root.geometry("960x640")
-        window.set_histogram_visible(True)
+        root.geometry("1100x720")
         window.histogram_panel.set_histogram(_histogram(), HSVThresholdSet())
         root.update()
 
         assert window.histogram_visible is True
-        assert len(window.views) == 3
+        assert window.histogram_toggle_button.cget("text") == "Hide Histogram"
+        assert len(window.views) == 4
         for view in window.views:
             assert view.canvas.winfo_width() >= 160
             assert view.canvas.winfo_height() >= 120
@@ -178,6 +178,9 @@ def test_main_window_toggle_preserves_three_usable_views_at_minimum_size() -> No
         root.update()
         assert window.histogram_visible is False
         assert window.histogram_toggle_button.cget("text") == "Show Histogram"
+        window.toggle_histogram()
+        root.update()
+        assert window.histogram_visible is True
     finally:
         root.destroy()
 

@@ -4,16 +4,20 @@ Hướng dẫn này tập trung vào workflow cơ bản nhất. Chưa cần bậ
 
 ## 1. Mở một ảnh
 
-Chạy `uv run hsv`, nhấn **Open Image…** và chọn PNG/JPEG/BMP. Ba vùng bên phải có ý nghĩa:
+Chạy `uv run hsv`, nhấn **Open Image…** và chọn PNG/JPEG/BMP. Bốn vùng preview có ý nghĩa:
 
 - **Original:** ảnh đầu vào.
-- **Mask:** vùng trắng là pixel được chọn; vùng đen là pixel bị loại.
-- **Result:** ảnh màu chỉ giữ các pixel được chọn.
+- **Binary Mask:** vùng trắng là pixel được chọn; vùng đen là pixel bị loại.
+- **Segmented Result:** ảnh màu chỉ giữ các pixel được chọn.
+- **Overlay:** đặt mask, contour, Watershed hoặc TP/FP/FN lên ảnh gốc để dễ kiểm tra.
+
+Histogram H/S/V nằm ngay dưới bốn preview và hiển thị mặc định. Nhấn **Hide Histogram**
+khi cần thêm chiều cao cho ảnh.
 
 ## 2. Chọn màu cần tách
 
 Nếu muốn tách vật thể đỏ, chọn preset **Red**. Với màu khác, chọn preset gần nhất hoặc
-**Custom**. Sau đó chỉnh từng nhóm:
+**Custom** trong tab **HSV Thresholds**. Sau đó chỉnh từng nhóm:
 
 - **Hue:** chọn đúng màu.
 - **Saturation:** tăng lower để loại vùng xám/trắng ít màu.
@@ -23,7 +27,7 @@ Mục tiêu ban đầu là để vật thể cần tìm màu trắng trên Mask 
 
 ## 3. Làm sạch nếu cần
 
-Chỉ bật morphology khi mask đã tương đối đúng:
+Mở tab **Refine Mask** và chỉ bật morphology khi mask đã tương đối đúng:
 
 - có nhiều chấm trắng nhỏ → thử **Opening**;
 - có lỗ đen nhỏ bên trong vật thể → thử **Closing**.

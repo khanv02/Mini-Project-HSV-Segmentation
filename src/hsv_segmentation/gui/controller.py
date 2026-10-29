@@ -58,24 +58,24 @@ class ApplicationController:
         self._experiment_recorder = experiment_recorder
         self.experiment_panel = self.window.experiment_panel
         self.controls = ThresholdControls(
-            self.window.parameter_section,
+            self.window.hsv_controls_tab,
             initial=self.session.thresholds,
             on_valid=self._on_thresholds,
             on_invalid=self._on_invalid_thresholds,
         )
         self.morphology_controls = MorphologyControls(
-            self.window.parameter_section,
+            self.window.refine_controls_tab,
             initial=self.session.morphology,
             on_change=self._on_morphology,
         )
         self.analysis_panel = AnalysisPanel(
-            self.window.parameter_section,
+            self.window.analysis_controls_tab,
             on_settings=self._on_analysis_settings,
             on_display=self.window.set_analysis_display,
             on_load_truth=self.choose_ground_truth,
             on_clear_truth=self.clear_ground_truth,
         )
-        self.analysis_panel.pack(fill="x", pady=(8, 0))
+        self.analysis_panel.pack(fill="both", expand=True)
         self._truth_revision = 0
         self.window.original_view.set_sample_callback(self._on_color_sample)
         self.window.original_view.set_roi_sample_callback(self._on_roi_sample)

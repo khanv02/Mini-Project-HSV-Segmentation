@@ -4,8 +4,9 @@
   commands retain behavior. New analysis controls default disabled; target defaults baseline.
 - Contours/boxes annotate an original-image display copy. Sampling still uses source RGB and
   existing ImageView coordinate mapping. Statistics disclose connected-region interpretation.
-- Comparison selector names baseline/filtered/Watershed. Original, Mask and Result remain
-  accessible simultaneously; selecting a comparison does not change Save Mask/Save Result.
+- Comparison selector names baseline/filtered/Watershed. Original, Mask, Result and a dedicated
+  Overlay remain accessible simultaneously; selecting a comparison does not change Save
+  Mask/Save Result. Analysis, Watershed and confusion graphics update Overlay, never Result.
 - Analysis panel has labeled units/ranges, local errors, keyboard focus, collapsible/tabbed
   content and a scrollable region table. New panel must not reduce baseline minimum previews.
 - Truth loader accepts PNG/BMP modes 1/L/LA/RGB/RGBA and palette resolving to grayscale;

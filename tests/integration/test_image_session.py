@@ -135,21 +135,21 @@ def test_processing_never_changes_source_file(tmp_path) -> None:
     assert path.read_bytes() == original_bytes
 
 
-def test_window_has_named_sections_three_views_and_six_controls() -> None:
+def test_window_has_named_sections_four_views_and_six_controls() -> None:
     tkinter = pytest.importorskip("tkinter")
     root = _create_tk_root(tkinter)
     root.withdraw()
     try:
         window = MainWindow(root)
-        controls = ThresholdControls(window.parameter_section)
+        controls = ThresholdControls(window.hsv_controls_tab)
         root.update_idletasks()
 
         assert root.title() == "HSV Color Segmentation"
-        assert window.input_section.cget("text") == "File Input"
-        assert window.parameter_section.cget("text") == "HSV Parameters"
-        assert window.visualization_section.cget("text") == "Result Visualization"
+        assert window.input_section.winfo_class() == "TFrame"
+        assert window.parameter_section.winfo_class() == "TFrame"
+        assert window.visualization_section.winfo_class() == "TFrame"
         assert [view.cget("text") for view in window.views] == [
-            "Original", "Binary Mask", "Segmented Result"
+            "Original", "Binary Mask", "Segmented Result", "Overlay"
         ]
         assert len(controls.fields) == 6
         assert controls.range_text == (
@@ -162,15 +162,15 @@ def test_window_has_named_sections_three_views_and_six_controls() -> None:
         root.destroy()
 
 
-def test_enhanced_controls_preserve_three_usable_views_at_minimum_size() -> None:
+def test_compact_controls_preserve_four_usable_views_at_minimum_size() -> None:
     tkinter = pytest.importorskip("tkinter")
     root = _create_tk_root(tkinter)
     controller = ApplicationController(root)
     try:
-        root.geometry("960x640")
+        root.geometry("1100x720")
         root.update()
 
-        assert len(controller.window.views) == 3
+        assert len(controller.window.views) == 4
         assert all(view.canvas.winfo_width() >= 160 for view in controller.window.views)
         assert all(view.canvas.winfo_height() >= 120 for view in controller.window.views)
     finally:
@@ -332,13 +332,14 @@ def test_controller_open_and_rapid_edits_present_only_final_snapshot(tmp_path) -
         np.testing.assert_array_equal(
             controller.window.result_view.source_array, expected_rgb
         )
-        controller.window.overlay_var.set(True)
-        controller.window._refresh_result_view()
         np.testing.assert_array_equal(
-            controller.window.result_view.source_array,
+            controller.window.result_view.source_array, expected_rgb
+        )
+        np.testing.assert_array_equal(
+            controller.window.overlay_view.source_array,
             compose_segmentation_overlay(rgb, expected_mask),
         )
-        assert controller.window.result_view.cget("text") == "Segmentation Overlay"
+        assert controller.window.overlay_view.cget("text") == "Overlay"
         assert controller.session.result.segmented_rgb is result.segmented_rgb
     finally:
         controller.close()

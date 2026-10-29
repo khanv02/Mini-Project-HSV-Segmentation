@@ -48,9 +48,40 @@ def test_analysis_controls_update_statistics_without_changing_baseline(tmp_path)
 def test_analysis_panel_is_compact_and_discloses_metric_state() -> None:
     root = _root(); controller = ApplicationController(root)
     try:
-        root.deiconify(); root.geometry("960x640"); root.update()
-        assert controller.analysis_panel.winfo_reqwidth() <= 340
+        root.deiconify(); root.geometry("1100x720")
+        controller.window.control_notebook.select(
+            controller.window.analysis_controls_tab
+        )
+        root.update()
+        assert controller.analysis_panel.winfo_reqwidth() <= 1000
+        assert controller.analysis_panel.winfo_reqheight() <= 150
+        assert (
+            controller.analysis_panel.winfo_reqheight()
+            <= controller.analysis_panel.winfo_height()
+        )
         assert "IoU" in controller.analysis_panel.metrics_var.get()
         assert all(view.canvas.winfo_width() >= 160 for view in controller.window.views)
+    finally:
+        controller.close()
+
+
+def test_analysis_panel_disables_advanced_fields_until_enabled() -> None:
+    root = _root(); controller = ApplicationController(root)
+    try:
+        panel = controller.analysis_panel
+        assert str(panel.connectivity_box.cget("state")) == "disabled"
+        assert str(panel.min_area_entry.cget("state")) == "disabled"
+        assert str(panel.seed_entry.cget("state")) == "disabled"
+        assert str(panel.contours_button.cget("state")) == "disabled"
+
+        panel.enabled_var.set(True)
+        panel._emit()
+        assert str(panel.connectivity_box.cget("state")) == "readonly"
+        assert str(panel.min_area_entry.cget("state")) == "normal"
+        assert str(panel.contours_button.cget("state")) == "normal"
+
+        panel.watershed_var.set(True)
+        panel._emit()
+        assert str(panel.seed_entry.cget("state")) == "normal"
     finally:
         controller.close()

@@ -43,7 +43,7 @@ class HSVHistogramPanel(ttk.LabelFrame):
             self.axis_labels[axis] = label_var
             ttk.Label(group, textvariable=label_var, anchor="center").pack(fill="x")
             canvas = tk.Canvas(
-                group, height=68, background=COLORS["surface"], borderwidth=0,
+                group, height=52, background=COLORS["surface"], borderwidth=0,
                 highlightthickness=1, highlightbackground=COLORS["border"],
             )
             canvas.pack(fill="both", expand=True)
@@ -199,7 +199,7 @@ class HSVHistogramPanel(ttk.LabelFrame):
     @staticmethod
     def _bar_color(axis: str, index: int, count: int) -> str:
         if axis != "h":
-            return "#4f81bd" if axis == "s" else "#6a8f3a"
+            return COLORS["primary"] if axis == "s" else COLORS["success"]
         red, green, blue = colorsys.hsv_to_rgb(index / max(1, count), 0.72, 0.82)
         return f"#{round(red * 255):02x}{round(green * 255):02x}{round(blue * 255):02x}"
 
@@ -221,7 +221,7 @@ class HSVHistogramPanel(ttk.LabelFrame):
                 top,
                 x,
                 top + plot_height,
-                fill="#b45309",
+                fill=COLORS["warning"],
                 width=2,
                 tags=("threshold-boundary",),
             )

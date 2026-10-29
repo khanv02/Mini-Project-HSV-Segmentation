@@ -34,7 +34,8 @@ thái `both_empty`; chỉ một mask rỗng nhận `0`.
 2. Chọn target: `baseline`, `components` hoặc `watershed`.
 3. Đặt threshold chuyển ảnh ground truth thành nhị phân theo quy tắc `gray > threshold`.
 4. Nhấn **Load** và chọn PNG/BMP lossless có cùng kích thước với nguồn.
-5. Đọc IoU/Dice; bật **TP/FP/FN** để xem overlay lỗi.
+5. Đọc IoU/Dice; bật **TP/FP/FN** để xem lỗi trong khung **Overlay**. Khung
+   **Segmented Result** vẫn giữ nguyên kết quả phân đoạn.
 
 Overlay dùng xanh lá cho TP, đỏ cho FP và xanh dương cho FN. Ground truth được giữ khi chỉnh
 tham số trên cùng frame để metric tính lại, nhưng bị xóa khi đổi nguồn, chuyển frame hoặc
