@@ -141,14 +141,18 @@ class MainWindow:
         self.sampling_mode_box = ttk.Combobox(
             visualization_toolbar,
             textvariable=self.sampling_mode_var,
-            values=("Pixel", "ROI"),
+            values=("Pixel", "Multi", "ROI"),
             state="disabled",
-            width=6,
+            width=7,
         )
         self.sampling_mode_box.pack(side="left", padx=(5, 0))
         self.sampling_mode_box.bind(
             "<<ComboboxSelected>>", lambda _event: self._apply_sampling_mode()
         )
+        self.clear_samples_button = ttk.Button(
+            visualization_toolbar, text="Clear Points", state="disabled"
+        )
+        self.clear_samples_button.pack(side="left", padx=(5, 0))
         self.sample_var = tk.StringVar(value="Sample: —")
         ttk.Label(visualization_toolbar, textvariable=self.sample_var).pack(
             side="left", padx=(8, 0)
@@ -182,7 +186,11 @@ class MainWindow:
             ),
             ToolTip(
                 self.sampling_mode_box,
-                "Pixel samples one point; ROI lets you drag a representative rectangular region.",
+                "Pixel samples one point; Multi combines 2–4 clicked points; ROI samples a rectangle.",
+            ),
+            ToolTip(
+                self.clear_samples_button,
+                "Remove all points collected by the current Multi sampling session.",
             ),
             ToolTip(
                 self.histogram_toggle_button,
@@ -362,12 +370,30 @@ class MainWindow:
             f"V {sample.value_pct:.1f}%"
         )
 
+    def show_multi_sample(self, sample, *, active: bool) -> None:
+        self.sample_var.set(
+            f"Multi {sample.pixel_count}/4: H {sample.hue_deg:.1f}°, "
+            f"S {sample.saturation_pct:.1f}%, V {sample.value_pct:.1f}%"
+        )
+        self.clear_samples_button.configure(state="normal")
+        if active:
+            self.pick_color_button.configure(text=f"Finish Multi ({sample.pixel_count}/4)")
+
+    def show_multi_sample_waiting(self) -> None:
+        self.sample_var.set("Multi 1/4: choose at least one more point")
+        self.clear_samples_button.configure(state="normal")
+        self.pick_color_button.configure(text="Finish Multi (1/4)")
+
+    def clear_sample_summary(self) -> None:
+        self.sample_var.set("Sample: —")
+        self.clear_samples_button.configure(state="disabled")
+
     def show_status(self, message: str) -> None:
         self.status_var.set(message)
 
     def set_commands(
         self, *, open_image, open_video, save_mask, save_result, record_experiment,
-        play, pause, restart, pick_color
+        play, pause, restart, pick_color, clear_samples, sampling_mode_changed
     ) -> None:
         self.open_image_button.configure(command=open_image)
         self.open_video_button.configure(command=open_video)
@@ -377,20 +403,27 @@ class MainWindow:
         self.pause_button.configure(command=pause)
         self.restart_button.configure(command=restart)
         self.pick_color_button.configure(command=pick_color)
+        self.clear_samples_button.configure(command=clear_samples)
+        self._sampling_mode_changed = sampling_mode_changed
         self.record_experiment_button.configure(command=self.experiment_panel.show)
         self.experiment_panel.set_command(record_experiment)
 
     def set_sampling_available(self, available: bool) -> None:
         self.pick_color_button.configure(state="normal" if available else "disabled")
         self.sampling_mode_box.configure(state="readonly" if available else "disabled")
+        if not available:
+            self.clear_samples_button.configure(state="disabled")
 
     def set_color_picker_active(self, active: bool) -> None:
-        self._apply_sampling_mode()
+        self.original_view.set_sampling_mode(self.sampling_mode_var.get().lower())
         self.original_view.set_sampling_enabled(active)
         self.pick_color_button.configure(text="Cancel Picking" if active else "Pick Color")
 
     def _apply_sampling_mode(self) -> None:
         self.original_view.set_sampling_mode(self.sampling_mode_var.get().lower())
+        callback = getattr(self, "_sampling_mode_changed", None)
+        if callback is not None:
+            callback(self.sampling_mode_var.get().lower())
 
     def set_loading(self, loading: bool) -> None:
         state = "disabled" if loading else "normal"

@@ -38,6 +38,21 @@ class ColorRegionSample:
     thresholds: HSVThresholdSet
 
 
+@dataclass(frozen=True, slots=True)
+class ColorMultiSample:
+    """Summary and suggested thresholds for two to four sparse source pixels."""
+
+    samples: tuple[ColorSample, ...]
+    hue_deg: float
+    saturation_pct: float
+    value_pct: float
+    thresholds: HSVThresholdSet
+
+    @property
+    def pixel_count(self) -> int:
+        return len(self.samples)
+
+
 def sample_color(rgb: np.ndarray, x: int, y: int) -> ColorSample:
     """Return a validated pixel sample without retaining or mutating the image."""
     height, width = validate_rgb(rgb)
@@ -132,6 +147,66 @@ def _circular_hue_range(hues: np.ndarray, padding: int) -> tuple[int, int]:
     lower = math.floor(start - padding) % 360
     upper = math.ceil(start + arc + padding) % 360
     return lower, upper
+
+
+def sample_colors(
+    rgb: np.ndarray,
+    coordinates,
+    *,
+    hue_padding_deg: int = 5,
+    saturation_padding_pct: int = 5,
+    value_padding_pct: int = 5,
+) -> ColorMultiSample:
+    """Summarize two to four explicitly selected pixels and include their HSV spread."""
+    validate_rgb(rgb)
+    try:
+        points = tuple(coordinates)
+    except TypeError as error:
+        raise ValidationError("coordinates", "must be an iterable of (x, y) pairs") from error
+    if not 2 <= len(points) <= 4:
+        raise ValidationError("coordinates", "must contain 2..4 pixel positions")
+    samples = []
+    for index, point in enumerate(points):
+        if not isinstance(point, (tuple, list)) or len(point) != 2:
+            raise ValidationError(f"coordinates[{index}]", "must be an (x, y) pair")
+        samples.append(sample_color(rgb, point[0], point[1]))
+
+    _validate_tolerance("hue_padding_deg", hue_padding_deg, 180)
+    _validate_tolerance("saturation_padding_pct", saturation_padding_pct, 100)
+    _validate_tolerance("value_padding_pct", value_padding_pct, 100)
+    hue = np.array([sample.hue_deg for sample in samples], dtype=np.float64)
+    saturation = np.array(
+        [sample.saturation_pct for sample in samples], dtype=np.float64
+    )
+    value = np.array([sample.value_pct for sample in samples], dtype=np.float64)
+    chromatic_hue = hue[saturation >= 5.0]
+    lower_hue, upper_hue = _circular_hue_range(chromatic_hue, hue_padding_deg)
+    if chromatic_hue.size:
+        angles = np.deg2rad(chromatic_hue)
+        representative_hue = math.degrees(
+            math.atan2(float(np.sin(angles).mean()), float(np.cos(angles).mean()))
+        ) % 360.0
+    else:
+        representative_hue = 0.0
+    thresholds = HSVThresholdSet(
+        lower_h_deg=lower_hue,
+        upper_h_deg=upper_hue,
+        lower_s_pct=max(
+            0, math.floor(float(saturation.min()) - saturation_padding_pct)
+        ),
+        upper_s_pct=min(
+            100, math.ceil(float(saturation.max()) + saturation_padding_pct)
+        ),
+        lower_v_pct=max(0, math.floor(float(value.min()) - value_padding_pct)),
+        upper_v_pct=min(100, math.ceil(float(value.max()) + value_padding_pct)),
+    )
+    return ColorMultiSample(
+        samples=tuple(samples),
+        hue_deg=representative_hue,
+        saturation_pct=float(np.median(saturation)),
+        value_pct=float(np.median(value)),
+        thresholds=thresholds,
+    )
 
 
 def sample_color_region(

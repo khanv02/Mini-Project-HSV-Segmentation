@@ -45,7 +45,7 @@ Nếu đây là lần đầu sử dụng, xem [hướng dẫn từng bước](do
 | Nhóm | Dùng để làm gì? | Tài liệu |
 |---|---|---|
 | Ngưỡng HSV | Chọn pixel theo màu sắc, độ bão hòa và độ sáng | [Chi tiết](docs/features/hsv-thresholding/README.md) |
-| Lấy mẫu và histogram | Tìm khoảng HSV khởi đầu và xem phân bố màu | [Chi tiết](docs/features/sampling-histogram/README.md) |
+| Lấy mẫu và histogram | Lấy 1 pixel, kết hợp 2–4 pixel hoặc một ROI để tìm khoảng HSV khởi đầu | [Chi tiết](docs/features/sampling-histogram/README.md) |
 | Morphology | Loại đốm nhiễu nhỏ hoặc lấp lỗ trong mask | [Chi tiết](docs/features/morphology/README.md) |
 | Phân tích vật thể | Đếm, lọc và đo các vùng liên thông | [Chi tiết](docs/features/object-analysis/README.md) |
 | Watershed | Thử tách các vật thể đang chạm nhau | [Chi tiết](docs/features/watershed/README.md) |

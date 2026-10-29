@@ -9,6 +9,7 @@ from hsv_segmentation.processing.threshold_suggestions import (
     HSV_PRESETS,
     sample_color,
     sample_color_region,
+    sample_colors,
     suggest_thresholds,
 )
 
@@ -92,6 +93,30 @@ def test_achromatic_region_uses_full_hue_range() -> None:
 
     assert (sample.thresholds.lower_h_deg, sample.thresholds.upper_h_deg) == (0, 360)
     assert sample.pixel_count == 2
+
+
+def test_multi_sample_combines_sparse_pixels_and_short_hue_arc() -> None:
+    rgb = np.array(
+        [[[255, 0, 43], [255, 0, 0], [255, 43, 0], [128, 0, 0]]],
+        dtype=np.uint8,
+    )
+
+    sample = sample_colors(rgb, ((0, 0), (1, 0), (2, 0), (3, 0)))
+
+    assert sample.pixel_count == 4
+    assert sample.thresholds.wraps_hue
+    assert sample.thresholds.lower_h_deg >= 340
+    assert sample.thresholds.upper_h_deg <= 20
+    assert sample.thresholds.lower_s_pct == 95
+    assert sample.thresholds.upper_s_pct == 100
+    assert sample.thresholds.lower_v_pct <= 46
+    assert sample.thresholds.upper_v_pct == 100
+
+
+@pytest.mark.parametrize("coordinates", [(), ((0, 0),), ((0, 0),) * 5, ((0, 0, 1), (1, 0))])
+def test_multi_sample_requires_two_to_four_coordinate_pairs(coordinates) -> None:
+    with pytest.raises(ValidationError, match="coordinates"):
+        sample_colors(np.zeros((2, 2, 3), dtype=np.uint8), coordinates)
 
 
 @pytest.mark.parametrize(

@@ -36,6 +36,8 @@ class ImageView(ttk.LabelFrame):
         self._sampled_pixel: tuple[int, int] | None = None
         self._sampled_roi: tuple[int, int, int, int] | None = None
         self._sample_marker: int | None = None
+        self._multi_sampled_pixels: list[tuple[int, int]] = []
+        self._multi_sample_markers: list[tuple[int, int]] = []
         self._drag_start: tuple[float, float] | None = None
         self._display_bounds: tuple[float, float, int, int] | None = None
         self._source: np.ndarray | None = None
@@ -126,6 +128,10 @@ class ImageView(ttk.LabelFrame):
     def sampling_mode(self) -> str:
         return self._sampling_mode
 
+    @property
+    def multi_sample_count(self) -> int:
+        return len(self._multi_sampled_pixels)
+
     def set_sample_callback(self, callback: Callable[[int, int], None] | None) -> None:
         self._sample_callback = callback
 
@@ -135,15 +141,23 @@ class ImageView(ttk.LabelFrame):
         self._roi_sample_callback = callback
 
     def set_sampling_mode(self, mode: str) -> None:
-        if mode not in {"pixel", "roi"}:
-            raise ValueError("sampling mode must be pixel or roi")
+        if mode not in {"pixel", "multi", "roi"}:
+            raise ValueError("sampling mode must be pixel, multi, or roi")
         if mode != self._sampling_mode:
             self._sampling_mode = mode
-            self._sampled_pixel = None
-            self._sampled_roi = None
-            if self._sample_marker is not None:
-                self.canvas.delete(self._sample_marker)
-                self._sample_marker = None
+            self.clear_sample_markers()
+
+    def clear_sample_markers(self) -> None:
+        self._sampled_pixel = None
+        self._sampled_roi = None
+        if self._sample_marker is not None:
+            self.canvas.delete(self._sample_marker)
+            self._sample_marker = None
+        self._multi_sampled_pixels.clear()
+        for marker, label in self._multi_sample_markers:
+            self.canvas.delete(marker)
+            self.canvas.delete(label)
+        self._multi_sample_markers.clear()
 
     def set_sampling_enabled(self, enabled: bool) -> None:
         self._sampling_enabled = bool(enabled and self._source is not None)
@@ -222,9 +236,26 @@ class ImageView(ttk.LabelFrame):
         start = self._drag_start
         self._drag_start = None
         current = self._event_canvas_point(event)
-        if self._sampling_mode == "pixel":
+        if self._sampling_mode in {"pixel", "multi"}:
             pixel = self.source_pixel_at_canvas(*current) or self.source_pixel_at_canvas(*start)
             if pixel is None or self._sample_callback is None:
+                return
+            if self._sampling_mode == "multi":
+                if pixel in self._multi_sampled_pixels or len(self._multi_sampled_pixels) >= 4:
+                    return
+                self._sampled_pixel = None
+                self._sampled_roi = None
+                self._multi_sampled_pixels.append(pixel)
+                marker = self.canvas.create_oval(
+                    0, 0, 0, 0, fill=COLORS["selection"], outline=COLORS["text"], width=1
+                )
+                label = self.canvas.create_text(
+                    0, 0, text=str(len(self._multi_sampled_pixels)),
+                    fill=COLORS["background"], anchor="center"
+                )
+                self._multi_sample_markers.append((marker, label))
+                self._draw_multi_sample_markers()
+                self._sample_callback(*pixel)
                 return
             self._sampled_pixel = pixel
             self._sampled_roi = None
@@ -251,11 +282,7 @@ class ImageView(ttk.LabelFrame):
             self._photo = None
             self._zoom_factor = 1.0
             self._display_bounds = None
-            self._sampled_pixel = None
-            self._sampled_roi = None
-            if self._sample_marker is not None:
-                self.canvas.delete(self._sample_marker)
-            self._sample_marker = None
+            self.clear_sample_markers()
             self.set_sampling_enabled(False)
             self._set_zoom_text("Fit")
             self._show_placeholder()
@@ -271,11 +298,7 @@ class ImageView(ttk.LabelFrame):
         ):
             raise ValueError("image preview requires a uint8 RGB array")
         self._source = array.copy()
-        self._sampled_pixel = None
-        self._sampled_roi = None
-        if self._sample_marker is not None:
-            self.canvas.delete(self._sample_marker)
-            self._sample_marker = None
+        self.clear_sample_markers()
         self.canvas.configure(background=self.IMAGE_BACKGROUND)
         self._hide_placeholder()
         self._schedule_render()
@@ -391,6 +414,22 @@ class ImageView(ttk.LabelFrame):
             0, 0, 0, 0, outline=COLORS["selection"], width=2, dash=(4, 2)
         )
 
+    def _draw_multi_sample_markers(self) -> None:
+        if self._display_bounds is None or self._source is None:
+            return
+        left, top, displayed_width, displayed_height = self._display_bounds
+        source_height, source_width = self._source.shape[:2]
+        radius = 8
+        for (pixel_x, pixel_y), (marker, label) in zip(
+            self._multi_sampled_pixels, self._multi_sample_markers, strict=True
+        ):
+            x = left + (pixel_x + 0.5) * displayed_width / source_width
+            y = top + (pixel_y + 0.5) * displayed_height / source_height
+            self.canvas.coords(marker, x - radius, y - radius, x + radius, y + radius)
+            self.canvas.coords(label, x, y)
+            self.canvas.tag_raise(marker)
+            self.canvas.tag_raise(label)
+
     def _render(self) -> None:
         self._render_id = None
         if self._source is None or not self.winfo_exists():
@@ -423,6 +462,7 @@ class ImageView(ttk.LabelFrame):
             self.canvas.coords(self._image_item, x, y)
             self.canvas.itemconfigure(self._image_item, image=self._photo)
         self._draw_sample_marker()
+        self._draw_multi_sample_markers()
         self.canvas.configure(scrollregion=(0, 0, content_width, content_height))
         if target_width > canvas_width:
             self._horizontal.grid()

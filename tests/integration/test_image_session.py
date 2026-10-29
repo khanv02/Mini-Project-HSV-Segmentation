@@ -423,6 +423,56 @@ def test_controller_roi_picker_applies_region_thresholds(tmp_path) -> None:
         controller.close()
 
 
+def test_controller_multi_picker_combines_up_to_four_points_and_preserves_pixel_mode(
+    tmp_path,
+) -> None:
+    tkinter = pytest.importorskip("tkinter")
+    root = _create_tk_root(tkinter)
+    root.withdraw()
+    path = (tmp_path / "multi-picker.png").resolve()
+    rgb = np.array(
+        [[[255, 0, 43], [255, 0, 0], [255, 43, 0], [128, 0, 0]]],
+        dtype=np.uint8,
+    )
+    Image.fromarray(rgb).save(path)
+    controller = ApplicationController(root)
+    try:
+        controller.open_image_path(str(path))
+        deadline = time.monotonic() + 3
+        while controller.session.result is None and time.monotonic() < deadline:
+            root.update()
+            time.sleep(0.01)
+
+        controller.window.sampling_mode_var.set("Multi")
+        controller.window._apply_sampling_mode()
+        controller.toggle_color_picker()
+        assert controller.window.original_view.sampling_mode == "multi"
+
+        controller._on_color_sample(0, 0)
+        assert controller._color_picker_active
+        assert "Multi 1/4" in controller.window.sample_var.get()
+
+        controller._on_color_sample(1, 0)
+        controller._on_color_sample(2, 0)
+        assert controller._color_picker_active
+        assert "Multi 3/4" in controller.window.sample_var.get()
+        assert controller.session.thresholds.wraps_hue
+
+        controller._on_color_sample(3, 0)
+        assert not controller._color_picker_active
+        assert "Multi 4/4" in controller.window.sample_var.get()
+        assert "4 selected pixels" in controller.window.status_var.get()
+
+        controller.window.sampling_mode_var.set("Pixel")
+        controller.window._apply_sampling_mode()
+        controller.toggle_color_picker()
+        controller._on_color_sample(1, 0)
+        assert not controller._color_picker_active
+        assert "H 0.0°" in controller.window.sample_var.get()
+    finally:
+        controller.close()
+
+
 def test_morphology_pipeline_comparison_and_exports_use_processed_mask(tmp_path) -> None:
     tkinter = pytest.importorskip("tkinter")
     root = _create_tk_root(tkinter)

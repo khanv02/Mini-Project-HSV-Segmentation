@@ -29,6 +29,7 @@ from ..models import (
 from ..processing.threshold_suggestions import (
     sample_color,
     sample_color_region,
+    sample_colors,
     suggest_thresholds,
 )
 from .main_window import MainWindow
@@ -86,6 +87,7 @@ class ApplicationController:
         self._export_in_flight = False
         self._export_snapshot_valid = False
         self._color_picker_active = False
+        self._multi_sample_points: list[tuple[int, int]] = []
         self.last_export_receipt: ExportReceipt | None = None
         self.last_experiment_receipt: ExperimentReceipt | None = None
         self._closed = False
@@ -99,6 +101,8 @@ class ApplicationController:
             pause=self.pause_video,
             restart=self.restart_video,
             pick_color=self.toggle_color_picker,
+            clear_samples=self.clear_multi_samples,
+            sampling_mode_changed=self._on_sampling_mode_changed,
         )
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self._poll_id = self.root.after(self.POLL_MS, self._poll_worker)
@@ -328,11 +332,32 @@ class ApplicationController:
             return
         if not self._color_picker_active and self.playback.state is PlaybackState.PLAYING:
             self.pause_video()
-        self._set_color_picker_active(not self._color_picker_active)
+        mode = self.window.sampling_mode_var.get().lower()
+        activating = not self._color_picker_active
+        if activating and mode == "multi":
+            self.clear_multi_samples(show_status=False)
+        self._set_color_picker_active(activating)
         if self._color_picker_active:
-            self.window.show_status("Color picker active — click a pixel in the Original view.")
+            if mode == "multi":
+                self.window.pick_color_button.configure(text="Finish Multi (0/4)")
+                self.window.show_status(
+                    "Multi picker active — choose 2–4 points in the Original view."
+                )
+            elif mode == "roi":
+                self.window.show_status(
+                    "ROI picker active — drag a representative area in the Original view."
+                )
+            else:
+                self.window.show_status(
+                    "Color picker active — click a pixel in the Original view."
+                )
         else:
-            self.window.show_status("Color picker cancelled.")
+            if mode == "multi" and len(self._multi_sample_points) >= 2:
+                self.window.show_status(
+                    f"Multi sampling finished with {len(self._multi_sample_points)} points."
+                )
+            else:
+                self.window.show_status("Color picker cancelled.")
 
     def _set_color_picker_active(self, active: bool) -> None:
         self._color_picker_active = bool(active)
@@ -342,6 +367,32 @@ class ApplicationController:
         displayed_rgb = self.window.original_view.source_array
         if not self._color_picker_active or displayed_rgb is None:
             return
+        if self.window.original_view.sampling_mode == "multi":
+            point = (x, y)
+            if point in self._multi_sample_points:
+                self.window.show_status("That pixel is already selected; choose another point.")
+                return
+            if len(self._multi_sample_points) >= 4:
+                return
+            self._multi_sample_points.append(point)
+            if len(self._multi_sample_points) == 1:
+                self.window.show_multi_sample_waiting()
+                self.window.show_status(
+                    "Selected point 1/4 — choose at least one more point."
+                )
+                return
+            sample = sample_colors(displayed_rgb, self._multi_sample_points)
+            complete = len(self._multi_sample_points) == 4
+            if complete:
+                self._set_color_picker_active(False)
+            self.window.show_multi_sample(sample, active=not complete)
+            self.controls.apply_thresholds(sample.thresholds)
+            self.window.show_status(
+                f"Combined {sample.pixel_count} selected pixels; suggested HSV thresholds applied."
+                + (" Multi sampling complete." if complete else " Choose another point or finish.")
+            )
+            return
+
         sample = sample_color(displayed_rgb, x, y)
         suggestion = suggest_thresholds(sample)
         self._set_color_picker_active(False)
@@ -350,6 +401,25 @@ class ApplicationController:
         self.window.show_status(
             f"Sampled RGB {sample.rgb} at ({x}, {y}); suggested HSV thresholds applied."
         )
+
+    def clear_multi_samples(self, *, show_status: bool = True) -> None:
+        self._multi_sample_points.clear()
+        self.window.original_view.clear_sample_markers()
+        self.window.clear_sample_summary()
+        if self._color_picker_active and self.window.original_view.sampling_mode == "multi":
+            self.window.pick_color_button.configure(text="Finish Multi (0/4)")
+        if show_status:
+            self.window.show_status("Multi-pixel selection cleared.")
+
+    def _on_sampling_mode_changed(self, mode: str) -> None:
+        if self._color_picker_active:
+            self._set_color_picker_active(False)
+        self._multi_sample_points.clear()
+        self.window.clear_sample_summary()
+        if mode == "multi":
+            self.window.show_status(
+                "Multi mode selected — start the picker, then choose 2–4 points."
+            )
 
     def _on_roi_sample(self, left: int, top: int, right: int, bottom: int) -> None:
         displayed_rgb = self.window.original_view.source_array
