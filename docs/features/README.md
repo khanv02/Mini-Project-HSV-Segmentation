@@ -1,5 +1,8 @@
 # Danh mục tính năng
 
+Mới: [Phân đoạn ảnh xám](grayscale-segmentation.md) · [Otsu](otsu-threshold.md) ·
+[Save Overlay](overlay-export.md).
+
 Trang này giúp chọn đúng tính năng trước khi đi vào hướng dẫn chi tiết.
 
 | Khi bạn muốn… | Nên dùng |

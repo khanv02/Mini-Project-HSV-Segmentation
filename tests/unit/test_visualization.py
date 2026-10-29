@@ -4,7 +4,10 @@ import numpy as np
 import pytest
 
 from hsv_segmentation.errors import ValidationError
-from hsv_segmentation.models import AnalysisSettings, WatershedSettings
+from hsv_segmentation.application.session import process_source
+from hsv_segmentation.models import (
+    AnalysisSettings, HSVThresholdSet, OverlayDisplaySettings, WatershedSettings,
+)
 from hsv_segmentation.processing.object_analysis import analyze_components
 from hsv_segmentation.processing.watershed import separate_watershed
 from hsv_segmentation.processing.visualization import (
@@ -12,6 +15,7 @@ from hsv_segmentation.processing.visualization import (
     compose_region_annotations,
     compose_segmentation_overlay,
     compose_watershed_overlay,
+    compose_overlay_snapshot,
 )
 from tests.fixtures.analysis_cases import touching_disks
 
@@ -72,4 +76,22 @@ def test_watershed_overlay_marks_regions_and_boundaries_without_mutation() -> No
     assert np.all(overlay[result.boundaries == 255] == (255, 32, 32))
     np.testing.assert_array_equal(rgb, before_rgb)
     np.testing.assert_array_equal(mask, before_mask)
+
+
+def test_overlay_snapshot_is_exact_owned_and_honestly_labelled(exact_gray_media) -> None:
+    result = process_source(exact_gray_media, HSVThresholdSet(), 3)
+    settings = OverlayDisplaySettings(variant="segmentation", display_revision=2)
+    snapshot = compose_overlay_snapshot(result, settings)
+    expected = compose_segmentation_overlay(result.original_rgb, result.mask)
+    np.testing.assert_array_equal(snapshot.rgb, expected)
+    assert snapshot.variant == "segmentation"
+    assert snapshot.request_revision == 3
+    with pytest.raises(ValueError):
+        snapshot.rgb.setflags(write=True)
+
+
+def test_overlay_snapshot_rejects_unavailable_specialized_variant(exact_gray_media) -> None:
+    result = process_source(exact_gray_media, HSVThresholdSet(), 1)
+    with pytest.raises(ValidationError, match="unavailable"):
+        compose_overlay_snapshot(result, OverlayDisplaySettings(variant="watershed"))
 

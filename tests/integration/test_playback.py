@@ -11,7 +11,7 @@ from hsv_segmentation.application.playback import PlaybackSession, PlaybackState
 from hsv_segmentation.application.session import ImageSession
 from hsv_segmentation.gui.controller import ApplicationController
 from hsv_segmentation.io.video import VideoEnd
-from hsv_segmentation.models import HSVThresholdSet, InputMedia
+from hsv_segmentation.models import GrayscaleSettings, HSVThresholdSet, InputMedia
 
 
 def _frame(path: Path, session_id: str, index: int, rgb) -> InputMedia:
@@ -103,6 +103,24 @@ def test_paused_threshold_change_reprocesses_retained_frame(tmp_path) -> None:
     assert result.frame_index == 0
     np.testing.assert_array_equal(result.mask, [[0]])
     assert playback.state is PlaybackState.PAUSED
+
+
+def test_paused_grayscale_frame_carries_mode_and_otsu_identity(tmp_path) -> None:
+    path = (tmp_path / "gray.avi").resolve()
+    reader = StubReader(path, "gray-session", [(20, 20, 20), (220, 220, 220)])
+    media = ImageSession()
+    playback = PlaybackSession(media, reader_factory=_factory([reader]))
+    playback.commit_open(playback.prepare_open(path, media.thresholds, 1))
+    settings = GrayscaleSettings(manual_threshold=10, settings_revision=1)
+    media.accept_segmentation_mode("grayscale")
+    media.accept_grayscale_settings(settings)
+    result = playback.reprocess_current(
+        media.thresholds, 2, segmentation_mode="grayscale", grayscale_settings=settings,
+        settings_revision=media.settings_revision,
+    )
+    assert result.segmentation_mode == "grayscale"
+    assert result.frame_index == 0
+    assert result.grayscale_settings.settings_revision == 1
 
 
 def test_restart_returns_frame_zero_paused(tmp_path) -> None:

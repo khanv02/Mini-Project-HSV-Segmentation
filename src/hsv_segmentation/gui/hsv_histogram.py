@@ -20,6 +20,7 @@ class HSVHistogramPanel(ttk.LabelFrame):
         self._thresholds = HSVThresholdSet()
         self._state_text = "No media — histogram unavailable"
         self._hue_note = "Hue counts only S >= 5%"
+        self._grayscale_mode = False
         self._render_ids: dict[str, str] = {}
         self.axis_labels: dict[str, tk.StringVar] = {}
 
@@ -70,6 +71,23 @@ class HSVHistogramPanel(ttk.LabelFrame):
         self._update_axis_labels()
         self._schedule_all()
 
+    def set_grayscale_mode(self, enabled: bool, threshold: int = 128, polarity: str = "bright") -> None:
+        """Present Value as intensity and explicitly retire Hue semantics."""
+        self._grayscale_mode = bool(enabled)
+        if self._grayscale_mode:
+            self._set_hue_note("Hue unavailable — grayscale pixels have no meaningful hue")
+            self.axis_labels["h"].set("Hue — unavailable")
+            self.axis_labels["s"].set("Saturation — 0% for grayscale")
+            relation = ">" if polarity == "bright" else "<="
+            self.axis_labels["v"].set(f"Intensity (0–255)  |  {relation} {threshold}")
+        else:
+            if self._histogram is not None:
+                self._set_hue_note(
+                    f"Hue counts only S >= 5% · {self._histogram.excluded_hue_count} excluded"
+                )
+            self._update_axis_labels()
+        self._schedule_all()
+
     def mark_pending(self, thresholds: HSVThresholdSet) -> None:
         self._thresholds = thresholds
         self._update_axis_labels()
@@ -118,6 +136,8 @@ class HSVHistogramPanel(ttk.LabelFrame):
         raise ValueError("axis must be h, s, or v")
 
     def _update_axis_labels(self) -> None:
+        if self._grayscale_mode:
+            return
         titles = {axis: label for axis, label, _maximum in self.AXES}
         for axis, variable in self.axis_labels.items():
             variable.set(f"{titles[axis]}  |  {self.threshold_text(axis)}")

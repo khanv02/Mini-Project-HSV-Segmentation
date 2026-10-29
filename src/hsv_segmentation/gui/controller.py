@@ -19,10 +19,12 @@ from ..io.experiments import ExperimentReceipt, publish_experiment
 from ..io.ground_truth import load_ground_truth
 from ..models import (
     AnalysisSettings,
+    GrayscaleSettings,
     GroundTruth,
     HSVThresholdSet,
     MorphologySettings,
     ProcessingRequest,
+    SegmentationMode,
     SegmentationResult,
     WatershedSettings,
 )
@@ -33,6 +35,7 @@ from ..processing.threshold_suggestions import (
     suggest_thresholds,
 )
 from .main_window import MainWindow
+from .grayscale_controls import GrayscaleControls
 from .analysis_panel import AnalysisPanel
 from .morphology_controls import MorphologyControls
 from .threshold_controls import ThresholdControls
@@ -57,12 +60,20 @@ class ApplicationController:
         self.worker = ProcessingWorker()
         self._exporter = exporter
         self._experiment_recorder = experiment_recorder
+        self._experiment_recorder_supports_overlay = (
+            experiment_recorder is publish_experiment
+        )
         self.experiment_panel = self.window.experiment_panel
         self.controls = ThresholdControls(
             self.window.hsv_controls_tab,
             initial=self.session.thresholds,
             on_valid=self._on_thresholds,
             on_invalid=self._on_invalid_thresholds,
+        )
+        self.grayscale_controls = GrayscaleControls(
+            self.window.command_row,
+            on_mode=self._on_segmentation_mode,
+            on_settings=self._on_grayscale_settings,
         )
         self.morphology_controls = MorphologyControls(
             self.window.refine_controls_tab,
@@ -96,6 +107,7 @@ class ApplicationController:
             open_video=self.choose_video,
             save_mask=self.choose_save_mask,
             save_result=self.choose_save_result,
+            save_overlay=self.choose_save_overlay,
             record_experiment=self.choose_record_experiment,
             play=self.play_video,
             pause=self.pause_video,
@@ -133,6 +145,7 @@ class ApplicationController:
             path, self.session.thresholds, revision, self.session.morphology,
             self.session.analysis_settings, self.session.watershed_settings,
             None, self.session.evaluation_target, self.session.settings_revision,
+            SegmentationMode.HSV, self.session.grayscale_settings,
         )
 
     def choose_video(self) -> None:
@@ -165,6 +178,7 @@ class ApplicationController:
                 path, thresholds, revision, morphology,
                 self.session.analysis_settings, self.session.watershed_settings,
                 None, self.session.evaluation_target, self.session.settings_revision,
+                SegmentationMode.HSV, self.session.grayscale_settings,
             ),
             cleanup=lambda candidate: candidate.reader.release(),
         )
@@ -209,6 +223,7 @@ class ApplicationController:
                 thresholds, revision, morphology, self.session.analysis_settings,
                 self.session.watershed_settings, self.session.evaluation_target,
                 self.session.settings_revision,
+                self.session.segmentation_mode, self.session.grayscale_settings,
             ),
         )
 
@@ -229,6 +244,7 @@ class ApplicationController:
                 thresholds, revision, morphology, self.session.analysis_settings,
                 self.session.watershed_settings, self.session.evaluation_target,
                 self.session.settings_revision,
+                self.session.segmentation_mode, self.session.grayscale_settings,
             ),
         )
 
@@ -266,12 +282,48 @@ class ApplicationController:
         self.window.show_status("Morphology changed — result pending…")
         self.worker.submit(request)
 
+    def _on_segmentation_mode(self, mode: SegmentationMode) -> None:
+        try:
+            self.session.accept_segmentation_mode(mode)
+        except ValidationError as error:
+            self.grayscale_controls.reject_mode(str(error))
+            self.window.show_status(str(error))
+            return
+        self._submit_current_mode_change("Segmentation mode changed — result pending…")
+
+    def _on_grayscale_settings(self, settings: GrayscaleSettings) -> None:
+        try:
+            self.session.accept_grayscale_settings(settings)
+        except ValidationError as error:
+            self.window.show_status(str(error))
+            return
+        self._submit_current_mode_change("Grayscale settings changed — result pending…")
+
+    def _submit_current_mode_change(self, message: str) -> None:
+        source = self.session.source
+        if source is None:
+            self.window.show_status("Open an image or video before changing segmentation mode.")
+            return
+        revision = self._next_revision(invalidate_video=True)
+        self._export_snapshot_valid = False
+        self._refresh_export_controls()
+        self.window.mark_selection_pending()
+        self.window.show_status(message)
+        self.worker.submit(self._request(source, self.session.thresholds, revision))
+
     def _request(self, source, thresholds, revision, morphology=None) -> ProcessingRequest:
         return ProcessingRequest(
-            source, thresholds, revision, morphology or self.session.morphology,
-            self.session.analysis_settings, self.session.watershed_settings,
-            self.session.ground_truth, self.session.evaluation_target,
-            self.session.settings_revision,
+            source=source,
+            thresholds=thresholds,
+            request_revision=revision,
+            morphology=morphology or self.session.morphology,
+            analysis_settings=self.session.analysis_settings,
+            watershed_settings=self.session.watershed_settings,
+            ground_truth=self.session.ground_truth,
+            evaluation_target=self.session.evaluation_target,
+            settings_revision=self.session.settings_revision,
+            segmentation_mode=self.session.segmentation_mode,
+            grayscale_settings=self.session.grayscale_settings,
         )
 
     def _on_analysis_settings(
@@ -472,11 +524,23 @@ class ApplicationController:
         )
         self.save_result_path(path or None)
 
+    def choose_save_overlay(self) -> None:
+        path = filedialog.asksaveasfilename(
+            title="Save Overlay",
+            defaultextension=".png",
+            filetypes=[("PNG image", "*.png")],
+            confirmoverwrite=False,
+        )
+        self.save_overlay_path(path or None)
+
     def save_mask_path(self, path: str | Path | None) -> bool:
         return self._begin_export("mask", path)
 
     def save_result_path(self, path: str | Path | None) -> bool:
         return self._begin_export("result", path)
+
+    def save_overlay_path(self, path: str | Path | None) -> bool:
+        return self._begin_export("overlay", path)
 
     def choose_record_experiment(self) -> None:
         runs_dir = filedialog.askdirectory(title="Choose Experiment Runs Directory")
@@ -495,22 +559,14 @@ class ApplicationController:
         if runs_dir is None or str(runs_dir) == "":
             return False
         snapshot = self.session.result
+        overlay_snapshot = self.window.overlay_snapshot
         lighting, observations = self.experiment_panel.descriptions()
         if not lighting or not observations:
             self.window.show_status(
                 "Lighting and observations are required before recording an experiment."
             )
             return False
-        if (
-            self._export_in_flight
-            or not self._export_snapshot_valid
-            or snapshot is None
-            or snapshot.thresholds != self.session.thresholds
-            or snapshot.morphology != self.session.morphology
-            or snapshot.analysis_settings != self.session.analysis_settings
-            or snapshot.watershed_settings != self.session.watershed_settings
-            or snapshot.settings_revision != self.session.settings_revision
-        ):
+        if not self._current_result_available(snapshot):
             self.window.show_status(
                 "Recording is unavailable until a complete current result is ready."
             )
@@ -527,8 +583,9 @@ class ApplicationController:
         self.worker.submit_operation(
             "experiment_record",
             revision,
-            lambda: self._experiment_recorder(
-                snapshot, lighting, observations, Path(runs_dir), environment
+            lambda: self._publish_experiment_snapshot(
+                snapshot, overlay_snapshot, lighting, observations,
+                Path(runs_dir), environment,
             ),
             replace_pending=False,
         )
@@ -537,17 +594,9 @@ class ApplicationController:
     def _begin_export(self, kind: str, path: str | Path | None) -> bool:
         if path is None or str(path) == "":
             return False
-        snapshot = self.session.result
-        if (
-            self._export_in_flight
-            or not self._export_snapshot_valid
-            or snapshot is None
-            or snapshot.thresholds != self.session.thresholds
-            or snapshot.morphology != self.session.morphology
-            or snapshot.analysis_settings != self.session.analysis_settings
-            or snapshot.watershed_settings != self.session.watershed_settings
-            or snapshot.settings_revision != self.session.settings_revision
-        ):
+        result_snapshot = self.session.result
+        snapshot = self.window.overlay_snapshot if kind == "overlay" else result_snapshot
+        if snapshot is None or not self._current_result_available(result_snapshot):
             self.window.show_status(
                 "Saving is unavailable until a complete current result is ready."
             )
@@ -567,7 +616,7 @@ class ApplicationController:
         revision = self._latest_request_revision
         self._export_in_flight = True
         self._refresh_export_controls()
-        label = "mask" if kind == "mask" else "segmented result"
+        label = {"mask": "mask", "result": "segmented result", "overlay": "overlay"}[kind]
         self.window.show_status(f"Saving {label}…")
         self.worker.submit_operation(
             f"export_{kind}",
@@ -579,9 +628,14 @@ class ApplicationController:
 
     def _refresh_export_controls(self) -> None:
         result = self.session.result
-        available = (
-            not self._closed
-            and not self._export_in_flight
+        available = not self._closed and self._current_result_available(result)
+        self.window.set_export_available(available)
+        self.window.set_experiment_available(available)
+
+    def _current_result_available(self, result: SegmentationResult | None) -> bool:
+        """Return whether result/export actions can safely capture current state."""
+        return (
+            not self._export_in_flight
             and self._export_snapshot_valid
             and result is not None
             and result.thresholds == self.session.thresholds
@@ -589,9 +643,18 @@ class ApplicationController:
             and result.analysis_settings == self.session.analysis_settings
             and result.watershed_settings == self.session.watershed_settings
             and result.settings_revision == self.session.settings_revision
+            and result.segmentation_mode == self.session.segmentation_mode
+            and result.grayscale_settings == self.session.grayscale_settings
         )
-        self.window.set_export_available(available)
-        self.window.set_experiment_available(available)
+
+    def _publish_experiment_snapshot(
+        self, snapshot, overlay, lighting, observations, runs_dir, environment
+    ):
+        """Keep injected legacy recorders compatible while the built-in retains Overlay."""
+        arguments = (snapshot, lighting, observations, runs_dir, environment)
+        if self._experiment_recorder_supports_overlay:
+            return self._experiment_recorder(*arguments, overlay)
+        return self._experiment_recorder(*arguments)
 
     def _poll_worker(self) -> None:
         if self._closed:
@@ -601,7 +664,7 @@ class ApplicationController:
         self._poll_id = self.root.after(self.POLL_MS, self._poll_worker)
 
     def _handle_completion(self, completion: WorkerCompletion) -> None:
-        if completion.kind in {"export_mask", "export_result", "experiment_record"}:
+        if completion.kind in {"export_mask", "export_result", "export_overlay", "experiment_record"}:
             self._handle_export_completion(completion)
             return
         if completion.request_revision == self._video_request_in_flight:
@@ -633,6 +696,7 @@ class ApplicationController:
         self._resume_video_on_failure = False
         self._export_snapshot_valid = True
         self.window.show_result(result)
+        self.grayscale_controls.show_result(result)
         self.analysis_panel.show_result(result)
         self.window.set_loading(False)
         self.controls.set_enabled(True)
@@ -640,22 +704,37 @@ class ApplicationController:
         self.window.set_sampling_available(True)
         self.window.update_video_controls(self.playback.state.value)
         self._refresh_export_controls()
-        morphology_status = "Morphology off"
+        self.window.show_status(self._current_result_message(result))
+        if self.playback.state is PlaybackState.PLAYING:
+            self.root.after_idle(self._schedule_video_frame)
+
+    @staticmethod
+    def _current_result_message(result: SegmentationResult) -> str:
+        morphology = "Morphology off"
         if result.morphology.enabled:
             operation = result.morphology.operation.replace("_", " + ").title()
-            morphology_status = (
+            morphology = (
                 f"{operation}, {result.morphology.kernel_size}×"
                 f"{result.morphology.kernel_size} kernel"
             )
-        self.window.show_status(
+        if result.segmentation_mode == "grayscale":
+            threshold = (
+                result.otsu_outcome.threshold
+                if result.otsu_outcome.status == "applied"
+                else result.grayscale_settings.manual_threshold
+            )
+            source = result.grayscale_settings.threshold_source.title()
+            return (
+                f"Current grayscale result — {source} threshold {threshold}, "
+                f"{result.grayscale_settings.polarity} foreground. {morphology}."
+            )
+        return (
             f"Current result — H {result.thresholds.lower_h_deg}.."
             f"{result.thresholds.upper_h_deg}°, "
             f"S {result.thresholds.lower_s_pct}..{result.thresholds.upper_s_pct}%, "
             f"V {result.thresholds.lower_v_pct}..{result.thresholds.upper_v_pct}%. "
-            f"{morphology_status}."
+            f"{morphology}."
         )
-        if self.playback.state is PlaybackState.PLAYING:
-            self.root.after_idle(self._schedule_video_frame)
 
     def _handle_export_completion(self, completion: WorkerCompletion) -> None:
         self._export_in_flight = False
@@ -694,6 +773,9 @@ class ApplicationController:
         self._resume_video_after_export = False
 
     def _handle_error(self, completion: WorkerCompletion) -> None:
+        if completion.kind == "processing" and self.session.result is not None:
+            self.session.restore_processing_selection(self.session.result)
+            self.grayscale_controls.show_result(self.session.result)
         message = format_recovery_message(
             completion.error,
             preserved_state=self.session.preserved_state_description(),

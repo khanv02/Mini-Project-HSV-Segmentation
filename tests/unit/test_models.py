@@ -10,14 +10,66 @@ import pytest
 from hsv_segmentation.errors import ValidationError
 from hsv_segmentation.models import (
     AnalysisSettings,
+    GrayscaleEligibility,
+    GrayscaleSettings,
     HSVThresholdSet,
     InputMedia,
     MAX_IMAGE_PIXELS,
+    OtsuOutcome,
+    OverlayDisplaySettings,
+    OverlaySnapshot,
     ProcessingRequest,
+    SegmentationMode,
     SegmentationResult,
     WatershedSettings,
     validate_rgb,
 )
+
+
+def test_feature_003_settings_defaults_and_validation():
+    settings = GrayscaleSettings()
+    assert settings.threshold_source == "manual"
+    assert settings.manual_threshold == 128
+    assert settings.polarity == "bright"
+    assert settings.settings_revision == 0
+    assert SegmentationMode.HSV == "hsv"
+    with pytest.raises(ValidationError):
+        GrayscaleSettings(manual_threshold=True)
+    with pytest.raises(ValidationError):
+        GrayscaleSettings(manual_threshold=256)
+    with pytest.raises(ValidationError):
+        GrayscaleSettings(polarity="middle")
+
+
+def test_feature_003_outcomes_enforce_truthful_states():
+    applied = OtsuOutcome(status="applied", threshold=20, source_sha256="a" * 64)
+    assert applied.threshold == 20
+    unavailable = OtsuOutcome(
+        status="unavailable", reason="constant intensity", source_sha256="a" * 64
+    )
+    assert unavailable.threshold is None
+    with pytest.raises(ValidationError):
+        OtsuOutcome(status="applied", source_sha256="a" * 64)
+    with pytest.raises(ValidationError):
+        GrayscaleEligibility(False, source_sha256="a" * 64)
+
+
+def test_overlay_snapshot_owns_readonly_pixels(tmp_path):
+    rgb = np.zeros((2, 3, 3), dtype=np.uint8)
+    snapshot = OverlaySnapshot(
+        rgb=rgb,
+        variant="segmentation",
+        display_settings=OverlayDisplaySettings(),
+        source_path=(tmp_path / "source.png").resolve(),
+        source_sha256="a" * 64,
+        session_id="session",
+    )
+    rgb.fill(255)
+    assert not np.any(snapshot.rgb)
+    with pytest.raises(ValueError):
+        snapshot.rgb.setflags(write=True)
+    with pytest.raises(ValidationError):
+        OverlayDisplaySettings(variant="unknown")
 
 
 @pytest.mark.parametrize("value", [True, -1, 1.5, "2"])

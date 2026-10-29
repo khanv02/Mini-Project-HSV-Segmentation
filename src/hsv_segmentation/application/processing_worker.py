@@ -74,6 +74,8 @@ class _CachedProcessor:
             ground_truth=request.ground_truth,
             evaluation_target=request.evaluation_target,
             settings_revision=request.settings_revision,
+            segmentation_mode=request.segmentation_mode,
+            grayscale_settings=request.grayscale_settings,
         )
 
 
@@ -121,6 +123,8 @@ class ProcessingWorker:
         ground_truth=None,
         evaluation_target="baseline",
         settings_revision=0,
+        segmentation_mode="hsv",
+        grayscale_settings=None,
     ) -> None:
         def load_and_process() -> SegmentationResult:
             source = load_image(path)
@@ -131,6 +135,8 @@ class ProcessingWorker:
                 ground_truth=ground_truth,
                 evaluation_target=evaluation_target,
                 settings_revision=settings_revision,
+                segmentation_mode=segmentation_mode,
+                grayscale_settings=grayscale_settings,
             )
 
         self._submit_item(_WorkItem("image", request_revision, load_and_process))

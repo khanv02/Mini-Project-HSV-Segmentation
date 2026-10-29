@@ -5,8 +5,10 @@ from numbers import Real
 import numpy as np
 
 from ..errors import ValidationError
-from ..models import validate_rgb
-from ..models import RegionAnalysis, WatershedResult
+from ..models import (
+    OverlayDisplaySettings, OverlaySnapshot, RegionAnalysis, SegmentationResult,
+    WatershedResult, validate_rgb,
+)
 
 
 def compose_segmentation_overlay(
@@ -111,4 +113,55 @@ def compose_watershed_overlay(
         ).astype(np.uint8)
     output[result.boundaries == 255] = (255, 32, 32)
     return output
+
+
+def compose_overlay_snapshot(
+    result: SegmentationResult, settings: OverlayDisplaySettings
+) -> OverlaySnapshot:
+    """Compose one honestly labelled immutable Overlay snapshot."""
+    if not isinstance(result, SegmentationResult):
+        raise ValidationError("result", "must be a SegmentationResult")
+    if not isinstance(settings, OverlayDisplaySettings):
+        raise ValidationError("display_settings", "must be OverlayDisplaySettings")
+    variant = settings.variant
+    truth_hash = None
+    if variant == "segmentation":
+        rgb = compose_segmentation_overlay(
+            result.original_rgb, result.mask,
+            color=settings.tint_color, opacity=settings.opacity,
+        )
+    elif variant == "object_analysis":
+        if result.analysis is None:
+            raise ValidationError("overlay.variant", "object analysis is unavailable")
+        rgb = compose_region_annotations(
+            result.original_rgb, result.analysis,
+            contours=settings.contours, boxes=settings.boxes,
+        )
+    elif variant == "watershed":
+        if result.watershed is None or result.watershed.status not in {"applied", "empty"}:
+            raise ValidationError("overlay.variant", "Watershed is unavailable")
+        rgb = compose_watershed_overlay(result.original_rgb, result.watershed)
+        if result.watershed.analysis is not None and (settings.contours or settings.boxes):
+            rgb = compose_region_annotations(
+                rgb, result.watershed.analysis,
+                contours=settings.contours, boxes=settings.boxes,
+            )
+    else:
+        if result.evaluation is None or result.ground_truth is None:
+            raise ValidationError("overlay.variant", "ground-truth confusion is unavailable")
+        if result.evaluation_target == "components" and result.analysis is not None:
+            prediction = result.analysis.filtered_mask
+        elif result.evaluation_target == "watershed" and result.watershed is not None:
+            prediction = result.watershed.foreground_mask
+        else:
+            prediction = result.mask
+        rgb = compose_confusion_overlay(result.original_rgb, prediction, result.ground_truth.mask)
+        truth_hash = result.ground_truth.pixel_sha256
+    return OverlaySnapshot(
+        rgb=rgb, variant=variant, display_settings=settings,
+        source_path=result.source.source_path, source_sha256=result.source.source_sha256,
+        session_id=result.session_id, frame_index=result.frame_index,
+        request_revision=result.request_revision, settings_revision=result.settings_revision,
+        truth_pixel_sha256=truth_hash,
+    )
 

@@ -6,16 +6,22 @@ from ..errors import ValidationError
 from ..io.images import load_image
 from ..models import (
     AnalysisSettings,
+    GrayscaleSettings,
     GroundTruth,
     HSVHistogram,
     HSVThresholdSet,
     InputMedia,
     MorphologySettings,
+    OtsuOutcome,
+    SegmentationMode,
     SegmentationResult,
     WatershedSettings,
 )
 from ..processing.color import rgb_to_hsv
 from ..processing.histogram import compute_hsv_histogram
+from ..processing.grayscale import (
+    classify_grayscale, compute_otsu_threshold, extract_intensity, generate_grayscale_mask,
+)
 from ..processing.morphology import apply_morphology
 from ..processing.object_analysis import analyze_components
 from ..processing.evaluation import evaluate_masks
@@ -37,6 +43,8 @@ def process_source(
     ground_truth: GroundTruth | None = None,
     evaluation_target: str = "baseline",
     settings_revision: int = 0,
+    segmentation_mode: SegmentationMode | str = SegmentationMode.HSV,
+    grayscale_settings: GrayscaleSettings | None = None,
 ) -> SegmentationResult:
     """Create one immutable result for an already decoded source snapshot."""
     hsv_array = rgb_to_hsv(source.rgb) if hsv is None else hsv
@@ -44,7 +52,34 @@ def process_source(
     morphology = morphology or MorphologySettings()
     analysis_settings = analysis_settings or AnalysisSettings()
     watershed_settings = watershed_settings or WatershedSettings()
-    original_mask = generate_mask(hsv_array, thresholds)
+    try:
+        segmentation_mode = SegmentationMode(segmentation_mode)
+    except (TypeError, ValueError) as error:
+        raise ValidationError("segmentation_mode", "must be hsv or grayscale") from error
+    grayscale_settings = grayscale_settings or GrayscaleSettings()
+    if not isinstance(grayscale_settings, GrayscaleSettings):
+        raise ValidationError("grayscale_settings", "must be GrayscaleSettings")
+    eligibility = classify_grayscale(
+        source.rgb, source.source_sha256, source.frame_index
+    )
+    otsu_outcome = OtsuOutcome()
+    if segmentation_mode is SegmentationMode.GRAYSCALE:
+        if not eligibility.eligible:
+            raise ValidationError("segmentation_mode", eligibility.reason)
+        intensity = extract_intensity(source.rgb)
+        threshold = grayscale_settings.manual_threshold
+        if grayscale_settings.threshold_source == "otsu":
+            otsu_outcome = compute_otsu_threshold(
+                intensity, source.source_sha256, source.frame_index
+            )
+            if otsu_outcome.status != "applied":
+                raise ValidationError("otsu", otsu_outcome.reason)
+            threshold = otsu_outcome.threshold
+        original_mask = generate_grayscale_mask(
+            intensity, threshold, grayscale_settings.polarity
+        )
+    else:
+        original_mask = generate_mask(hsv_array, thresholds)
     mask = apply_morphology(original_mask, morphology)
     segmented_rgb = apply_mask(source.rgb, mask)
     analysis = (
@@ -86,6 +121,10 @@ def process_source(
         evaluation_target=evaluation_target,
         evaluation=evaluation,
         settings_revision=settings_revision,
+        segmentation_mode=segmentation_mode,
+        grayscale_settings=grayscale_settings,
+        grayscale_eligibility=eligibility,
+        otsu_outcome=otsu_outcome,
     )
 
 
@@ -106,6 +145,8 @@ class ImageSession:
         self._ground_truth: GroundTruth | None = None
         self._evaluation_target = "baseline"
         self._settings_revision = 0
+        self._segmentation_mode = SegmentationMode.HSV
+        self._grayscale_settings = GrayscaleSettings()
         self._source: InputMedia | None = None
         self._result: SegmentationResult | None = None
         self._request_revision = 0
@@ -143,6 +184,44 @@ class ImageSession:
         return self._settings_revision
 
     @property
+    def segmentation_mode(self) -> SegmentationMode:
+        return self._segmentation_mode
+
+    @property
+    def grayscale_settings(self) -> GrayscaleSettings:
+        return self._grayscale_settings
+
+    def accept_segmentation_mode(self, mode: SegmentationMode | str) -> None:
+        try:
+            selected = SegmentationMode(mode)
+        except (TypeError, ValueError) as error:
+            raise ValidationError("segmentation_mode", "must be hsv or grayscale") from error
+        if selected is SegmentationMode.GRAYSCALE:
+            if self._source is None:
+                raise ValidationError("segmentation_mode", "requires a current source")
+            eligibility = classify_grayscale(
+                self._source.rgb, self._source.source_sha256, self._source.frame_index
+            )
+            if not eligibility.eligible:
+                raise ValidationError("segmentation_mode", eligibility.reason)
+        self._segmentation_mode = selected
+        self._settings_revision += 1
+
+    def accept_grayscale_settings(self, settings: GrayscaleSettings) -> None:
+        if not isinstance(settings, GrayscaleSettings):
+            raise ValidationError("grayscale_settings", "must be GrayscaleSettings")
+        self._grayscale_settings = settings
+        self._settings_revision += 1
+
+    def restore_processing_selection(self, result: SegmentationResult) -> None:
+        """Restore the last committed mode/settings after a recoverable candidate fails."""
+        if result is not self._result:
+            raise ValidationError("result", "must be the current committed result")
+        self._segmentation_mode = result.segmentation_mode
+        self._grayscale_settings = result.grayscale_settings
+        self._settings_revision = result.settings_revision
+
+    @property
     def result(self) -> SegmentationResult | None:
         return self._result
 
@@ -174,8 +253,11 @@ class ImageSession:
             watershed_settings=self._watershed_settings,
             evaluation_target=self._evaluation_target,
             settings_revision=self._settings_revision,
+            segmentation_mode=SegmentationMode.HSV,
+            grayscale_settings=self._grayscale_settings,
         )
         self._source = candidate
+        self._segmentation_mode = SegmentationMode.HSV
         self._result = candidate_result
         self._request_revision = next_revision
         return candidate_result
@@ -192,6 +274,8 @@ class ImageSession:
                 ground_truth=self._ground_truth,
                 evaluation_target=self._evaluation_target,
                 settings_revision=self._settings_revision,
+                segmentation_mode=self._segmentation_mode,
+                grayscale_settings=self._grayscale_settings,
             )
             if self._source is not None else None
         )
@@ -248,6 +332,8 @@ class ImageSession:
         self._ground_truth = result.ground_truth
         self._evaluation_target = result.evaluation_target
         self._settings_revision = result.settings_revision
+        self._segmentation_mode = result.segmentation_mode
+        self._grayscale_settings = result.grayscale_settings
         self._result = result
         self._request_revision = max(self._request_revision, result.request_revision)
 
@@ -255,13 +341,7 @@ class ImageSession:
         """Commit only a result for the current source and threshold revision."""
         if self._source is None or result.session_id != self._source.session_id:
             return False
-        if result.parameter_revision != self._thresholds.parameter_revision:
-            return False
-        if result.morphology != self._morphology:
-            return False
-        if result.analysis_settings != self._analysis_settings or result.watershed_settings != self._watershed_settings:
-            return False
-        if result.settings_revision != self._settings_revision:
+        if not self._matches_current_settings(result):
             return False
         if result.request_revision < self._request_revision:
             return False
@@ -275,13 +355,7 @@ class ImageSession:
             return False
         if result.session_id != self._source.session_id:
             return False
-        if result.parameter_revision != self._thresholds.parameter_revision:
-            return False
-        if result.morphology != self._morphology:
-            return False
-        if result.analysis_settings != self._analysis_settings or result.watershed_settings != self._watershed_settings:
-            return False
-        if result.settings_revision != self._settings_revision:
+        if not self._matches_current_settings(result):
             return False
         if result.request_revision < self._request_revision:
             return False
@@ -292,3 +366,15 @@ class ImageSession:
         self._result = result
         self._request_revision = result.request_revision
         return True
+
+    def _matches_current_settings(self, result: SegmentationResult) -> bool:
+        """Return whether a completion belongs to the active processing configuration."""
+        return (
+            result.parameter_revision == self._thresholds.parameter_revision
+            and result.morphology == self._morphology
+            and result.analysis_settings == self._analysis_settings
+            and result.watershed_settings == self._watershed_settings
+            and result.settings_revision == self._settings_revision
+            and result.segmentation_mode == self._segmentation_mode
+            and result.grayscale_settings == self._grayscale_settings
+        )

@@ -3,10 +3,9 @@
 import tkinter as tk
 from tkinter import ttk
 
-from ..models import SegmentationResult
+from ..models import OverlayDisplaySettings, OverlaySnapshot, SegmentationResult
 from ..processing.visualization import (
-    compose_confusion_overlay, compose_region_annotations, compose_segmentation_overlay,
-    compose_watershed_overlay,
+    compose_overlay_snapshot,
 )
 from .experiment_panel import ExperimentPanel
 from .hsv_histogram import HSVHistogramPanel
@@ -23,6 +22,8 @@ class MainWindow:
         self._displayed_source_identity: tuple[str, int | None] | None = None
         self._current_result: SegmentationResult | None = None
         self._analysis_display = (True, True, False)
+        self._overlay_display_revision = 0
+        self._overlay_snapshot: OverlaySnapshot | None = None
         self.media_context = "empty"
         self.root.title("HSV Color Segmentation")
         self.style = configure_theme(self.root)
@@ -60,6 +61,10 @@ class MainWindow:
             self.output_actions, text="Save Result…", state="disabled"
         )
         self.save_result_button.pack(side="left", padx=(SPACING["xs"], 0))
+        self.save_overlay_button = ttk.Button(
+            self.output_actions, text="Save Overlay…", state="disabled"
+        )
+        self.save_overlay_button.pack(side="left", padx=(SPACING["xs"], 0))
         self.record_experiment_button = ttk.Button(
             self.output_actions, text="Record Experiment…", state="disabled"
         )
@@ -256,6 +261,16 @@ class MainWindow:
         )
         if result.histogram is not None:
             self.histogram_panel.set_histogram(result.histogram, result.thresholds)
+            threshold = (
+                result.otsu_outcome.threshold
+                if result.otsu_outcome.status == "applied"
+                else result.grayscale_settings.manual_threshold
+            )
+            self.histogram_panel.set_grayscale_mode(
+                result.segmentation_mode == "grayscale",
+                threshold=threshold,
+                polarity=result.grayscale_settings.polarity,
+            )
         self.selection_var.set(
             f"Selected pixels: {result.selected_pixel_percentage:.2f}% "
             f"({result.selected_pixel_count:,}/{result.mask.size:,})"
@@ -268,36 +283,30 @@ class MainWindow:
         self.result_view.show_array(self._current_result.segmented_rgb)
         contours, boxes, confusion = self._analysis_display
         if confusion and self._current_result.evaluation is not None and self._current_result.ground_truth is not None:
-            target = self._evaluation_mask(self._current_result)
+            variant = "confusion"
             self.overlay_view.configure(text="Overlay · TP / FP / FN")
-            self.overlay_view.show_array(compose_confusion_overlay(
-                self._current_result.original_rgb, target, self._current_result.ground_truth.mask
-            ))
         elif (
             self._current_result.watershed is not None
             and self._current_result.watershed.status == "applied"
         ):
+            variant = "watershed"
             self.overlay_view.configure(text="Overlay · Watershed")
-            separated = compose_watershed_overlay(
-                self._current_result.original_rgb, self._current_result.watershed
-            )
-            if self._current_result.watershed.analysis is not None and (contours or boxes):
-                separated = compose_region_annotations(
-                    separated, self._current_result.watershed.analysis,
-                    contours=contours, boxes=boxes,
-                )
-            self.overlay_view.show_array(separated)
         elif self._current_result.analysis is not None and (contours or boxes):
+            variant = "object_analysis"
             self.overlay_view.configure(text="Overlay · Object Analysis")
-            self.overlay_view.show_array(compose_region_annotations(
-                self._current_result.original_rgb, self._current_result.analysis,
-                contours=contours, boxes=boxes,
-            ))
         else:
+            variant = "segmentation"
             self.overlay_view.configure(text="Overlay")
-            self.overlay_view.show_array(compose_segmentation_overlay(
-                self._current_result.original_rgb, self._current_result.mask
-            ))
+        settings = OverlayDisplaySettings(
+            variant=variant, contours=contours, boxes=boxes,
+            display_revision=self._overlay_display_revision,
+        )
+        self._overlay_snapshot = compose_overlay_snapshot(self._current_result, settings)
+        self.overlay_view.show_array(self._overlay_snapshot.rgb)
+
+    @property
+    def overlay_snapshot(self) -> OverlaySnapshot | None:
+        return self._overlay_snapshot
 
     @staticmethod
     def _evaluation_mask(result: SegmentationResult):
@@ -309,6 +318,7 @@ class MainWindow:
 
     def set_analysis_display(self, contours: bool, boxes: bool, confusion: bool) -> None:
         self._analysis_display = (bool(contours), bool(boxes), bool(confusion))
+        self._overlay_display_revision += 1
         self._refresh_result_view()
 
     def _refresh_mask_view(self) -> None:
@@ -318,7 +328,8 @@ class MainWindow:
             self._current_result.morphology.enabled and self.original_mask_var.get()
         )
         if show_original:
-            self.mask_view.configure(text="Original HSV Mask")
+            label = "Intensity" if self._current_result.segmentation_mode == "grayscale" else "HSV"
+            self.mask_view.configure(text=f"Original {label} Mask")
             self.mask_view.show_array(self._current_result.original_mask)
         else:
             title = (
@@ -392,13 +403,14 @@ class MainWindow:
         self.status_var.set(message)
 
     def set_commands(
-        self, *, open_image, open_video, save_mask, save_result, record_experiment,
+        self, *, open_image, open_video, save_mask, save_result, save_overlay, record_experiment,
         play, pause, restart, pick_color, clear_samples, sampling_mode_changed
     ) -> None:
         self.open_image_button.configure(command=open_image)
         self.open_video_button.configure(command=open_video)
         self.save_mask_button.configure(command=save_mask)
         self.save_result_button.configure(command=save_result)
+        self.save_overlay_button.configure(command=save_overlay)
         self.play_button.configure(command=play)
         self.pause_button.configure(command=pause)
         self.restart_button.configure(command=restart)
@@ -434,6 +446,7 @@ class MainWindow:
         state = "normal" if available else "disabled"
         self.save_mask_button.configure(state=state)
         self.save_result_button.configure(state=state)
+        self.save_overlay_button.configure(state=state)
 
     def set_experiment_available(self, available: bool) -> None:
         self.record_experiment_button.configure(

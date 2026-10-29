@@ -44,11 +44,11 @@ CASES = [
 
 
 def load_versioned_record(path: str | Path) -> dict:
-    """Load schema 1/2 evidence without rewriting retained records."""
+    """Load schema 1/2/3 evidence without rewriting retained records."""
     record_path = Path(path)
     record = json.loads(record_path.read_text(encoding="utf-8"))
     version_number = record.get("schema_version")
-    if version_number not in {1, 2}:
+    if version_number not in {1, 2, 3}:
         raise ValueError(f"unsupported experiment schema_version {version_number!r}")
     required = {"source", "thresholds", "morphology", "artifacts", "environment"}
     missing = sorted(required - record.keys())

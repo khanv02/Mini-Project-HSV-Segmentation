@@ -5,10 +5,12 @@ import numpy as np
 import pytest
 
 from hsv_segmentation.application.session import process_source
-from hsv_segmentation.io.experiments import label_sha256, publish_experiment
+from hsv_segmentation.io.experiments import label_sha256, pixel_sha256, publish_experiment
 from hsv_segmentation.models import (
-    AnalysisSettings, GroundTruth, HSVThresholdSet, InputMedia, WatershedSettings,
+    AnalysisSettings, GrayscaleSettings, GroundTruth, HSVThresholdSet, InputMedia,
+    OverlayDisplaySettings, WatershedSettings,
 )
+from hsv_segmentation.processing.visualization import compose_overlay_snapshot
 from scripts.generate_experiment_evidence import load_versioned_record
 
 
@@ -56,3 +58,25 @@ def test_unknown_record_version_is_rejected(tmp_path) -> None:
     path = tmp_path / "record.json"; path.write_text('{"schema_version": 99}', encoding="utf-8")
     with pytest.raises(ValueError, match="unsupported"):
         load_versioned_record(path)
+
+
+def test_grayscale_and_overlay_publish_schema_three(tmp_path) -> None:
+    values = np.array([[20, 20, 220, 220]], np.uint8)
+    source = media(tmp_path, np.repeat(values[..., None], 3, axis=2))
+    result = process_source(
+        source, HSVThresholdSet(), 3, segmentation_mode="grayscale",
+        grayscale_settings=GrayscaleSettings(threshold_source="otsu", polarity="dark"),
+    )
+    overlay = compose_overlay_snapshot(result, OverlayDisplaySettings())
+    environment = tmp_path / "environment.json"; environment.write_text("{}")
+    receipt = publish_experiment(
+        result, "lab", "otsu grayscale", tmp_path / "runs", environment, overlay
+    )
+    record = load_versioned_record(receipt.record_path)
+    assert record["schema_version"] == 3
+    assert record["segmentation"]["mode"] == "grayscale"
+    assert record["segmentation"]["threshold_source"] == "otsu"
+    assert record["segmentation"]["threshold"] == 20
+    assert record["segmentation"]["polarity"] == "dark"
+    assert record["overlay"]["variant"] == "segmentation"
+    assert record["overlay"]["artifact"]["pixel_sha256"] == pixel_sha256(overlay.rgb)

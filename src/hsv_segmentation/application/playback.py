@@ -7,8 +7,8 @@ from typing import Protocol
 
 from ..io.video import VideoEnd, VideoReader
 from ..models import (
-    AnalysisSettings, GroundTruth, HSVThresholdSet, InputMedia, MorphologySettings,
-    SegmentationResult, WatershedSettings,
+    AnalysisSettings, GrayscaleSettings, GroundTruth, HSVThresholdSet, InputMedia,
+    MorphologySettings, SegmentationMode, SegmentationResult, WatershedSettings,
 )
 from .session import ImageSession, process_source
 
@@ -72,6 +72,8 @@ class PlaybackSession:
         ground_truth: GroundTruth | None = None,
         evaluation_target: str = "baseline",
         settings_revision: int = 0,
+        segmentation_mode: SegmentationMode | str = SegmentationMode.HSV,
+        grayscale_settings: GrayscaleSettings | None = None,
     ) -> VideoCandidate:
         reader = self._reader_factory(path)
         try:
@@ -80,6 +82,7 @@ class PlaybackSession:
                 analysis_settings=analysis_settings, watershed_settings=watershed_settings,
                 ground_truth=ground_truth, evaluation_target=evaluation_target,
                 settings_revision=settings_revision,
+                segmentation_mode=segmentation_mode, grayscale_settings=grayscale_settings,
             )
         except BaseException:
             reader.release()
@@ -119,6 +122,8 @@ class PlaybackSession:
         watershed_settings: WatershedSettings | None = None,
         evaluation_target: str = "baseline",
         settings_revision: int = 0,
+        segmentation_mode: SegmentationMode | str = SegmentationMode.HSV,
+        grayscale_settings: GrayscaleSettings | None = None,
     ) -> PlaybackAdvance:
         if self._reader is None:
             raise RuntimeError("no video reader is active")
@@ -133,6 +138,7 @@ class PlaybackSession:
                 frame, thresholds, request_revision, morphology=morphology,
                 analysis_settings=analysis_settings, watershed_settings=watershed_settings,
                 evaluation_target=evaluation_target, settings_revision=settings_revision,
+                segmentation_mode=segmentation_mode, grayscale_settings=grayscale_settings,
             ),
         )
 
@@ -170,6 +176,8 @@ class PlaybackSession:
         ground_truth: GroundTruth | None = None,
         evaluation_target: str = "baseline",
         settings_revision: int = 0,
+        segmentation_mode: SegmentationMode | str = SegmentationMode.HSV,
+        grayscale_settings: GrayscaleSettings | None = None,
     ) -> SegmentationResult:
         source = self.media_session.source
         if source is None or source.media_kind != "video":
@@ -179,6 +187,7 @@ class PlaybackSession:
             analysis_settings=analysis_settings, watershed_settings=watershed_settings,
             ground_truth=ground_truth, evaluation_target=evaluation_target,
             settings_revision=settings_revision,
+            segmentation_mode=segmentation_mode, grayscale_settings=grayscale_settings,
         )
 
     def prepare_restart(
@@ -190,6 +199,8 @@ class PlaybackSession:
         watershed_settings: WatershedSettings | None = None,
         evaluation_target: str = "baseline",
         settings_revision: int = 0,
+        segmentation_mode: SegmentationMode | str = SegmentationMode.HSV,
+        grayscale_settings: GrayscaleSettings | None = None,
     ) -> SegmentationResult:
         if self._reader is None:
             raise RuntimeError("no video reader is active")
@@ -197,6 +208,7 @@ class PlaybackSession:
             self._reader.restart(), thresholds, request_revision, morphology=morphology,
             analysis_settings=analysis_settings, watershed_settings=watershed_settings,
             evaluation_target=evaluation_target, settings_revision=settings_revision,
+            segmentation_mode=segmentation_mode, grayscale_settings=grayscale_settings,
         )
 
     def commit_restart(self, result: SegmentationResult) -> bool:

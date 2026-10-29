@@ -13,8 +13,8 @@ from uuid import UUID, uuid4
 import numpy as np
 
 from ..errors import ValidationError, WriteError
-from ..models import SegmentationResult
-from .export import save_mask_png, save_result_png
+from ..models import OverlaySnapshot, SegmentationResult
+from .export import save_mask_png, save_overlay_png, save_result_png
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,10 +105,18 @@ def publish_experiment(
     observations: str,
     runs_dir: str | Path,
     environment_path: str | Path,
+    overlay: OverlaySnapshot | None = None,
 ) -> ExperimentReceipt:
     """Publish PNG artifacts and record.json for one immutable result snapshot."""
     if not isinstance(snapshot, SegmentationResult):
         raise ValidationError("snapshot", "must be a complete segmentation result")
+    if overlay is not None:
+        if not isinstance(overlay, OverlaySnapshot):
+            raise ValidationError("overlay", "must be an OverlaySnapshot or None")
+        if (overlay.session_id, overlay.frame_index, overlay.request_revision) != (
+            snapshot.session_id, snapshot.frame_index, snapshot.request_revision
+        ):
+            raise ValidationError("overlay", "must match the segmentation snapshot identity")
     lighting = _nonempty(lighting, "lighting")
     observations = _nonempty(observations, "observations")
     try:
@@ -150,8 +158,9 @@ def publish_experiment(
             or snapshot.watershed_settings.enabled
             or snapshot.evaluation is not None
         )
+        schema_three = snapshot.segmentation_mode == "grayscale" or overlay is not None
         record = {
-            "schema_version": 2 if extended else 1,
+            "schema_version": 3 if schema_three else (2 if extended else 1),
             "run_id": str(run_id),
             "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "source": {
@@ -184,6 +193,37 @@ def publish_experiment(
                 "sha256": _file_sha256(environment),
             },
         }
+        if schema_three:
+            segmentation = {"mode": str(snapshot.segmentation_mode)}
+            if snapshot.segmentation_mode == "grayscale":
+                resolved = (
+                    snapshot.otsu_outcome.threshold
+                    if snapshot.otsu_outcome.status == "applied"
+                    else snapshot.grayscale_settings.manual_threshold
+                )
+                segmentation.update(snapshot.grayscale_settings.as_dict(
+                    resolved_threshold=resolved
+                ))
+                segmentation["eligibility"] = {
+                    "rule": "exact_rgb_channel_equality", "eligible": True,
+                }
+                if snapshot.grayscale_settings.threshold_source == "otsu":
+                    segmentation["tie_rule"] = snapshot.otsu_outcome.tie_rule
+            record["segmentation"] = segmentation
+        if overlay is not None:
+            overlay_path = run_dir / "overlay.png"
+            save_overlay_png(overlay.rgb, overlay_path)
+            record["overlay"] = {
+                "variant": overlay.variant,
+                "display_settings": overlay.display_settings.as_dict(),
+                "artifact": {
+                    "path": overlay_path.name,
+                    "sha256": _file_sha256(overlay_path),
+                    "pixel_sha256": pixel_sha256(overlay.rgb),
+                },
+            }
+            if overlay.truth_pixel_sha256 is not None:
+                record["overlay"]["truth_pixel_sha256"] = overlay.truth_pixel_sha256
         if extended:
             if snapshot.analysis is not None:
                 components_path = run_dir / "components_mask.png"

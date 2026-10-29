@@ -106,11 +106,13 @@ def test_export_is_unavailable_without_a_complete_current_result(tmp_path) -> No
     try:
         assert str(controller.window.save_mask_button.cget("state")) == "disabled"
         assert str(controller.window.save_result_button.cget("state")) == "disabled"
+        assert str(controller.window.save_overlay_button.cget("state")) == "disabled"
         assert controller.save_mask_path(None) is False
 
         _open_fixture(controller, root, (tmp_path / "source.png").resolve())
         assert str(controller.window.save_mask_button.cget("state")) == "normal"
         assert str(controller.window.save_result_button.cget("state")) == "normal"
+        assert str(controller.window.save_overlay_button.cget("state")) == "normal"
 
         controller._on_thresholds(
             HSVThresholdSet(lower_h_deg=20, parameter_revision=1)
@@ -163,6 +165,25 @@ def test_image_mask_and_result_export_complete_in_background(tmp_path) -> None:
             np.asarray(Image.open(result_path).convert("RGB")), result.segmented_rgb
         )
         assert controller.session.result is result
+    finally:
+        controller.close()
+
+
+def test_current_overlay_export_matches_preview_snapshot(tmp_path) -> None:
+    tkinter = pytest.importorskip("tkinter")
+    root = _create_tk_root(tkinter)
+    root.withdraw()
+    controller = ApplicationController(root)
+    try:
+        _open_fixture(controller, root, (tmp_path / "source.png").resolve())
+        captured = controller.window.overlay_snapshot
+        destination = (tmp_path / "overlay.png").resolve()
+        assert controller.save_overlay_path(destination)
+        _wait_for(root, lambda: not controller.export_in_flight)
+        np.testing.assert_array_equal(
+            np.asarray(Image.open(destination).convert("RGB")), captured.rgb
+        )
+        assert controller.last_export_receipt.variant == captured.variant
     finally:
         controller.close()
 

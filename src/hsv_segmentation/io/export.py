@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image
 
 from ..errors import WriteError
-from ..models import SegmentationResult, validate_rgb
+from ..models import OverlaySnapshot, SegmentationResult, validate_rgb
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +21,7 @@ class ExportReceipt:
     source_path: Path
     session_id: str
     frame_index: int | None
+    variant: str | None = None
 
 
 def _validate_destination(path: str | Path, operation: str) -> Path:
@@ -110,17 +111,38 @@ def save_result_png(
     return _write_png(rgb, path, mode="RGB", operation=operation, overwrite=overwrite)
 
 
+def save_overlay_png(
+    rgb: np.ndarray, path: str | Path, *, overwrite: bool = False
+) -> Path:
+    """Atomically save exact source-resolution Overlay RGB pixels."""
+    operation = "save overlay PNG"
+    try:
+        validate_rgb(rgb)
+    except (TypeError, ValueError) as error:
+        raise WriteError(
+            f"invalid output data; overlay must be a nonempty uint8 RGB array ({error})",
+            path=path, operation=operation,
+        ) from error
+    return _write_png(rgb, path, mode="RGB", operation=operation, overwrite=overwrite)
+
+
 def export_snapshot(
-    snapshot: SegmentationResult,
+    snapshot: SegmentationResult | OverlaySnapshot,
     kind: str,
     path: str | Path,
     *,
     overwrite: bool = False,
 ) -> ExportReceipt:
     """Write one immutable mask/result snapshot and return its captured identity."""
-    if not isinstance(snapshot, SegmentationResult):
+    if not isinstance(snapshot, (SegmentationResult, OverlaySnapshot)):
         raise WriteError("invalid output data; no complete result snapshot", operation="export")
-    if kind == "mask":
+    if kind == "overlay":
+        if not isinstance(snapshot, OverlaySnapshot):
+            raise WriteError("invalid output data; no complete overlay snapshot", operation="export")
+        saved = save_overlay_png(snapshot.rgb, path, overwrite=overwrite)
+    elif not isinstance(snapshot, SegmentationResult):
+        raise WriteError("invalid output data; mask/result requires segmentation snapshot", operation="export")
+    elif kind == "mask":
         saved = save_mask_png(snapshot.mask, path, overwrite=overwrite)
     elif kind == "result":
         saved = save_result_png(snapshot.segmented_rgb, path, overwrite=overwrite)
@@ -129,7 +151,9 @@ def export_snapshot(
     return ExportReceipt(
         kind=kind,
         path=saved,
-        source_path=snapshot.source.source_path,
+        source_path=(snapshot.source_path if isinstance(snapshot, OverlaySnapshot)
+                     else snapshot.source.source_path),
         session_id=snapshot.session_id,
         frame_index=snapshot.frame_index,
+        variant=snapshot.variant if isinstance(snapshot, OverlaySnapshot) else None,
     )

@@ -18,7 +18,8 @@ from PIL import Image
 
 from hsv_segmentation.gui.controller import ApplicationController
 from hsv_segmentation.models import (
-    AnalysisSettings, HSVThresholdSet, THRESHOLD_FIELDS, WatershedSettings,
+    AnalysisSettings, GrayscaleSettings, HSVThresholdSet, THRESHOLD_FIELDS,
+    WatershedSettings,
 )
 from hsv_segmentation.processing.segmentation import segment
 
@@ -97,9 +98,13 @@ def threshold_values(index: int) -> dict[str, int]:
 
 
 def run(input_path: Path, output_path: Path, mode: str = "baseline") -> dict[str, object]:
-    if mode not in {"baseline", "analysis", "watershed"}:
-        raise ValueError("mode must be baseline, analysis, or watershed")
+    if mode not in {"baseline", "analysis", "watershed", "grayscale-full-hd"}:
+        raise ValueError("unsupported benchmark mode")
     create_input(input_path)
+    if mode == "grayscale-full-hd":
+        rgb = np.asarray(Image.open(input_path).convert("RGB"))
+        gray = np.repeat(rgb[..., :1], 3, axis=2)
+        Image.fromarray(gray).save(input_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     input_hash = sha256(input_path.read_bytes()).hexdigest()
 
@@ -114,6 +119,9 @@ def run(input_path: Path, output_path: Path, mode: str = "baseline") -> dict[str
     try:
         controller.open_image_path(str(input_path))
         pump_until(root, lambda: controller.session.result is not None, 30.0)
+        if mode == "grayscale-full-hd":
+            controller._on_segmentation_mode("grayscale")
+            pump_until(root, lambda: controller.session.result.segmentation_mode == "grayscale", 30.0)
         if mode == "analysis":
             controller._on_analysis_settings(
                 AnalysisSettings(True, 8, benchmark_min_area),
@@ -130,6 +138,27 @@ def run(input_path: Path, output_path: Path, mode: str = "baseline") -> dict[str
         root.update()
 
         for index in range(100):
+            if mode == "grayscale-full-hd":
+                threshold = (index * 17) % 256
+                started = perf_counter()
+                controller._on_grayscale_settings(GrayscaleSettings(
+                    manual_threshold=threshold, settings_revision=index + 1
+                ))
+                pump_until(root, lambda: controller.worker.is_busy, 5.0)
+                heartbeat_started = perf_counter()
+                heartbeat: dict[str, float | bool] = {}
+                root.after(0, lambda begun=heartbeat_started: heartbeat.update(
+                    delay_ms=(perf_counter() - begun) * 1000.0,
+                    during_pending=controller.worker.is_busy,
+                ))
+                pump_until(root, lambda value=threshold: (
+                    controller.session.result.grayscale_settings.manual_threshold == value
+                ), 30.0)
+                elapsed_ms = (perf_counter() - started) * 1000.0
+                timings_ms.append(elapsed_ms)
+                heartbeat_ms.append(float(heartbeat.get("delay_ms", elapsed_ms)))
+                heartbeat_during_pending.append(bool(heartbeat.get("during_pending", False)))
+                continue
             values = threshold_values(index)
             for name in THRESHOLD_FIELDS[:-1]:
                 controller.controls.fields[name].set(str(values[name]))
@@ -195,7 +224,7 @@ def run(input_path: Path, output_path: Path, mode: str = "baseline") -> dict[str
     heartbeat_criterion_met = (
         heartbeat_pending_samples >= 95 and heartbeat_within_limit >= 95
     )
-    latency_criterion_met = within_one_second >= 95 if mode == "baseline" else None
+    latency_criterion_met = within_one_second >= 95 if mode in {"baseline", "grayscale-full-hd"} else None
     ordered = sorted(timings_ms)
     result_data: dict[str, object] = {
         "schema_version": 1,
@@ -228,7 +257,7 @@ def run(input_path: Path, output_path: Path, mode: str = "baseline") -> dict[str
         "heartbeat_ms": heartbeat_ms,
         "heartbeat_during_pending": heartbeat_during_pending,
         "timings_ms": timings_ms,
-        "final_thresholds": threshold_values(99),
+        "final_thresholds": threshold_values(99) if mode != "grayscale-full-hd" else {"intensity": (99 * 17) % 256},
         "final_output_exact": True,
         "measurement_scope": (
             "final Tk variable edit, 75 ms debounce, controller submission, serialized worker "
@@ -246,8 +275,12 @@ def main() -> None:
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--mode", choices=("baseline", "analysis", "watershed"), default="baseline")
+    parser.add_argument("--scenario", choices=("grayscale-full-hd",), default=None)
+    parser.add_argument("--iterations", type=int, default=100)
     args = parser.parse_args()
-    result = run(args.input.resolve(), args.output.resolve(), args.mode)
+    if args.iterations != 100:
+        parser.error("this acceptance benchmark requires exactly 100 iterations")
+    result = run(args.input.resolve(), args.output.resolve(), args.scenario or args.mode)
     print(json.dumps({key: result[key] for key in (
         "mode", "within_one_second", "criterion_met", "heartbeat_within_250_ms",
         "heartbeat_criterion_met", "median_ms", "p95_ms", "maximum_ms"

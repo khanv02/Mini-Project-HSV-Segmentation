@@ -1,11 +1,15 @@
 # HSV Color Segmentation
 
+Tính năng mới: [Grayscale và Otsu](docs/tutorials/grayscale-manual.md) ·
+[Save Overlay](docs/tutorials/save-overlay.md).
+
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Tkinter](https://img.shields.io/badge/GUI-Tkinter%20%2F%20ttk-2563EB)](https://docs.python.org/3/library/tkinter.html)
 [![NumPy](https://img.shields.io/badge/NumPy-2.x-013243?logo=numpy&logoColor=white)](https://numpy.org/)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.x-5C3EE8?logo=opencv&logoColor=white)](https://opencv.org/)
-[![Tests](https://img.shields.io/badge/tests-283%20passed-16A34A)](docs/verification.md)
+[![Tests](https://img.shields.io/badge/tests-319%20passed-16A34A)](docs/verification/feature-003-grayscale-otsu-overlay.md)
 [![Feature 002](https://img.shields.io/badge/feature%20002-30%2F30%20tasks-16A34A)](specs/002-object-separation-evaluation/tasks.md)
+[![Feature 003](https://img.shields.io/badge/feature%20003-54%2F54%20tasks-16A34A)](specs/003-grayscale-otsu-overlay/tasks.md)
 
 Ứng dụng desktop chạy offline để học tập, trình diễn và đánh giá phân đoạn màu bằng
 ngưỡng HSV. Ứng dụng hỗ trợ ảnh/video, morphology, phân tích vùng liên thông, Watershed,
@@ -74,8 +78,8 @@ uv run --locked --extra test pytest -q
 
 Checkpoint gần nhất:
 
-- **283/283** test tự động đạt trên Python 3.11/Tk 8.6;
-- **30/30** task của feature 002 hoàn tất;
+- **319** test tự động đạt;
+- **54/54** task của feature 003 hoàn tất;
 - baseline GUI Full HD đạt **99/100** cập nhật trong một giây;
 - analysis và Watershed giữ UI responsive nhưng không cam kết xử lý thời gian thực.
 

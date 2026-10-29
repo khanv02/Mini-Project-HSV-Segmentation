@@ -6,6 +6,7 @@ neither a caller's later mutation nor setflags(write=True) can change a snapshot
 """
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 from numbers import Integral, Real
 from pathlib import Path
 import re
@@ -25,6 +26,13 @@ THRESHOLD_FIELDS: Final = (
 )
 RGBImage = NDArray[np.uint8]
 BinaryMask = NDArray[np.uint8]
+
+
+class SegmentationMode(StrEnum):
+    """Explicit mask-generation workflow; HSV remains the compatible default."""
+
+    HSV = "hsv"
+    GRAYSCALE = "grayscale"
 
 
 def _boolean(value, name: str) -> bool:
@@ -431,6 +439,180 @@ class HSVHistogram:
         return int(self.hue_counts.sum())
 
 
+@dataclass(frozen=True, slots=True)
+class GrayscaleSettings:
+    """Validated user intent for one-sided intensity thresholding."""
+
+    threshold_source: Literal["manual", "otsu"] = "manual"
+    manual_threshold: int = 128
+    polarity: Literal["bright", "dark"] = "bright"
+    settings_revision: int = 0
+
+    def __post_init__(self):
+        if self.threshold_source not in {"manual", "otsu"}:
+            raise ValidationError("threshold_source", "must be manual or otsu")
+        object.__setattr__(self, "manual_threshold", _bounded_integer(
+            self.manual_threshold, "manual_threshold", 0, 255
+        ))
+        if self.polarity not in {"bright", "dark"}:
+            raise ValidationError("polarity", "must be bright or dark")
+        object.__setattr__(self, "settings_revision", _bounded_integer(
+            self.settings_revision, "grayscale.settings_revision", 0
+        ))
+
+    def as_dict(self, *, resolved_threshold: int | None = None) -> dict:
+        threshold = self.manual_threshold if resolved_threshold is None else _bounded_integer(
+            resolved_threshold, "threshold", 0, 255
+        )
+        return {
+            "threshold_source": self.threshold_source,
+            "threshold": threshold,
+            "manual_threshold": self.manual_threshold,
+            "polarity": self.polarity,
+            "settings_revision": self.settings_revision,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class GrayscaleEligibility:
+    """Exact RGB channel-equality result bound to a source/frame."""
+
+    eligible: bool
+    source_sha256: str
+    frame_index: int | None = None
+    reason: str | None = None
+
+    def __post_init__(self):
+        object.__setattr__(self, "eligible", _boolean(self.eligible, "eligible"))
+        if re.fullmatch(r"[0-9a-f]{64}", self.source_sha256 or "") is None:
+            raise ValidationError("source_sha256", "must be 64 lowercase hexadecimal characters")
+        if self.frame_index is not None:
+            object.__setattr__(self, "frame_index", _bounded_integer(
+                self.frame_index, "frame_index", 0
+            ))
+        if self.eligible and self.reason is not None:
+            raise ValidationError("reason", "must be absent when eligible")
+        if not self.eligible and (not isinstance(self.reason, str) or not self.reason.strip()):
+            raise ValidationError("reason", "is required when ineligible")
+
+
+@dataclass(frozen=True, slots=True)
+class OtsuOutcome:
+    """Deterministic threshold result or an honest unavailable state."""
+
+    status: Literal["applied", "unavailable", "not_requested"] = "not_requested"
+    source_sha256: str | None = None
+    frame_index: int | None = None
+    threshold: int | None = None
+    reason: str | None = None
+    tie_rule: str = "smallest_optimal_threshold"
+
+    def __post_init__(self):
+        if self.status not in {"applied", "unavailable", "not_requested"}:
+            raise ValidationError("otsu.status", "is invalid")
+        if self.source_sha256 is not None and re.fullmatch(
+            r"[0-9a-f]{64}", self.source_sha256
+        ) is None:
+            raise ValidationError("source_sha256", "must be 64 lowercase hexadecimal characters")
+        if self.frame_index is not None:
+            object.__setattr__(self, "frame_index", _bounded_integer(
+                self.frame_index, "frame_index", 0
+            ))
+        if self.status == "applied":
+            if self.source_sha256 is None:
+                raise ValidationError("source_sha256", "is required when Otsu is applied")
+            object.__setattr__(self, "threshold", _bounded_integer(
+                self.threshold, "otsu.threshold", 0, 254
+            ))
+            if self.reason is not None:
+                raise ValidationError("otsu.reason", "must be absent when applied")
+        elif self.status == "unavailable":
+            if self.source_sha256 is None:
+                raise ValidationError("source_sha256", "is required when Otsu is unavailable")
+            if self.threshold is not None:
+                raise ValidationError("otsu.threshold", "must be absent when unavailable")
+            _nonempty_text(self.reason, "otsu.reason")
+        elif self.threshold is not None or self.reason is not None:
+            raise ValidationError("otsu", "not_requested cannot contain a result")
+        if self.tie_rule != "smallest_optimal_threshold":
+            raise ValidationError("tie_rule", "must be smallest_optimal_threshold")
+
+
+@dataclass(frozen=True, slots=True)
+class OverlayDisplaySettings:
+    """All pixel-affecting choices for the dedicated Overlay preview."""
+
+    variant: Literal["segmentation", "object_analysis", "watershed", "confusion"] = "segmentation"
+    tint_color: tuple[int, int, int] = (0, 255, 80)
+    opacity: float = 0.35
+    contours: bool = True
+    boxes: bool = True
+    display_revision: int = 0
+
+    def __post_init__(self):
+        if self.variant not in {"segmentation", "object_analysis", "watershed", "confusion"}:
+            raise ValidationError("overlay.variant", "is invalid")
+        if (not isinstance(self.tint_color, tuple) or len(self.tint_color) != 3
+                or any(isinstance(v, bool) or not isinstance(v, Integral) or not 0 <= v <= 255
+                       for v in self.tint_color)):
+            raise ValidationError("tint_color", "must contain three integers in 0..255")
+        object.__setattr__(self, "tint_color", tuple(int(v) for v in self.tint_color))
+        if isinstance(self.opacity, bool) or not isinstance(self.opacity, Real) or not 0 <= self.opacity <= 1:
+            raise ValidationError("opacity", "must be a number in 0..1")
+        object.__setattr__(self, "opacity", float(self.opacity))
+        object.__setattr__(self, "contours", _boolean(self.contours, "contours"))
+        object.__setattr__(self, "boxes", _boolean(self.boxes, "boxes"))
+        object.__setattr__(self, "display_revision", _bounded_integer(
+            self.display_revision, "display_revision", 0
+        ))
+
+    def as_dict(self) -> dict:
+        return {
+            "variant": self.variant, "tint_color": list(self.tint_color),
+            "opacity": self.opacity, "contours": self.contours, "boxes": self.boxes,
+            "display_revision": self.display_revision,
+        }
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class OverlaySnapshot:
+    """Exact immutable source-sized pixels captured from the Overlay contract."""
+
+    rgb: RGBImage = field(repr=False)
+    variant: Literal["segmentation", "object_analysis", "watershed", "confusion"]
+    display_settings: OverlayDisplaySettings
+    source_path: Path
+    source_sha256: str
+    session_id: str
+    frame_index: int | None = None
+    request_revision: int = 0
+    settings_revision: int = 0
+    truth_pixel_sha256: str | None = None
+
+    def __post_init__(self):
+        validate_rgb(self.rgb)
+        if not isinstance(self.display_settings, OverlayDisplaySettings):
+            raise ValidationError("display_settings", "must be OverlayDisplaySettings")
+        if self.variant != self.display_settings.variant:
+            raise ValidationError("overlay.variant", "must match display settings")
+        path = Path(self.source_path)
+        if not path.is_absolute():
+            raise ValidationError("source_path", "must be absolute")
+        object.__setattr__(self, "source_path", path)
+        if re.fullmatch(r"[0-9a-f]{64}", self.source_sha256 or "") is None:
+            raise ValidationError("source_sha256", "must be 64 lowercase hexadecimal characters")
+        _nonempty_text(self.session_id, "session_id")
+        if self.frame_index is not None:
+            object.__setattr__(self, "frame_index", _bounded_integer(self.frame_index, "frame_index", 0))
+        for name in ("request_revision", "settings_revision"):
+            object.__setattr__(self, name, _bounded_integer(getattr(self, name), name, 0))
+        if self.variant == "confusion" and re.fullmatch(
+            r"[0-9a-f]{64}", self.truth_pixel_sha256 or ""
+        ) is None:
+            raise ValidationError("truth_pixel_sha256", "is required for confusion overlay")
+        object.__setattr__(self, "rgb", _immutable_copy(self.rgb))
+
+
 @dataclass(frozen=True, slots=True, eq=False)
 class InputMedia:
     """One fully decoded image/frame, with trusted identity and owned RGB pixels.
@@ -525,6 +707,8 @@ class ProcessingRequest(_SnapshotIdentity):
     ground_truth: GroundTruth | None = field(default=None, repr=False)
     evaluation_target: Literal["baseline", "components", "watershed"] = "baseline"
     settings_revision: int = 0
+    segmentation_mode: SegmentationMode = SegmentationMode.HSV
+    grayscale_settings: GrayscaleSettings = field(default_factory=GrayscaleSettings)
 
     def __post_init__(self):
         revision = _validate_snapshot_identity(self.source, self.thresholds, self.request_revision)
@@ -545,6 +729,12 @@ class ProcessingRequest(_SnapshotIdentity):
         object.__setattr__(self, "settings_revision", _bounded_integer(
             self.settings_revision, "settings_revision", 0
         ))
+        try:
+            object.__setattr__(self, "segmentation_mode", SegmentationMode(self.segmentation_mode))
+        except (TypeError, ValueError) as error:
+            raise ValidationError("segmentation_mode", "must be hsv or grayscale") from error
+        if not isinstance(self.grayscale_settings, GrayscaleSettings):
+            raise ValidationError("grayscale_settings", "must be GrayscaleSettings")
 
     @property
     def rgb(self) -> RGBImage:
@@ -575,6 +765,10 @@ class SegmentationResult(_SnapshotIdentity):
     evaluation_target: Literal["baseline", "components", "watershed"] = "baseline"
     evaluation: EvaluationResult | None = None
     settings_revision: int = 0
+    segmentation_mode: SegmentationMode = SegmentationMode.HSV
+    grayscale_settings: GrayscaleSettings = field(default_factory=GrayscaleSettings)
+    grayscale_eligibility: GrayscaleEligibility | None = None
+    otsu_outcome: OtsuOutcome = field(default_factory=OtsuOutcome)
 
     def __post_init__(self):
         revision = _validate_snapshot_identity(self.source, self.thresholds, self.request_revision)
@@ -627,6 +821,25 @@ class SegmentationResult(_SnapshotIdentity):
         object.__setattr__(self, "settings_revision", _bounded_integer(
             self.settings_revision, "settings_revision", 0
         ))
+        try:
+            object.__setattr__(self, "segmentation_mode", SegmentationMode(self.segmentation_mode))
+        except (TypeError, ValueError) as error:
+            raise ValidationError("segmentation_mode", "must be hsv or grayscale") from error
+        if not isinstance(self.grayscale_settings, GrayscaleSettings):
+            raise ValidationError("grayscale_settings", "must be GrayscaleSettings")
+        if self.grayscale_eligibility is not None and not isinstance(
+            self.grayscale_eligibility, GrayscaleEligibility
+        ):
+            raise ValidationError("grayscale_eligibility", "must be GrayscaleEligibility or None")
+        if not isinstance(self.otsu_outcome, OtsuOutcome):
+            raise ValidationError("otsu_outcome", "must be OtsuOutcome")
+        if self.segmentation_mode is SegmentationMode.GRAYSCALE:
+            if self.grayscale_eligibility is None or not self.grayscale_eligibility.eligible:
+                raise ValidationError("segmentation_mode", "grayscale requires eligible source pixels")
+            if self.grayscale_eligibility.source_sha256 != self.source.source_sha256:
+                raise ValidationError("grayscale_eligibility", "must match source identity")
+            if self.grayscale_settings.threshold_source == "otsu" and self.otsu_outcome.status != "applied":
+                raise ValidationError("otsu_outcome", "must be applied for an Otsu result")
 
     @property
     def original_rgb(self) -> RGBImage:
