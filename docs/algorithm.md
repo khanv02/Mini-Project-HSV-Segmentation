@@ -128,13 +128,15 @@ as pixel area. A component is a connected mask region, not a guaranteed real-wor
 
 ## Optional distance transform and Watershed
 
-Watershed is a post-processing step, never a replacement for HSV thresholding. It starts from
-the HSV/morphology mask, computes an L2 distance transform, thresholds it by the configured
-fraction of the maximum distance, and uses connected seed regions plus known background as
-markers. OpenCV Watershed runs on a copy of the source image. Positive labels and boundary
-ridges are clipped back to the baseline mask; minimum-area filtering is applied after splitting.
+Watershed is a post-processing step, never a replacement for thresholding. It starts from the
+HSV/Grayscale mask after morphology and computes an L2 distance transform. Local distance-peak
+plateaus define independent markers. Each foreground pixel is associated with its nearest peak;
+the configured seed-core fraction then thresholds distance relative to that local peak height,
+not the global maximum. This prevents a large object from suppressing a smaller object's marker.
+OpenCV Watershed runs on a copy of the source image. Positive labels and boundary ridges are
+clipped back to the baseline mask; minimum-area filtering is applied after splitting.
 
-At least two foreground marker regions and some known background are required. Empty masks
+At least two local-peak markers and some known background are required. Empty masks
 produce `empty`; insufficient markers produce `not_applied` with a reason, and the baseline
 HSV result remains available. Marker-controlled Watershed is image-dependent and does not
 guarantee separation of every touching or overlapping-looking object.

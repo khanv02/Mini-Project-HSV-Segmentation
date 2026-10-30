@@ -253,6 +253,8 @@ def publish_experiment(
                     "settings": snapshot.watershed_settings.as_dict(),
                     "status": separation.status,
                     "reason": separation.reason,
+                    "marker_count": separation.marker_count,
+                    "seed_pixel_count": separation.seed_pixel_count,
                     "ridge_pixels_excluded": True,
                 }
                 if separation.status in {"applied", "empty"}:

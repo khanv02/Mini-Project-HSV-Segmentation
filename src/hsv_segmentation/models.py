@@ -268,6 +268,8 @@ class WatershedResult:
     foreground_mask: BinaryMask = field(repr=False)
     reason: str | None = None
     analysis: RegionAnalysis | None = None
+    marker_count: int = 0
+    seed_pixel_count: int = 0
 
     def __post_init__(self):
         if self.status not in {"applied", "empty", "not_applied"}:
@@ -286,6 +288,20 @@ class WatershedResult:
             raise ValidationError("watershed.reason", "is required when separation was not applied")
         if self.analysis is not None and self.analysis.labels.shape != self.labels.shape:
             raise ValidationError("watershed.analysis", "must match labels")
+        object.__setattr__(
+            self, "marker_count", _bounded_integer(self.marker_count, "marker_count", 0)
+        )
+        object.__setattr__(
+            self,
+            "seed_pixel_count",
+            _bounded_integer(self.seed_pixel_count, "seed_pixel_count", 0),
+        )
+        if self.status == "applied" and (
+            self.marker_count < 2 or self.seed_pixel_count < 2
+        ):
+            raise ValidationError(
+                "watershed.markers", "applied separation requires at least two seeds"
+            )
         object.__setattr__(self, "labels", _immutable_copy(self.labels))
         object.__setattr__(self, "boundaries", _immutable_copy(self.boundaries))
         object.__setattr__(self, "foreground_mask", _immutable_copy(self.foreground_mask))

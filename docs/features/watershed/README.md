@@ -7,21 +7,28 @@ HSV hoặc Grayscale làm miền xử lý và ảnh nguồn làm thông tin biê
 
 ## Dùng để làm gì?
 
-Ví dụ hai quả cùng màu chạm nhau tạo thành một vùng liên thông. Watershed có thể tìm các seed
-riêng và tạo đường ranh giới giữa chúng.
+Ví dụ hai quả cùng màu chạm nhau tạo thành một vùng liên thông. Ứng dụng tìm các cực đại cục bộ
+của distance map làm marker riêng, sau đó Watershed tạo đường ranh giới giữa chúng. Cách này
+không để vật thể lớn áp ngưỡng seed lên vật thể nhỏ.
 
 ## Cách dùng
 
 1. Tạo mask bao phủ đúng các vật thể.
 2. Mở tab **Refine & Separate** và bật **Separate touching objects (Watershed)**.
-3. Chỉnh **Seed fraction** nếu số vùng tách chưa phù hợp.
-4. Quan sát vùng màu và đường biên; có thể kết hợp **Minimum area** để loại vùng quá nhỏ.
+3. Chỉnh **Seed core** bằng slider. Giá trị cao làm lõi seed nhỏ hơn; giá trị thấp làm lõi rộng
+   hơn. Slider cập nhật tự động, không cần nhấn Enter.
+4. Xem `Overlay · Watershed`: mỗi vùng được tô màu riêng và đường phân cách có màu đỏ. Binary
+   Mask và Segmented Result vẫn là mask nền, nên không dùng hai khung đó để nhận biết số vùng.
+5. Dòng trạng thái hiển thị số marker, số vùng sau tách và số seed pixel. Có thể kết hợp
+   **Minimum area** trong Analyze để loại vùng quá nhỏ.
 
 ## Trạng thái cần biết
 
-- `applied`: đã đủ marker và bước tách được áp dụng.
+- `applied`: có ít nhất hai marker; trạng thái ghi rõ `markers`, `regions` và `seed pixels`.
 - `empty`: mask đầu vào rỗng.
 - `not_applied`: không đủ marker hoặc điều kiện tách; ứng dụng vẫn giữ mask cơ sở.
 
-Watershed phụ thuộc hình dạng và seed, nên không bảo đảm tách được mọi trường hợp. Nó không
-thay thế HSV và không nên bật khi các vật thể vốn đã tách rời rõ ràng.
+Một seed hợp lệ chỉ là số trong khoảng `(0, 1)`; trạng thái `applied` mới xác nhận thuật toán đã
+chạy. Nếu mask không có ít nhất hai cực đại cục bộ—ví dụ một hình chữ nhật đặc hoàn toàn—không
+có đủ bằng chứng hình học để suy ra hai vật thể. Watershed không thay thế HSV và không nên bật
+khi các vật thể vốn đã tách rời rõ ràng.

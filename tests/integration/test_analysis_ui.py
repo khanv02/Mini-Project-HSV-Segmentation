@@ -5,6 +5,7 @@ import pytest
 from PIL import Image
 
 from hsv_segmentation.gui.controller import ApplicationController
+from hsv_segmentation.gui.watershed_controls import WatershedControls
 from hsv_segmentation.models import AnalysisSettings
 
 
@@ -73,6 +74,7 @@ def test_analysis_panel_disables_advanced_fields_until_enabled() -> None:
         assert not hasattr(panel, "seed_entry")
         assert not hasattr(panel, "watershed_var")
         assert str(controller.watershed_controls.seed_entry.cget("state")) == "disabled"
+        assert str(controller.watershed_controls.seed_scale.cget("state")) == "disabled"
 
         panel.enabled_var.set(True)
         panel._emit()
@@ -83,6 +85,27 @@ def test_analysis_panel_disables_advanced_fields_until_enabled() -> None:
         controller.watershed_controls.enabled_var.set(True)
         controller.watershed_controls._changed()
         assert str(controller.watershed_controls.seed_entry.cget("state")) == "normal"
+        assert str(controller.watershed_controls.seed_scale.cget("state")) == "normal"
         assert str(panel.contours_button.cget("state")) == "normal"
     finally:
         controller.close()
+
+
+def test_watershed_seed_slider_debounces_and_emits_without_focus_change() -> None:
+    root = _root(); emitted = []
+    try:
+        controls = WatershedControls(root, on_change=emitted.append)
+        controls.enable_button.invoke()
+        emitted.clear()
+
+        controls.seed_var.set(0.7)
+        controls._scale_changed("0.7")
+        _wait(root, lambda: len(emitted) == 1)
+
+        assert emitted[0].enabled is True
+        assert emitted[0].seed_fraction == pytest.approx(0.7)
+        assert controls.seed_value_var.get() == "0.70"
+        controls._changed()
+        assert len(emitted) == 1
+    finally:
+        root.destroy()
