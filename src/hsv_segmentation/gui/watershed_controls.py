@@ -16,7 +16,6 @@ class WatershedControls(ttk.Frame):
         self._on_change = on_change
         self._application_enabled = True
         self._updating = False
-        self._after_id = None
         self._last_emitted = None
         settings = initial or WatershedSettings()
 
@@ -37,7 +36,6 @@ class WatershedControls(ttk.Frame):
         )
         self.seed_entry = ttk.Entry(self, textvariable=self.seed_var, width=8)
         self.seed_entry.grid(row=2, column=0, sticky="w", padx=(0, 6))
-        self.seed_entry.bind("<KeyRelease>", self._schedule_changed)
         self.seed_entry.bind("<Return>", self._changed)
         self.seed_entry.bind("<FocusOut>", self._changed)
         self.seed_scale = ttk.Scale(
@@ -49,12 +47,15 @@ class WatershedControls(ttk.Frame):
             length=150,
         )
         self.seed_scale.grid(row=2, column=1, sticky="ew")
+        self.seed_scale.bind("<ButtonRelease-1>", self._commit_scale)
+        self.seed_scale.bind("<Return>", self._commit_scale)
+        self.seed_scale.bind("<FocusOut>", self._commit_scale)
         ttk.Label(
             self, textvariable=self.seed_value_var, style="Metric.TLabel", width=4
         ).grid(row=2, column=2, sticky="e", padx=(6, 0))
         ttk.Label(
             self,
-            text="Higher values make smaller cores. Local peaks remain independent.",
+            text="Higher values make smaller cores. Release slider to apply.",
             style="Muted.TLabel",
         ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(4, 0))
         ttk.Label(self, textvariable=self.status_var, style="Muted.TLabel").grid(
@@ -75,12 +76,6 @@ class WatershedControls(ttk.Frame):
     def _changed(self, _event=None) -> None:
         if self._updating:
             return
-        if self._after_id is not None:
-            try:
-                self.after_cancel(self._after_id)
-            except tk.TclError:
-                pass
-            self._after_id = None
         self._refresh_states()
         try:
             settings = self.settings
@@ -101,14 +96,11 @@ class WatershedControls(ttk.Frame):
         rounded = round(float(value), 2)
         self.seed_var.set(rounded)
         self.seed_value_var.set(f"{rounded:.2f}")
-        self._schedule_changed()
+        if self.enabled_var.get():
+            self.status_var.set("Release slider or press Enter to update separation")
 
-    def _schedule_changed(self, _event=None) -> None:
-        if self._updating:
-            return
-        if self._after_id is not None:
-            self.after_cancel(self._after_id)
-        self._after_id = self.after(160, self._changed)
+    def _commit_scale(self, _event=None) -> None:
+        self._changed()
 
     def _refresh_states(self) -> None:
         enabled = self._application_enabled and self.enabled_var.get()
@@ -148,12 +140,3 @@ class WatershedControls(ttk.Frame):
     def set_enabled(self, enabled: bool) -> None:
         self._application_enabled = bool(enabled)
         self._refresh_states()
-
-    def destroy(self) -> None:
-        if self._after_id is not None:
-            try:
-                self.after_cancel(self._after_id)
-            except tk.TclError:
-                pass
-            self._after_id = None
-        super().destroy()

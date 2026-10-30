@@ -91,7 +91,7 @@ def test_analysis_panel_disables_advanced_fields_until_enabled() -> None:
         controller.close()
 
 
-def test_watershed_seed_slider_debounces_and_emits_without_focus_change() -> None:
+def test_watershed_seed_slider_emits_only_after_release() -> None:
     root = _root(); emitted = []
     try:
         controls = WatershedControls(root, on_change=emitted.append)
@@ -100,8 +100,12 @@ def test_watershed_seed_slider_debounces_and_emits_without_focus_change() -> Non
 
         controls.seed_var.set(0.7)
         controls._scale_changed("0.7")
-        _wait(root, lambda: len(emitted) == 1)
+        root.update()
+        assert emitted == []
+        assert "Release slider" in controls.status_var.get()
+        controls._commit_scale()
 
+        assert len(emitted) == 1
         assert emitted[0].enabled is True
         assert emitted[0].seed_fraction == pytest.approx(0.7)
         assert controls.seed_value_var.get() == "0.70"

@@ -14,6 +14,45 @@ from .object_analysis import analyze_labels
 # desktop memory. Keep the optional extension bounded and fall back to the
 # baseline mask with an actionable status instead.
 MAX_WATERSHED_MARKERS = 2048
+PREFLIGHT_MIN_PIXELS = 1_000_000
+PREFLIGHT_TILE_SIZE = 256
+MAX_PREFLIGHT_MARKERS = 512
+
+
+def _count_local_peaks(mask: np.ndarray, kernel: np.ndarray) -> int:
+    """Count distance peaks in one mask without retaining the label image."""
+    padded = np.pad(mask, 1, mode="constant")
+    distance = cv2.distanceTransform(padded, cv2.DIST_L2, 5)[1:-1, 1:-1]
+    local_maximum = (
+        (distance > 0)
+        & np.isclose(distance, cv2.dilate(distance, kernel), rtol=0.0, atol=1e-5)
+    )
+    if not np.any(local_maximum):
+        return 0
+    count, labels = cv2.connectedComponents(
+        local_maximum.astype(np.uint8), connectivity=8, ltype=cv2.CV_32S
+    )
+    del labels
+    return int(count - 1)
+
+
+def _preflight_marker_count(mask: np.ndarray, kernel: np.ndarray) -> int:
+    """Sample native-resolution tiles so detailed large masks fail quickly."""
+    if mask.size <= PREFLIGHT_MIN_PIXELS:
+        return 0
+    height, width = mask.shape
+    tile_height = min(height, PREFLIGHT_TILE_SIZE)
+    tile_width = min(width, PREFLIGHT_TILE_SIZE)
+    y_starts = sorted({0, (height - tile_height) // 2, height - tile_height})
+    x_starts = sorted({0, (width - tile_width) // 2, width - tile_width})
+    marker_count = 0
+    for y0 in y_starts:
+        for x0 in x_starts:
+            tile = mask[y0:y0 + tile_height, x0:x0 + tile_width]
+            marker_count += _count_local_peaks(tile, kernel)
+            if marker_count > MAX_PREFLIGHT_MARKERS:
+                return marker_count
+    return marker_count
 
 
 def _empty(
@@ -53,11 +92,22 @@ def _build_markers_with_diagnostics(
     if not np.any(mask):
         return None, "foreground mask is empty", 0, 0
 
-    padded = np.pad(mask, 1, mode="constant")
-    distance = cv2.distanceTransform(padded, cv2.DIST_L2, 5)[1:-1, 1:-1]
     kernel = cv2.getStructuringElement(
         cv2.MORPH_ELLIPSE, (settings.kernel_size, settings.kernel_size)
     )
+    preflight_count = _preflight_marker_count(mask, kernel)
+    if preflight_count > MAX_PREFLIGHT_MARKERS:
+        return (
+            None,
+            f"mask is too detailed for interactive separation (more than "
+            f"{MAX_PREFLIGHT_MARKERS} local peaks found during preflight); "
+            "reduce noise with morphology or tighten the segmentation",
+            preflight_count,
+            0,
+        )
+
+    padded = np.pad(mask, 1, mode="constant")
+    distance = cv2.distanceTransform(padded, cv2.DIST_L2, 5)[1:-1, 1:-1]
     local_maximum = (
         (distance > 0)
         & np.isclose(distance, cv2.dilate(distance, kernel), rtol=0.0, atol=1e-5)

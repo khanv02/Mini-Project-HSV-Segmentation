@@ -141,7 +141,9 @@ produce `empty`; insufficient markers produce `not_applied` with a reason, and t
 HSV result remains available. Marker-controlled Watershed is image-dependent and does not
 guarantee separation of every touching or overlapping-looking object. Processing is also
 bounded to 2,048 local markers: a noisier mask returns `not_applied` before Watershed and
-per-region contour analysis to prevent unbounded CPU and memory use.
+per-region contour analysis to prevent unbounded CPU and memory use. Masks larger than one
+megapixel first run a native-resolution tiled preflight; more than 512 sampled peaks stops the
+operation before allocating full-frame distance and marker maps.
 
 ## Ground truth, IoU, and Dice
 

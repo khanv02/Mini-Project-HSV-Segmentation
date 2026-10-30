@@ -1,7 +1,8 @@
 # Watershed
 
-> **Giới hạn an toàn:** nếu mask quá nhiều chi tiết hoặc nhiễu, ứng dụng dừng Watershed trước
-> bước phân vùng nặng và báo `not applied` cùng số marker. Kết quả HSV gốc vẫn được giữ nguyên.
+> **Giới hạn an toàn:** với ảnh lớn, ứng dụng kiểm tra nhanh các vùng mẫu trước. Nếu mask quá
+> nhiều chi tiết hoặc nhiễu, Watershed dừng trước bước phân vùng nặng và báo `not applied`.
+> Kết quả HSV gốc vẫn được giữ nguyên.
 > Hãy siết lại ngưỡng phân đoạn hoặc dùng morphology để dọn chấm nhiễu rồi thử lại; tách hàng
 > nghìn cực đại cục bộ vừa không có ý nghĩa, vừa có thể tiêu tốn rất nhiều bộ nhớ.
 
@@ -21,7 +22,8 @@ không để vật thể lớn áp ngưỡng seed lên vật thể nhỏ.
 1. Tạo mask bao phủ đúng các vật thể.
 2. Mở tab **Refine & Separate** và bật **Separate touching objects (Watershed)**.
 3. Chỉnh **Seed core** bằng slider. Giá trị cao làm lõi seed nhỏ hơn; giá trị thấp làm lõi rộng
-   hơn. Slider cập nhật tự động, không cần nhấn Enter.
+   hơn. Kéo đến giá trị mong muốn rồi thả chuột để xử lý một lần; khi dùng bàn phím, nhấn Enter
+   hoặc rời khỏi slider. Ô nhập số chỉ áp dụng khi nhấn Enter hoặc rời khỏi ô.
 4. Xem `Overlay · Watershed`: mỗi vùng được tô màu riêng và đường phân cách có màu đỏ. Binary
    Mask và Segmented Result vẫn là mask nền, nên không dùng hai khung đó để nhận biết số vùng.
 5. Dòng trạng thái hiển thị số marker, số vùng sau tách và số seed pixel. Có thể kết hợp

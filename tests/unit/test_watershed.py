@@ -2,6 +2,7 @@ import numpy as np
 
 from hsv_segmentation.models import WatershedSettings
 from hsv_segmentation.processing.watershed import (
+    MAX_PREFLIGHT_MARKERS,
     MAX_WATERSHED_MARKERS,
     build_markers,
     separate_watershed,
@@ -75,3 +76,17 @@ def test_high_detail_mask_stops_before_expensive_separation() -> None:
     assert "too detailed for safe separation" in result.reason
     assert "morphology" in result.reason
     assert not np.any(result.foreground_mask)
+
+
+def test_large_detailed_mask_is_rejected_by_fast_preflight() -> None:
+    size = 1100
+    y, x = np.ogrid[:size, :size]
+    mask = np.where((x % 4 == 1) & (y % 4 == 1), 255, 0).astype(np.uint8)
+    rgb = np.zeros((size, size, 3), dtype=np.uint8)
+
+    result = separate_watershed(rgb, mask, WatershedSettings(True))
+
+    assert result.status == "not_applied"
+    assert result.marker_count > MAX_PREFLIGHT_MARKERS
+    assert "during preflight" in result.reason
+    assert result.analysis is None
