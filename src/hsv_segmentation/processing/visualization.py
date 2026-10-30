@@ -141,11 +141,6 @@ def compose_overlay_snapshot(
         if result.watershed is None or result.watershed.status not in {"applied", "empty"}:
             raise ValidationError("overlay.variant", "Watershed is unavailable")
         rgb = compose_watershed_overlay(result.original_rgb, result.watershed)
-        if result.watershed.analysis is not None and (settings.contours or settings.boxes):
-            rgb = compose_region_annotations(
-                rgb, result.watershed.analysis,
-                contours=settings.contours, boxes=settings.boxes,
-            )
     else:
         if result.evaluation is None or result.ground_truth is None:
             raise ValidationError("overlay.variant", "ground-truth confusion is unavailable")

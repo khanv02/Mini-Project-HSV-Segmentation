@@ -6,6 +6,11 @@
 > Hãy siết lại ngưỡng phân đoạn hoặc dùng morphology để dọn chấm nhiễu rồi thử lại; tách hàng
 > nghìn cực đại cục bộ vừa không có ý nghĩa, vừa có thể tiêu tốn rất nhiều bộ nhớ.
 
+Watershed gộp các cực đại gần nhau theo độ dày cục bộ của vật thể và chỉ chấp nhận tối đa 16
+marker có ý nghĩa. Nhiều hơn mức này được xem là over-segmentation và trả về `not applied`.
+Nếu mục tiêu là thống kê nhiều vật thể vốn đã rời nhau, hãy dùng **Analyze Objects**. Các tùy
+chọn Contours/Boxes của Analyze không được vẽ lên Overlay Watershed.
+
 ## Là gì?
 
 Watershed là bước hậu xử lý thử tách các vùng foreground đang chạm nhau. Nó dùng mask từ

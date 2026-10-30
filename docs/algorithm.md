@@ -132,7 +132,10 @@ Watershed is a post-processing step, never a replacement for thresholding. It st
 HSV/Grayscale mask after morphology and computes an L2 distance transform. Local distance-peak
 plateaus define independent markers. Each foreground pixel is associated with its nearest peak;
 the configured seed-core fraction then thresholds distance relative to that local peak height,
-not the global maximum. This prevents a large object from suppressing a smaller object's marker.
+not the global maximum. Nearby peaks within one local object radius are merged, and shallow
+edge peaks are discarded relative to the strongest peak of their connected mask island. This
+prevents a large object from suppressing a smaller object's marker without treating every jagged
+edge fluctuation as an object.
 OpenCV Watershed runs on a copy of the source image. Positive labels and boundary ridges are
 clipped back to the baseline mask; minimum-area filtering is applied after splitting.
 
@@ -144,6 +147,9 @@ bounded to 2,048 local markers: a noisier mask returns `not_applied` before Wate
 per-region contour analysis to prevent unbounded CPU and memory use. Masks larger than one
 megapixel first run a native-resolution tiled preflight; more than 512 sampled peaks stops the
 operation before allocating full-frame distance and marker maps.
+After peak suppression, more than 16 surviving markers is treated as unreadable
+over-segmentation and returns `not_applied`. Analyze contour/box display settings are not applied
+to Watershed overlays.
 
 ## Ground truth, IoU, and Dice
 

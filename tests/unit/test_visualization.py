@@ -6,7 +6,8 @@ import pytest
 from hsv_segmentation.errors import ValidationError
 from hsv_segmentation.application.session import process_source
 from hsv_segmentation.models import (
-    AnalysisSettings, HSVThresholdSet, OverlayDisplaySettings, WatershedSettings,
+    AnalysisSettings, HSVThresholdSet, InputMedia, OverlayDisplaySettings,
+    WatershedSettings,
 )
 from hsv_segmentation.processing.object_analysis import analyze_components
 from hsv_segmentation.processing.watershed import separate_watershed
@@ -94,4 +95,33 @@ def test_overlay_snapshot_rejects_unavailable_specialized_variant(exact_gray_med
     result = process_source(exact_gray_media, HSVThresholdSet(), 1)
     with pytest.raises(ValidationError, match="unavailable"):
         compose_overlay_snapshot(result, OverlayDisplaySettings(variant="watershed"))
+
+
+def test_watershed_overlay_does_not_inherit_analyze_boxes_or_contours(tmp_path) -> None:
+    rgb, _mask = touching_disks()
+    media = InputMedia(
+        (tmp_path / "touching.png").resolve(), "a" * 64, "PNG", rgb
+    )
+    result = process_source(
+        media,
+        HSVThresholdSet(0, 30, 40, 100, 10, 100),
+        1,
+        watershed_settings=WatershedSettings(True, seed_fraction=0.7),
+    )
+    assert result.watershed.status == "applied"
+
+    plain = compose_overlay_snapshot(
+        result,
+        OverlayDisplaySettings(
+            variant="watershed", contours=False, boxes=False,
+        ),
+    )
+    analyze_options_on = compose_overlay_snapshot(
+        result,
+        OverlayDisplaySettings(
+            variant="watershed", contours=True, boxes=True,
+        ),
+    )
+
+    np.testing.assert_array_equal(analyze_options_on.rgb, plain.rgb)
 

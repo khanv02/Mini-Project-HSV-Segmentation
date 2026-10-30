@@ -2,8 +2,10 @@ import numpy as np
 
 from hsv_segmentation.models import WatershedSettings
 from hsv_segmentation.processing.watershed import (
+    MAX_MEANINGFUL_MARKERS,
     MAX_PREFLIGHT_MARKERS,
     MAX_WATERSHED_MARKERS,
+    _select_prominent_peaks,
     build_markers,
     separate_watershed,
 )
@@ -90,3 +92,37 @@ def test_large_detailed_mask_is_rejected_by_fast_preflight() -> None:
     assert result.marker_count > MAX_PREFLIGHT_MARKERS
     assert "during preflight" in result.reason
     assert result.analysis is None
+
+
+def test_nearby_distance_peaks_are_merged_before_marker_creation() -> None:
+    mask = np.full((80, 100), 255, dtype=np.uint8)
+    distance = np.zeros(mask.shape, dtype=np.float32)
+    local_maximum = np.zeros(mask.shape, dtype=bool)
+    for x, height in ((40, 10.0), (45, 9.0), (75, 8.0)):
+        distance[40, x] = height
+        local_maximum[40, x] = True
+
+    selected, raw_count = _select_prominent_peaks(mask, distance, local_maximum)
+
+    assert raw_count == 3
+    assert np.count_nonzero(selected) == 2
+    assert selected[40, 40]
+    assert not selected[40, 45]
+    assert selected[40, 75]
+
+
+def test_too_many_surviving_regions_are_rejected_as_oversegmentation() -> None:
+    size = 180
+    y, x = np.ogrid[:size, :size]
+    foreground = np.zeros((size, size), dtype=bool)
+    for center_y in (20, 55, 90, 125, 160):
+        for center_x in (20, 65, 110, 155):
+            foreground |= (x - center_x) ** 2 + (y - center_y) ** 2 <= 6 ** 2
+    mask = np.where(foreground, 255, 0).astype(np.uint8)
+    rgb = np.zeros((size, size, 3), dtype=np.uint8)
+
+    result = separate_watershed(rgb, mask, WatershedSettings(True))
+
+    assert result.status == "not_applied"
+    assert result.marker_count > MAX_MEANINGFUL_MARKERS
+    assert "unreadable over-segmented result" in result.reason
