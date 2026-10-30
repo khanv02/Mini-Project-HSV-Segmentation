@@ -1,4 +1,5 @@
 import time
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -111,5 +112,32 @@ def test_watershed_seed_slider_emits_only_after_release() -> None:
         assert controls.seed_value_var.get() == "0.70"
         controls._changed()
         assert len(emitted) == 1
+    finally:
+        root.destroy()
+
+
+def test_watershed_status_keeps_layout_stable_for_long_not_applied_reason() -> None:
+    root = _root()
+    try:
+        controls = WatershedControls(root)
+        root.update_idletasks()
+        initial_size = (controls.winfo_reqwidth(), controls.winfo_reqheight())
+        reason = (
+            "separation would create 32 regions; limit 16 prevents an unreadable "
+            "over-segmented result and this deliberately long suffix must not resize layout"
+        )
+        controls.show_result(SimpleNamespace(watershed=SimpleNamespace(
+            status="not_applied",
+            reason=reason,
+            marker_count=32,
+            analysis=None,
+            seed_pixel_count=0,
+        )))
+        root.update_idletasks()
+
+        assert (controls.winfo_reqwidth(), controls.winfo_reqheight()) == initial_size
+        assert len(controls.status_var.get()) <= 58
+        assert "32 candidate regions" in controls.status_var.get()
+        assert reason in controls.status_tooltip.text
     finally:
         root.destroy()

@@ -32,7 +32,8 @@ không để vật thể lớn áp ngưỡng seed lên vật thể nhỏ.
 4. Xem `Overlay · Watershed`: mỗi vùng được tô màu riêng và đường phân cách có màu đỏ. Binary
    Mask và Segmented Result vẫn là mask nền, nên không dùng hai khung đó để nhận biết số vùng.
 5. Dòng trạng thái hiển thị số marker, số vùng sau tách và số seed pixel. Có thể kết hợp
-   **Minimum area** trong Analyze để loại vùng quá nhỏ.
+   **Minimum area** trong Analyze để loại vùng quá nhỏ. Trạng thái luôn giữ trên một dòng để
+   layout không dịch chuyển; rê chuột lên dòng này để xem đầy đủ lý do khi có `not applied`.
 
 ## Trạng thái cần biết
 

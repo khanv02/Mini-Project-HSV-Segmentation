@@ -1,10 +1,15 @@
 """Compact controls for optional marker-controlled object separation."""
 
+from textwrap import shorten
 import tkinter as tk
 from tkinter import ttk
 
 from ..errors import ValidationError
 from ..models import WatershedSettings
+from .tooltips import ToolTip
+
+
+STATUS_WIDTH = 58
 
 
 class WatershedControls(ttk.Frame):
@@ -58,9 +63,17 @@ class WatershedControls(ttk.Frame):
             text="Higher values make smaller cores. Release slider to apply.",
             style="Muted.TLabel",
         ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(4, 0))
-        ttk.Label(self, textvariable=self.status_var, style="Muted.TLabel").grid(
+        self.status_label = ttk.Label(
+            self,
+            textvariable=self.status_var,
+            style="Muted.TLabel",
+            width=STATUS_WIDTH,
+            anchor="w",
+        )
+        self.status_label.grid(
             row=4, column=0, columnspan=3, sticky="w", pady=(4, 0)
         )
+        self.status_tooltip = ToolTip(self.status_label, self.status_var.get())
         self.columnconfigure(1, weight=1)
         self._refresh_states()
 
@@ -80,13 +93,14 @@ class WatershedControls(ttk.Frame):
         try:
             settings = self.settings
         except (tk.TclError, ValueError, ValidationError) as error:
-            self.status_var.set(f"Invalid Watershed setting: {error}")
+            detail = f"Invalid Watershed setting: {error}"
+            self._set_status("Invalid Watershed setting", detail)
             return
         self.seed_value_var.set(f"{settings.seed_fraction:.2f}")
         if settings == self._last_emitted:
             return
         self._last_emitted = settings
-        self.status_var.set(
+        self._set_status(
             "Updating separation…" if settings.enabled else "Separation disabled"
         )
         if self._on_change is not None:
@@ -97,7 +111,7 @@ class WatershedControls(ttk.Frame):
         self.seed_var.set(rounded)
         self.seed_value_var.set(f"{rounded:.2f}")
         if self.enabled_var.get():
-            self.status_var.set("Release slider or press Enter to update separation")
+            self._set_status("Release slider or press Enter to update")
 
     def _commit_scale(self, _event=None) -> None:
         self._changed()
@@ -124,18 +138,36 @@ class WatershedControls(ttk.Frame):
     def show_result(self, result) -> None:
         watershed = result.watershed
         if watershed is None:
-            self.status_var.set("Separation disabled")
+            self._set_status("Separation disabled")
             return
-        status = watershed.status.replace("_", " ")
         if watershed.reason:
-            status += f": {watershed.reason}"
+            detail = f"Watershed {watershed.status.replace('_', ' ')}: {watershed.reason}"
+            if "over-segmented" in watershed.reason:
+                summary = (
+                    f"Not applied · {watershed.marker_count} candidate regions "
+                    "exceed quality limit"
+                )
+            elif "too detailed" in watershed.reason:
+                summary = "Not applied · mask is too detailed; refine it first"
+            elif "only" in watershed.reason and "marker" in watershed.reason:
+                summary = f"Not applied · only {watershed.marker_count} marker(s) found"
+            else:
+                summary = f"Not applied · {watershed.reason}"
+            self._set_status(summary, detail)
         elif watershed.analysis is not None:
-            status += (
-                f" — {watershed.marker_count} markers, "
-                f"{watershed.analysis.retained_count} regions, "
+            summary = (
+                f"Applied · {watershed.marker_count} markers · "
+                f"{watershed.analysis.retained_count} regions · "
                 f"{watershed.seed_pixel_count} seed pixels"
             )
-        self.status_var.set(f"Watershed {status}")
+            self._set_status(summary)
+        else:
+            self._set_status(watershed.status.replace("_", " ").title())
+
+    def _set_status(self, summary: str, detail: str | None = None) -> None:
+        compact = shorten(summary, width=STATUS_WIDTH, placeholder="…")
+        self.status_var.set(compact)
+        self.status_tooltip.text = detail or summary
 
     def set_enabled(self, enabled: bool) -> None:
         self._application_enabled = bool(enabled)
