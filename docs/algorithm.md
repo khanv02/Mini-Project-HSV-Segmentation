@@ -139,7 +139,9 @@ clipped back to the baseline mask; minimum-area filtering is applied after split
 At least two local-peak markers and some known background are required. Empty masks
 produce `empty`; insufficient markers produce `not_applied` with a reason, and the baseline
 HSV result remains available. Marker-controlled Watershed is image-dependent and does not
-guarantee separation of every touching or overlapping-looking object.
+guarantee separation of every touching or overlapping-looking object. Processing is also
+bounded to 2,048 local markers: a noisier mask returns `not_applied` before Watershed and
+per-region contour analysis to prevent unbounded CPU and memory use.
 
 ## Ground truth, IoU, and Dice
 

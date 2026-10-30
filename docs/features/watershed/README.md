@@ -1,5 +1,10 @@
 # Watershed
 
+> **Giới hạn an toàn:** nếu mask quá nhiều chi tiết hoặc nhiễu, ứng dụng dừng Watershed trước
+> bước phân vùng nặng và báo `not applied` cùng số marker. Kết quả HSV gốc vẫn được giữ nguyên.
+> Hãy siết lại ngưỡng phân đoạn hoặc dùng morphology để dọn chấm nhiễu rồi thử lại; tách hàng
+> nghìn cực đại cục bộ vừa không có ý nghĩa, vừa có thể tiêu tốn rất nhiều bộ nhớ.
+
 ## Là gì?
 
 Watershed là bước hậu xử lý thử tách các vùng foreground đang chạm nhau. Nó dùng mask từ

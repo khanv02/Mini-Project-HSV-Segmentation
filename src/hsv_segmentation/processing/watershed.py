@@ -8,6 +8,14 @@ from ..models import WatershedResult, WatershedSettings, validate_rgb
 from .object_analysis import analyze_labels
 
 
+# Object analysis retains contours and statistics for every separated label. A
+# highly textured/noisy mask can contain tens of thousands of local peaks, for
+# which Watershed is both semantically unhelpful and expensive enough to exhaust
+# desktop memory. Keep the optional extension bounded and fall back to the
+# baseline mask with an actionable status instead.
+MAX_WATERSHED_MARKERS = 2048
+
+
 def _empty(
     shape, status: str, reason: str, *, marker_count: int = 0,
     seed_pixel_count: int = 0,
@@ -17,10 +25,10 @@ def _empty(
     return WatershedResult(
         status,
         labels,
-        mask.copy(),
+        mask,
         mask,
         reason,
-        analyze_labels(labels),
+        None,
         marker_count,
         seed_pixel_count,
     )
@@ -56,6 +64,21 @@ def _build_markers_with_diagnostics(
     )
     if not np.any(local_maximum):
         return None, "no local distance peaks were found", 0, 0
+
+    peak_count, peak_labels = cv2.connectedComponents(
+        local_maximum.astype(np.uint8), connectivity=8, ltype=cv2.CV_32S
+    )
+    marker_count = int(peak_count - 1)
+    del peak_labels
+    if marker_count > MAX_WATERSHED_MARKERS:
+        return (
+            None,
+            f"mask is too detailed for safe separation ({marker_count} markers; "
+            f"limit {MAX_WATERSHED_MARKERS}); reduce noise with morphology or "
+            "tighten the segmentation",
+            marker_count,
+            0,
+        )
 
     # Label the nearest local-maximum plateau for every pixel. This keeps each
     # object's core independent even when a low seed fraction makes cores wide.

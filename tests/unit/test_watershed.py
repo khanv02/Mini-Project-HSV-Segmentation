@@ -1,7 +1,11 @@
 import numpy as np
 
 from hsv_segmentation.models import WatershedSettings
-from hsv_segmentation.processing.watershed import build_markers, separate_watershed
+from hsv_segmentation.processing.watershed import (
+    MAX_WATERSHED_MARKERS,
+    build_markers,
+    separate_watershed,
+)
 from tests.fixtures.analysis_cases import touching_disks
 
 
@@ -55,3 +59,19 @@ def test_local_peaks_preserve_small_object_at_high_seed_fraction() -> None:
 
     assert result.status == "applied"
     assert result.marker_count == result.analysis.retained_count == 2
+
+
+def test_high_detail_mask_stops_before_expensive_separation() -> None:
+    size = 384
+    y, x = np.ogrid[:size, :size]
+    mask = np.where((x % 4 == 1) & (y % 4 == 1), 255, 0).astype(np.uint8)
+    rgb = np.zeros((size, size, 3), dtype=np.uint8)
+
+    result = separate_watershed(rgb, mask, WatershedSettings(True))
+
+    assert result.status == "not_applied"
+    assert result.marker_count > MAX_WATERSHED_MARKERS
+    assert result.seed_pixel_count == 0
+    assert "too detailed for safe separation" in result.reason
+    assert "morphology" in result.reason
+    assert not np.any(result.foreground_mask)
